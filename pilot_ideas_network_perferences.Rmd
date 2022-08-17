@@ -1,0 +1,112 @@
+---
+title: "perference_network"
+author: "Kianté Fernandez"
+date: "3/4/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(here)
+library(tidyverse)
+library(qgraph)
+library(igraph)
+library(bootnet)
+library(RColorBrewer)
+library(NetworkComparisonTest)
+library(huge)
+library(boot)
+library(EGAnet)
+```
+
+```{r}
+# setsize_9_desc_data <- read_csv("many-item-single-choice/data/summary_files/setsize-9_desc-data.csv")
+#we need to read in all the liking data for each subject
+
+temp = list.files(path = here("many-item-single-choice","data","subject_files"), pattern="liking_ratings", full.names = T)
+
+myfiles <- vector(mode = "list", length = length(temp))
+for (idx in seq_along(myfiles)){
+  myfiles[[idx]] = readr::read_csv(temp[[idx]])
+  # temp = read_csv(temp[idx])
+  # myfiles <- rbind(myfiles, temp)
+}
+
+rating_data <-plyr::ldply(myfiles, data.frame) 
+rating_data$rating <- rating_data$rating + 4
+
+rating_network <- rating_data %>% 
+  select(subject,stimulus, rating) %>% 
+  pivot_wider(names_from = stimulus, values_from = rating) %>% select(-1)
+
+names(rating_network)[order(names(rating_network))]
+
+rating_network
+#get ready for network
+# rating_network <- huge.npn(rating_network, npn.func = "shrinkage", npn.thresh = NULL, verbose = TRUE)
+```
+
+```{r load self_control data}
+temp = list.files(path = "/Users/kiantefernandez/Downloads/Self Control", pattern="exp_rating_data", full.names = T)
+
+myfiles <- vector(mode = "list", length = length(temp))
+for (idx in seq_along(myfiles)){
+  myfiles[[idx]] = readr::read_csv(temp[[idx]])
+  # temp = read_csv(temp[idx])
+  # myfiles <- rbind(myfiles, temp)
+}
+rating_data <-plyr::ldply(myfiles, data.frame) 
+
+table(factor(rating_data$PicID))
+names(rating_data)
+rating_network <- rating_data %>% 
+  select(SubjectNumber,PicID, TasteRating) %>% 
+  pivot_wider(names_from = PicID, values_from = TasteRating) %>% select(-1)
+
+final.self_control <- SemNeT::finalize(rating_network, minCase = 2)
+cosine.self_control  <- SemNeT::similarity(final.self_control, method = "cosine")
+net.self_control <- SemNeT::TMFG(cosine.self_control)
+
+```
+
+```{r}
+library(ggplot2)
+library(ggcorrplot)
+library(corrplot)
+
+# calulate the correlations
+r <- cor(rating_network, use="complete.obs")
+corrplot(r, method="color", type="upper", order="hclust")
+
+ggcorrplot(r, 
+           type = "upper")
+
+TEST <- correlation::correlation(rating_network)
+corrplot(M, type="upper", order="hclust")
+
+x <- TEST[order(TEST$r, decreasing = T),]
+min(TEST$r)
+```
+
+```{r}
+
+test <- Matrix::nearPD(cor(rating_network))
+########################
+#Network estimation
+#Gaussian graphical models
+Perference_self_control <- estimateNetwork(rating_network, 
+                           default = "ggmModSelect",
+                           start = "empty",
+                           considerPerStep = "all",
+                           nCores = 8,
+                           stepwise = TRUE,
+                           verbose = FALSE)
+
+ega_rating    <- EGA(rating_network, model = "glasso", plot.EGA = TRUE) 
+
+```
+
+
