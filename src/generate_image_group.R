@@ -56,7 +56,12 @@ foods_in_image <- tibble::rowid_to_column(data.frame(Image = as.numeric(foods_in
 foods_in_image <- dplyr::left_join(FoodNames, foods_in_image, "Image")
 
 # subset such that we only get the foods in the data set
-#nodes_temp <- temp[foods_in_image$rowid]
+nodes_temp <- temp[foods_in_image$rowid]
+dput(as.numeric(stringr::str_extract(stringr::str_extract(nodes_temp, "item\\d+"), "\\d+")))
+newlocation <- "/Users/kiantefernandez/Documents/OSU/similarity_networks/similarity/public/img/60Foods"
+file.copy(from=nodes_temp, to=newlocation, 
+          overwrite = TRUE, recursive = FALSE, 
+          copy.mode = TRUE)
 
 # we might need a for loop here instead can we figure out how to use map here?'
 myfiles <- list()
@@ -93,3 +98,4 @@ for (network_stat_idx in 1:3) {
     generate_image_group(myfiles, 3, file_name, grid_idx, trial_set)
   }
 }
+

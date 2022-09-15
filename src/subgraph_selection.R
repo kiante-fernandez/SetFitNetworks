@@ -31,7 +31,7 @@ library(here) # A Simpler Way to Find Your Files
 source("exploratory_graph_analysis.R")
 
 #### subgraph algorithm
-make_subgraphs <- function(g, C, stat_range, nsubgraphs = 25, n_statistic = "assortment", epsilon = 0.05) {
+make_subgraphs <- function(g, C = 6, stat_range, nsubgraphs = 25, n_statistic = "assortment", epsilon = 0.05) {
   #list of network statistics build into function or to be built 
   
   #assortment.discrete:Assortment on discrete vertex values
@@ -134,6 +134,8 @@ C <- 6
 nsubgraphs <- 30
 #list of names of each network statistic to calculate
 network_stats <- c("assortment","edge_density","weighted_clustering_coefficient","average_degree","internal_density","diversity")
+network_stats <- c("assortment","edge_density","weighted_clustering_coefficient")
+
 # range of target value for each statistic
 stat_ranges <- list(c(-.95, .95),
                     c(0,.7),
@@ -144,8 +146,6 @@ stat_ranges <- list(c(-.95, .95),
 
 epsilons <- list( 0.05, 0.05, 0.06, 0.005, 0.005,.15)
 
-#subgraphs <- make_subgraphs(g,C,stat_range =   c(-4,.8), nsubgraphs = nsubgraphs, n_statistic = "diversity",  epsilon = .15)
-#rT <- round(seq(-4,.8, length.out = nsubgraphs), 3) # target value for statistic
 
 # get image of all the sim subgraphs together
 #needs to be adjusted for changes in nsubgraphs
