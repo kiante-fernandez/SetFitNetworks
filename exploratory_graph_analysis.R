@@ -28,18 +28,27 @@ suppressMessages(library(EGAnet)) # Exploratory Graph Analysis – a Framework f
 library(readxl)
 library(igraph)
 
-# load the data
-lee_2021_rating1 <- readr::read_csv(here("data", "lee_2021_rating1.csv"), col_names = FALSE, show_col_types = F)
-# load the names of the foods
-FoodNames <- readxl::read_excel(here("data", "snackitemnames_nicholas", "item_image_numbers_exp2_5_nicholas.xlsx"))
-# create cleaned names
-names(lee_2021_rating1) <- FoodNames$Name
-
-# number of observations
-n <- nrow(lee_2021_rating1)
-
 if (!file.exists(here("data", "rating_network_graph.RData"))) {
 
+  # load the names of the foods
+  FoodNames <- readxl::read_excel(here("data", "snackitemnames_nicholas", "item_image_numbers_exp2_5_nicholas.xlsx"))
+  
+  # filname_temp <- list.files(here("data"), pattern = "lee_2021_rating")[-c(1,2,3)]
+
+  # for (ratings_idx in 1:3){
+
+  # load the data
+  # lee_2021_rating1 <- readr::read_csv(here("data", filname_temp[[ratings_idx]]), col_names = FALSE, show_col_types = F)
+  lee_2021_rating1 <- readr::read_csv(here("data","lee_2021_rating1.csv"), col_names = FALSE, show_col_types = F)
+  # lee_2021_rating2 <- readr::read_csv(here("data","lee_2021_rating2.csv"), col_names = FALSE, show_col_types = F)
+  # lee_2021_rating3 <- readr::read_csv(here("data","lee_2021_rating3.csv"), col_names = FALSE, show_col_types = F)
+  # lee_2021_rating1 <- rbind(lee_2021_rating1,lee_2021_rating2,lee_2021_rating3)
+  # create cleaned names
+  names(lee_2021_rating1) <- FoodNames$Name
+  
+  # number of observations
+  n <- nrow(lee_2021_rating1)
+  
   # Set random seed
   set.seed(2022)
 
@@ -65,6 +74,8 @@ if (!file.exists(here("data", "rating_network_graph.RData"))) {
   V(g)$snack_type <- dimattributes
 
   save(ega_res, g, file = here("data", "rating_network_graph.RData"))
-} else {
+  
+}else {
   load(here::here("data", "rating_network_graph.RData"))
 }
+

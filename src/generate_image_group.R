@@ -6,6 +6,9 @@ library(progress)
 
 generate_image_group <- function(myfiles, ncol, file_name, grid_idx, trial_set) {
   image_file_idx <- trial_set[[grid_idx]]
+  #this will shuffle the order of the images
+  image_file_idx <- sample(image_file_idx,length(image_file_idx))
+  
   # record which images are selected for later (need to add)
 
   # stim_grid <-  arrangeGrob(
@@ -68,7 +71,7 @@ myfiles <- list()
 for (idx in 1:length(temp)) {
   myfiles[[idx]] <- readJPEG(temp[idx])
 }
-
+############## subgraph approach
 network_stats <- c("assortment", "edge_density", "weighted_clustering_coefficient")
 
 for (network_stat_idx in 1:3) {
@@ -99,3 +102,22 @@ for (network_stat_idx in 1:3) {
   }
 }
 
+####### get the information for each trial from the sub graph selection output trial generator (here titled `res`)
+load(file = here::here("data", "LowHighWithinBetween.RData"))
+  
+trial_set <- vector(mode = "list", length = ncol(res))
+for (graph_idk in seq_len(ncol(res))) {
+    trial_set[[graph_idk]] <- dplyr::filter(foods_in_image, foods_in_image$Name %in% res[, graph_idk])$rowid
+}
+  
+file_name <- paste0("LowHighWithinBetween","_")
+ncol <- 3
+  
+for (grid_idx in seq_len(ncol(res))) {
+    generate_image_group(myfiles, 3, file_name, grid_idx, trial_set)
+}
+
+
+
+
+  

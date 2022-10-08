@@ -15,6 +15,22 @@ lee_2021_rating1 <- read_csv(here("data", "lee_2021_rating1.csv"), col_names = F
 lee_2021_nutrition1 <- read_csv(here("data", "lee_2021_nutrition1.csv"), col_names = FALSE)
 lee_2021_pleasure1 <- read_csv(here("data", "lee_2021_pleasure1.csv"), col_names = FALSE)
 
+#reponse times network idea
+# lee_2021_rating1 <- readr::read_csv(here("data", "lee_2021_rating1_RT.csv"), col_names = FALSE, show_col_types = F)
+# lee_2021_rating1 <- lee_2021_rating1/1000 
+# removes <- vector(mode= "numeric", length = 267)
+# for (foo in 1:267){
+#   if (any(lee_2021_rating1[foo,] > 8)){
+#     removes[[foo]] <- foo
+#   }
+#   if (any(lee_2021_rating1[foo,] < 1)){
+#     removes[[foo]] <- foo
+#   }
+# 
+# }
+# unique(removes[removes != 0])
+# lee_2021_rating1 <- lee_2021_rating1[!(1:267 %in% unique(removes[removes != 0])),]
+
 # load the names of the foods (see nick file)
 FoodNames <- readxl::read_excel(here("data", "snackitemnames_nicholas", "item_image_numbers_exp2_5_nicholas.xlsx"))
 
@@ -167,7 +183,9 @@ sega_liking <- EGA(lee_2021_rating1,
 boot_test <- EGAnet::bootEGA(lee_2021_rating1,
   plot.type = "qgraph",
   iter = 1000,
-  n = 267,
+  type = "resampling",
+  corr = "spearman",
+  n = 130,
   model = "glasso",
   algorithm = "walktrap",
   ncores = 8, typicalStructure = T
@@ -191,10 +209,9 @@ boot_pleasure <- EGAnet::bootEGA(lee_2021_pleasure1,
   ncores = 8, typicalStructure = T
 )
 
-plot(boot_test$EGA)
+boot_test$plot.typical.ega
 boot_test$summary.table
 boot_test$frequency
-
 # you are having an issue with the labeling doubling. Here is a crude way to
 # fix that issue for now. Here we are just setting the layer in the plot that is
 # related to the issue to null. I am sure it is not everything in the layer.
@@ -266,7 +283,7 @@ E(graph_pleasure)$color[E(graph_pleasure)$weight < 0] <- "red2"
 
 par(mfrow = c(1, 3)) # set the plotting area into a 1*3 array
 plot(graph_ratings,
-  layout = L,
+  # layout = L,
   margin = .0,
   vertex.label = V(graph_ratings)$name,
   vertex.label.color = "black",

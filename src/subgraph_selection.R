@@ -136,6 +136,7 @@ nsubgraphs <- 30
 network_stats <- c("assortment","edge_density","weighted_clustering_coefficient","average_degree","internal_density","diversity")
 network_stats <- c("assortment","edge_density","weighted_clustering_coefficient")
 
+
 # range of target value for each statistic
 stat_ranges <- list(c(-.95, .95),
                     c(0,.7),
@@ -145,6 +146,9 @@ stat_ranges <- list(c(-.95, .95),
                     c(-4,.8)) #note eepsilon = .15
 
 epsilons <- list( 0.05, 0.05, 0.06, 0.005, 0.005,.15)
+
+
+# subgraphs <- make_subgraphs(g,C, stat_range = , nsubgraphs = 101, n_statistic = "average_degree")
 
 
 # get image of all the sim subgraphs together
@@ -231,3 +235,125 @@ for (network_stat_idx in seq_len(length(network_stats))){
 # }
 # wrap_plots(p)
 
+#############alternative to generating subgraphs with certain stats
+
+library(dplyr)
+
+food_folder <- here::here("data", "snackitemnames_nicholas", "Lee_Holyoak_2021_images")
+FoodNames <- readxl::read_excel(here::here("data", "snackitemnames_nicholas", "item_image_numbers_exp2_5_nicholas.xlsx"))
+
+temp <- list.files(path = food_folder, pattern = "*.jpg", full.names = T)
+foods_in_image <- stringr::str_extract(temp, "item\\d+")
+foods_in_image <- stringr::str_extract(foods_in_image, "\\d+")
+# get row idx for each of the image numbers
+foods_in_image <- tibble::rowid_to_column(data.frame(Image = as.numeric(foods_in_image)))
+foods_in_image <- dplyr::left_join(FoodNames, foods_in_image, "Image")
+
+G <- g
+E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
+TEST <- distances(G)
+diag(TEST)=NA
+apply(TEST, 2, mean, na.rm = T)
+adj_temp <- igraph::as_adjacency_matrix(g, sparse = F, attr = "weight")
+
+#here I calculate a range of metrics on the graph 
+net_degree <- data.frame(degree= degree(g), 
+                         strength = strength(g),
+                         eigen = igraph::eigen_centrality(g)$vector,
+                         weighted_transitivity = transitivity(g, type = "weighted"),
+                         closeness = NetworkToolbox::closeness(adj_temp, weighted = TRUE),
+                         closeness2 = closeness(G), betweenness = betweenness(G),
+                         average_path_length = apply(TEST, 2, mean, na.rm = T)) %>%
+  tibble::rownames_to_column("Name") %>%
+  dplyr::left_join(foods_in_image, "Name")
+
+net_degree$snack_type <- V(g)$snack_type
+
+net_degree$group <- cut(degree(g),3, labels = c("low","mid","high"))
+
+net_degree %>%
+  dplyr::group_by(snack_type) %>%
+  dplyr::summarise(n = n())
+
+nhigh <- net_degree[net_degree$group != "high",]
+nlow <- net_degree[net_degree$group != "low",]
+#sample from only a single cluster
+
+nsubgraphs = 25
+# initial random sample of graph of size C
+C <- 6
+
+subgraphs1 <- vector(mode = "list", length = nsubgraphs)
+subgraphs2 <- vector(mode = "list", length = nsubgraphs)
+subgraphs3 <- vector(mode = "list", length = nsubgraphs)
+subgraphs4 <- vector(mode = "list", length = nsubgraphs)
+
+# pull out a candidate subgraph
+for (graph_idk in 1:nsubgraphs){
+  # get subgraph sample 
+  # #"sample the snacks with low degree" within cluster
+  # lwsize <- try(sample(nhigh[nhigh$snack_type == sample(1:7, 1, replace = T),]$Item, C, replace = F))
+  # if("try-error" %in% class(lwsize)){
+  #   lwsize <- sample(nhigh[nhigh$snack_type %in% c(1,5,6,7),]$Item, C, replace = F)
+  #   }
+  # 
+  # 
+  # #"sample the snacks with high degree" within cluster
+  # hwsize <- try(sample(nlow[nlow$snack_type %in% c(1,5,6,7),]$Item, C, replace = F))
+  # if("try-error" %in% class(hwsize)){
+  #   hwsize <- sample(nlow[nlow$snack_type  %in% c(1,5,6,7),]$Item, C, replace = F)
+  # }
+  # 
+  #get a random set of foods from the smaller clusters
+  rsize <- try(sample(net_degree[net_degree$snack_type %in% c(1,5,6,7),]$Item, C, replace = F))
+  #get a random set of foods from only two of the largest cluster
+  wsize <- try(sample(net_degree[net_degree$snack_type %in% c(2,3),]$Item, C, replace = F))
+
+  #"sample the snacks with high degree" 
+  hosize <- try(sample(nlow$Item, C, replace = F))
+  #"sample the snacks with low degree"
+  losize <- try(sample(nhigh$Item, C, replace = F))
+  
+  subgraphs1[[graph_idk]] <- igraph::induced_subgraph(g, rsize)
+  subgraphs2[[graph_idk]] <- igraph::induced_subgraph(g, wsize)
+  subgraphs3[[graph_idk]] <- igraph::induced_subgraph(g, losize)
+  subgraphs4[[graph_idk]] <- igraph::induced_subgraph(g, hosize)
+  
+}
+
+subgraphs <- c(subgraphs1,subgraphs2,subgraphs3,subgraphs4)
+
+#save the graphs names to create the images
+  # now take the value for each generated sub graph and create a stimuli
+  res <- tibble::tibble(rep(0, C))
+  for (graph_idk in seq_len(100)) {
+    temp <- tibble::tibble(stim_set = V(subgraphs[[graph_idk]])$name)
+    res <- cbind(res, temp)
+  }
+  # remove the temp
+  res <- res[, -1]
+#save the set of graphs
+save(subgraphs,res, file = here("data",  "LowHighWithinBetween.RData"))
+  
+# par(mfrow = c(5, 10)) # set the plotting area into a 1*2 array
+# 
+# for (graph_idk in 51:100) {
+#   l <- layout_in_circle(subgraphs[[graph_idk]])
+#   V(subgraphs[[graph_idk]])$color <- V(subgraphs[[graph_idk]])$snack_type
+#   E(subgraphs[[graph_idk]])$color[E(subgraphs[[graph_idk]])$weight > 0] <- "forestgreen"
+#   E(subgraphs[[graph_idk]])$color[E(subgraphs[[graph_idk]])$weight < 0] <- "red2"
+#   
+#   plot(subgraphs[[graph_idk]],
+#        layout = l,
+#        margin = .0,
+#        vertex.label.color = "black",
+#        vertex.label.cex = 1,
+#        vertex.label.dist = .7,
+#        vertex.size = 21,
+#        vertex.label.family = "Times",
+#        edge.curved = .05,
+#        edge.width = abs(E(subgraphs[[graph_idk]])$weight) * 7)
+# }
+
+
+           

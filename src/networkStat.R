@@ -56,9 +56,9 @@ networkStat <- function(gt, n_statistic = "assortment") {
   ##clustAnalytics::average_degree(gt,V(gt)$snack_type)
 
   # nnodes <- length(V(g)) # number of nodes
-  # #NOTE THE LENGTH ONE THING IS JUST UNTIL WE DO THE VECTOR SOLUTION
+  # NOTE THE LENGTH ONE THING IS JUST UNTIL WE DO THE VECTOR SOLUTION
   # 
-  # rS <- vector(mode = "numeric", length = 1) # estimated value for statistic
+  rS <- vector(mode = "numeric", length = 1) # estimated value for statistic
   # 
   # # get subgraph
   # size <- sample(seq_len(nnodes), C, replace = F)
@@ -66,6 +66,7 @@ networkStat <- function(gt, n_statistic = "assortment") {
   
   adj_temp <- igraph::as_adjacency_matrix(gt, sparse = F, attr = "weight")
       # save value of r
+  library(igraph)
       if (n_statistic == "assortment") {
         rS[[1]] <- assortnet::assortment.discrete(adj_temp, V(gt)$snack_type, weighted = TRUE, SE = F)$r
       } else if (n_statistic == "edge_density") {
@@ -108,7 +109,8 @@ get_subgraphs <- function(n, g, C){
 nsubgraphs <- 100
 nstats <- 3
 C <- 6
-network_stats <- c("assortment","edge_density","weighted_clustering_coefficient")
+# network_stats <- c("assortment","edge_density","weighted_clustering_coefficient")
+network_stats <- c("assortment","edge_density","weighted_clustering_coefficient","average_degree","internal_density","diversity")
 
 subgraphs <- get_subgraphs(nsubgraphs, g, C) #using function from above
 
@@ -142,6 +144,82 @@ ggplot(data.frame(TEST), aes(x = weighted_clustering_coefficient)) +
 #   ) +
 #   theme_classic() +
 #   labs(x = "", title = "assortment")
+
+library(igraph)
+
+
+total_subgraphs <- vector(mode = "list", length = 90)
+# network_stats <- c("assortment", "edge_density", "weighted_clustering_coefficient")
+network_stats <- c("assortment","edge_density","weighted_clustering_coefficient","average_degree","internal_density","diversity")
+
+load(file = here::here("data", paste0(network_stats[[1]], "_", 30, "_", 6, ".RData")))
+total_subgraphs[1:30] <- subgraphs
+load(file = here::here("data", paste0(network_stats[[2]], "_", 30, "_", 6, ".RData")))
+total_subgraphs[31:60] <- subgraphs
+load(file = here::here("data", paste0(network_stats[[3]], "_", 30, "_", 6, ".RData")))
+total_subgraphs[61:90] <- subgraphs
+
+degree_distribution(total_subgraphs[[6]])
+
+V(total_subgraphs[[6]])$snack_type
+
+for (i in 1:90){
+  print(length(unique(V(total_subgraphs[[i]])$snack_type)))
+}
+
+nsubgraphs <- 90
+nstats <- 6
+network_stats <- c("assortment","edge_density","weighted_clustering_coefficient","average_degree","internal_density","diversity")
+
+res_nets <- matrix(, nrow = nsubgraphs, ncol = nstats + 1)
+colnames(res_nets) <- c("subgraph",paste0(network_stats))
+
+for (subgraph_idx in seq_len(nsubgraphs)){
+  res_nets[subgraph_idx, 1] = subgraph_idx
+  for(net_stat_idx in seq_len(nstats)){
+    res_nets[subgraph_idx, 1 + net_stat_idx] = networkStat(total_subgraphs[[subgraph_idx]],network_stats[[net_stat_idx]])
+  }
+}
+
+correlation::correlation(data.frame(res_nets[,-1]))
+
+TEST <- data.frame(res_nets)
+TEST$graphs <- total_subgraphs #you can add the graph objects to the data frame! nice. 
+TEST$weighted_clustering_coefficient
+p1 <- ggplot(data.frame(TEST), aes(x = edge_density)) +
+  geom_histogram(aes(y = ..density..),
+                 colour = 1, fill = "white", binwidth = .07
+  ) +
+  geom_density(
+    lwd = 1, colour = 4,
+    fill = 4, alpha = 0.25
+  ) +
+  theme_classic() +
+  labs(x = "", title = "edge_density")
+p2 <- ggplot(data.frame(TEST), aes(x = assortment)) +
+  geom_histogram(aes(y = ..density..),
+                 colour = 1, fill = "white", binwidth = .3
+  ) +
+  geom_density(
+    lwd = 1, colour = 4,
+    fill = 4, alpha = 0.25
+  ) +
+  theme_classic() +
+  labs(x = "", title = "assortment")
+p3 <- ggplot(data.frame(TEST), aes(x = weighted_clustering_coefficient)) +
+  geom_histogram(aes(y = ..density..),
+                 colour = 1, fill = "white", binwidth = .05
+  ) +
+  geom_density(
+    lwd = 1, colour = 4,
+    fill = 4, alpha = 0.25
+  ) +
+  theme_classic() +
+  labs(x = "", title = "weighted_clustering_coefficient")
+
+
+
+
 
 
 
