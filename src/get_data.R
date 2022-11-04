@@ -132,9 +132,13 @@ net_degree %>%
 )
 
 file_idx <- 30
-
 subject_df <- vector(mode = "list", length = file_idx)
-
+#we want the ratings with the condition indicator to test for rating bias
+# subject_ratings <- vector(mode = "list", length = file_idx)
+subject_ratings <- matrix(NA,nrow = file_idx*100, ncol = 5)
+colnames(subject_ratings) <- c("stimuli", "subject_idx","sum_rating","condition","net_stat")
+# pp = 1
+rate_counter <- 0
 for (pp in seq_len(file_idx)) {
 # for (pp in 7:file_idx) {
    # pp =7 
@@ -185,8 +189,8 @@ for (pp in seq_len(file_idx)) {
     for (foo in 1:100) {
       #set_values_temp[[foo]] <- sum(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% pilot_5_stimuli_sets[[foo]], ]$response))
       #proper way (when you save the images correctly)
-      # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$degree)
-      set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$strength)
+      set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$degree)
+      # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$strength)
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$weighted_transitivity)
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$eigen)
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$closeness)
@@ -213,7 +217,15 @@ for (pp in seq_len(file_idx)) {
         set_cluster_temp[[foo]] <- 4
       }
     }
-  # print(cor.test(set_values_temp,set_network_temp))
+    rat_idx <- seq(1,100) + rate_counter
+    subject_ratings[rat_idx,1] <- seq(1,100)
+    subject_ratings[rat_idx,2] <-  rep(pp,100)
+    subject_ratings[rat_idx,3] <-  set_values_temp
+    subject_ratings[rat_idx,4] <-  set_cluster_temp
+    subject_ratings[rat_idx,5] <-  set_network_temp
+    
+    rate_counter <- rate_counter + 100
+    # print(cor.test(set_values_temp,set_network_temp))
   # value_network_corr[[pp]] <- cor(set_values_temp,set_network_temp)
 
   task_temp <- subject_temp %>%
@@ -262,10 +274,28 @@ df$cluster_condition <- df$left_cluster_condition %in% c(3,4) | df$right_cluster
 df$degree_condition <- df$left_cluster_condition %in% c(1) | df$right_cluster_condition %in% c(1)
 # df$degree_condition <- df$left_cluster_condition %in% c(2) | df$right_cluster_condition %in% c(2)
 
+
 df %>%
   select(subject_id,value_network_corr, value_network_corr_p) %>%
   distinct() %>%
   filter(value_network_corr_p > .05)
+
+for (subject_idx in 1:30){
+  temp_df <- df %>% 
+    filter(subject_id == subject_idx) %>% 
+    filter(!rt <= 250) %>% 
+    filter(!rt >= 10000) %>% 
+    mutate(Q1 = quantile(rt, .25),
+           Q3 = quantile(rt, .75),
+           IQR = IQR(rt)) %>% 
+    filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
+    mutate(
+      vd = scale(left_rating - right_rating),
+    )
+  print(paste0("######## subject: ", subject_idx, " #######"))
+  print(broom::tidy(glm(choice ~ vd, family = binomial, data = temp_df)))
+}
+# 1,4,8,16,24,25,27
 
 df$correct <- df$left_rating > df$right_rating & df$choice == 1
 
@@ -275,32 +305,33 @@ df$correct <- df$left_rating > df$right_rating & df$choice == 1
 #robustness check for correlation between net stat and value
 # df <- df %>% filter(value_network_corr_p > .05)
 
-tune <- .7
+# 1,4,8,24,25,27
+
 df %>% 
   group_by(subject_id) %>%
   mutate(Q1 = quantile(rt, .25),
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  # filter(subject_id != 8) %>% 
-  # filter(subject_id != 9) %>% 
-  # filter(subject_id != 13) %>% 
-  ungroup() %>%
+  # filter(subject_id != 9) %>%
+  # filter(subject_id != 13) %>%
+  filter(subject_id != 1) %>%
+  filter(subject_id != 4) %>%
+  filter(subject_id != 8) %>%
+  filter(subject_id != 24) %>%
+  filter(subject_id != 25) %>%
+  filter(subject_id != 27) %>%
   mutate(vd = left_rating - right_rating,
-         nd = left_net - right_net) %>%
-  group_by(subject_id) %>%
-  mutate(Dif = scale(vd),
-         net_bin = scale(nd)) %>% 
-  ungroup() %>%
+         nd = left_net - right_net) %>% 
   mutate(
-    binned_value_diff = tune * round(Dif / tune),
-    binned_net_diff = round(net_bin / 3),
-    # binned_net_diff = 1 * round(net_bin / 1.8)
-    # binned_net_diff = cut(net_bin, breaks = c(-nrow(net_bin),-1,1,nrow(net_bin)), include.lowest = T)
+    binned_value_diff = as.numeric(cut_number(vd,7)) - 4,
   ) %>% 
-  ungroup() %>%
-  group_by(binned_value_diff, binned_net_diff) %>%
+  group_by(subject_id,binned_value_diff) %>%
   mutate(
+    binned_net_diff = as.numeric(cut_number(nd,5)) - 3
+  ) %>% 
+  group_by(binned_net_diff,binned_value_diff) %>%
+  mutate(n = n(),
     m_left = mean(choice),
     se = sqrt(var(choice) / length(choice))
   ) %>% 
@@ -318,6 +349,58 @@ df %>%
     color = "Network Difference (L-R)"
   )
 
+df %>%
+  group_by(subject_id) %>%
+  mutate(Q1 = quantile(rt, .25),
+         Q3 = quantile(rt, .75),
+         IQR = IQR(rt)) %>% 
+  filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
+  filter(subject_id != 1) %>%
+  filter(subject_id != 4) %>%
+  filter(subject_id != 8) %>%
+  filter(subject_id != 24) %>%
+  filter(subject_id != 25) %>%
+  filter(subject_id != 27) %>%
+  ungroup() %>%
+  filter(!rt <= 250) %>% 
+  filter(!rt >= 10000) %>% 
+  mutate(vd = left_rating - right_rating,
+         nd = left_net - right_net) %>% 
+  mutate(
+    binned_value_diff = as.numeric(cut_number(vd,7)) - 4,
+  ) %>% 
+  group_by(subject_id,binned_value_diff) %>%
+  mutate(
+    binned_net_diff = as.numeric(cut_number(nd,5)) - 3
+  ) %>% 
+  group_by(subject_id,binned_net_diff,binned_value_diff) %>%
+  mutate(
+    q1 = quantile(rt, .1),
+    q3 = quantile(rt, .3),
+    q5 = quantile(rt, .5),
+    q7 = quantile(rt, .7),
+    q9 = quantile(rt, .9),
+  ) %>%
+  pivot_longer(cols = q1:q9,
+               names_to = "quantiles",
+               values_to = "rts"
+  ) %>% ungroup() %>% 
+  group_by(quantiles,binned_net_diff,binned_value_diff) %>%
+  mutate(n = n(),
+    m_rt = mean(rts),
+    se = sqrt(var(rts) / length(rts))
+  ) %>%
+  ggplot(aes(x = binned_value_diff, y = m_rt, color = factor(quantiles))) +
+  geom_pointrange(aes(ymin = m_rt - se, ymax = m_rt + se)) +
+  theme_classic() +
+  geom_line(size = 1) +
+  scale_color_brewer(palette = "Set1") +
+  labs(
+    y = "RT(s)",
+    x = "Value Difference (L-R)"
+  ) + facet_wrap(~ binned_net_diff, ncol = 5) + theme(legend.position="top")
+
+
 tune <- 1
 df %>% 
   group_by(subject_id) %>%
@@ -325,25 +408,25 @@ df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  # filter(subject_id != 8) %>%
-  # filter(subject_id != 9) %>%
-  # filter(subject_id != 13) %>%
-  # filter(subject_id != 4) %>%
-  ungroup() %>%
+  filter(subject_id != 1) %>%
+  filter(subject_id != 4) %>%
+  filter(subject_id != 8) %>%
+  filter(subject_id != 24) %>%
+  filter(subject_id != 25) %>%
+  filter(subject_id != 27) %>%
   mutate(vd = left_rating - right_rating,
          nd = left_net - right_net) %>%
-  group_by(subject_id) %>%
-  mutate(Dif = scale(vd),
-         net_bin = scale(nd)) %>% 
   mutate(
-    binned_value_diff = tune * round(Dif / tune),
-    binned_net_diff = 1 * round(net_bin / 3),
-    # binned_net_diff = 1 * round(net_bin / 1.8)
+    binned_net_diff = as.numeric(cut_number(nd,3)) - 2
     
   ) %>% 
-  ungroup() %>%
-  group_by(subject_id, binned_value_diff, binned_net_diff) %>%
+  group_by(subject_id,binned_net_diff) %>%
   mutate(
+    binned_value_diff = as.numeric(cut_number(vd,3)) - 2
+  ) %>% 
+  ungroup() %>%
+  group_by(subject_id,binned_value_diff, binned_net_diff) %>%
+  mutate(n = n(),
     m_left = mean(choice),
     se = sqrt(var(choice) / length(choice))
   ) %>% 
@@ -367,9 +450,12 @@ df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  # filter(subject_id != 8) %>% 
-  # filter(subject_id != 9) %>% 
-  # filter(subject_id != 13) %>% 
+  filter(subject_id != 1) %>%
+  filter(subject_id != 4) %>%
+  filter(subject_id != 8) %>%
+  filter(subject_id != 24) %>%
+  filter(subject_id != 25) %>%
+  filter(subject_id != 27) %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
@@ -412,10 +498,12 @@ df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  # filter(subject_id != 8) %>% 
-  # filter(subject_id != 9) %>% 
-  # filter(subject_id != 13) %>% 
-  # filter(subject_id != 4) %>% 
+  filter(subject_id != 1) %>%
+  filter(subject_id != 4) %>%
+  filter(subject_id != 8) %>%
+  filter(subject_id != 24) %>%
+  filter(subject_id != 25) %>%
+  filter(subject_id != 27) %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
   mutate(rt = rt/1000) %>%
@@ -432,37 +520,44 @@ df %>%
   ) +
   facet_wrap(~subject_id, scales = "free")
 
-
-tune <- .9 # the amount of binning
 p3 <- df %>%
   group_by(subject_id) %>%
   mutate(Q1 = quantile(rt, .25),
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 8) %>% 
-  filter(subject_id != 9) %>% 
-  filter(subject_id != 13) %>% 
-  filter(subject_id != 4) %>% 
+  filter(subject_id != 1) %>%
+  filter(subject_id != 4) %>%
+  filter(subject_id != 8) %>%
+  filter(subject_id != 24) %>%
+  filter(subject_id != 25) %>%
+  filter(subject_id != 27) %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
-  mutate(vd = left_rating - right_rating) %>%
+  mutate(vd = left_rating - right_rating,
+         nd = left_net - right_net) %>%
   group_by(subject_id) %>%
-  mutate(Dif = scale(vd)) %>%
-  ungroup() %>%
   mutate(
-    binned_value_diff = tune * round(Dif / tune),
-  ) %>%
-  ungroup() %>%
+    binned_value_diff = as.numeric(cut_number(vd,5)),
+  ) %>% 
   group_by(subject_id, binned_value_diff) %>%
   mutate(
-    m_rt = mean(rt),
-    se = sqrt(var(rt) / length(rt))
+    q1 = quantile(rt, .1),
+    q3 = quantile(rt, .3),
+    q5 = quantile(rt, .5),
+    q7 = quantile(rt, .7),
+    q9 = quantile(rt, .9),
+    # m_rt = mean(rt),
+    # se = sqrt(var(rt) / length(rt))
   ) %>%
-  ungroup() %>%
-  ggplot(aes(x = binned_value_diff, y = m_rt, group = subject_id)) +
-  geom_pointrange(aes(ymin = m_rt - se, ymax = m_rt + se)) +
+  pivot_longer(cols = q1:q9,
+               names_to = "quantiles",
+               values_to = "rts"
+  ) %>% ungroup() %>% 
+  ggplot(aes(x = binned_value_diff, y = rts, group = quantiles, color = quantiles)) +
+  geom_point()+
+  # geom_pointrange(aes(ymin = m_rt - se, ymax = m_rt + se)) +
   theme_classic() +
   geom_line(size = 1) +
   scale_color_brewer(palette = "Set1") +
@@ -470,37 +565,47 @@ p3 <- df %>%
     y = "RT(s)",
     x = "Value Difference (L-R)"
   ) +
-  facet_wrap(~subject_id, scales = "free")
+  facet_wrap(~subject_id, scales = "free")+
+  theme(legend.position="none")
 
+  
 p4 <- df %>%
   group_by(subject_id) %>%
   mutate(Q1 = quantile(rt, .25),
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 8) %>% 
-  filter(subject_id != 9) %>% 
-  filter(subject_id != 13) %>% 
-  filter(subject_id != 4) %>% 
+  filter(subject_id != 1) %>%
+  filter(subject_id != 4) %>%
+  filter(subject_id != 8) %>%
+  filter(subject_id != 24) %>%
+  filter(subject_id != 25) %>%
+  filter(subject_id != 27) %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
   mutate(nd = left_net - right_net) %>%
   group_by(subject_id) %>%
-  mutate(Dif = scale(nd)) %>%
-  ungroup() %>%
   mutate(
-    binned_network_diff = tune * round(Dif / tune),
-  ) %>%
-  ungroup() %>%
+    binned_network_diff = as.numeric(cut_number(nd,5)),
+  ) %>% 
   group_by(subject_id, binned_network_diff) %>%
   mutate(
-    m_rt = mean(rt),
-    se = sqrt(var(rt) / length(rt))
+    q1 = quantile(rt, .1),
+    q3 = quantile(rt, .3),
+    q5 = quantile(rt, .5),
+    q7 = quantile(rt, .7),
+    q9 = quantile(rt, .9),
+    # m_rt = mean(rt),
+    # se = sqrt(var(rt) / length(rt))
   ) %>%
-  ungroup() %>%
-  ggplot(aes(x = binned_network_diff, y = m_rt, group = subject_id)) +
-  geom_pointrange(aes(ymin = m_rt - se, ymax = m_rt + se)) +
+  pivot_longer(cols = q1:q9,
+               names_to = "quantiles",
+               values_to = "rts"
+  ) %>% ungroup() %>% 
+  ggplot(aes(x = binned_network_diff, y = rts, group = quantiles, color = quantiles)) +
+  geom_point()+
+  # geom_pointrange(aes(ymin = m_rt - se, ymax = m_rt + se)) +
   theme_classic() +
   geom_line(size = 1) +
   scale_color_brewer(palette = "Set1") +
@@ -508,10 +613,10 @@ p4 <- df %>%
     y = "RT(s)",
     x = "Network Difference (L-R)"
   ) +
-  facet_wrap(~subject_id, scales = "free")
+  facet_wrap(~subject_id, scales = "free")+
+  theme(legend.position="none")
 
 
-tune <- .9 # the amount of binning
 
 p1 <- df %>%
   group_by(subject_id) %>%
@@ -519,21 +624,20 @@ p1 <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 8) %>% 
-  filter(subject_id != 9) %>% 
-  filter(subject_id != 13) %>% 
-  filter(subject_id != 4) %>% 
+  filter(subject_id != 1) %>%
+  filter(subject_id != 4) %>%
+  filter(subject_id != 8) %>%
+  filter(subject_id != 24) %>%
+  filter(subject_id != 25) %>%
+  filter(subject_id != 27) %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
   mutate(vd = left_rating - right_rating) %>%
   group_by(subject_id) %>%
-  mutate(Dif = scale(vd)) %>%
-  ungroup() %>%
   mutate(
-    binned_value_diff = tune * round(Dif / tune),
-  ) %>%
-  ungroup() %>%
+    binned_value_diff = as.numeric(cut_number(vd,7)),
+  ) %>% 
   group_by(subject_id, binned_value_diff) %>%
   mutate(
     m_left = mean(choice),
@@ -553,28 +657,26 @@ p1 <- df %>%
   ) +
   facet_wrap(~subject_id)
 
-
-tune <- .9
 p2 <- df %>%
   group_by(subject_id) %>%
   mutate(Q1 = quantile(rt, .25),
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 8) %>% 
-  filter(subject_id != 9) %>% 
-  filter(subject_id != 13) %>% 
-  filter(subject_id != 4) %>% 
+  filter(subject_id != 1) %>%
+  filter(subject_id != 4) %>%
+  filter(subject_id != 8) %>%
+  filter(subject_id != 24) %>%
+  filter(subject_id != 25) %>%
+  filter(subject_id != 27) %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
   mutate(nd = left_net - right_net) %>%
   group_by(subject_id) %>%
-  mutate(Dif = scale(nd)) %>%
-  ungroup() %>%
   mutate(
-    binned_network_diff = tune * round(Dif / tune),
-  ) %>%
+    binned_network_diff = as.numeric(cut_number(nd,7)),
+  ) %>% 
   group_by(subject_id, binned_network_diff) %>%
   mutate(
     m_left = mean(choice),
@@ -623,7 +725,7 @@ model_dat <- df %>%
 model_dat$cluster_condition = factor(model_dat$cluster_condition,labels = c("No Comparison", "Cluster Comparison"))
 model_dat$eq = factor(model_dat$eq,labels = c("Distinct", "Same"))
 
-# mlm1 <- lmer(log(rt) ~ vd*nd + (vd*nd| subject_id), data = model_dat)
+mlm1 <- lmer(log(rt) ~ abs(vd)*abs(nd) + (vd*nd| subject_id), data = model_dat)
 # mlm1 <- lmer(log(rt) ~  poly(vd,degree = 2, raw = TRUE)*poly(nd,degree = 2, raw = TRUE) + (vd*nd| subject_id), data = model_dat)
 # # mlm1 <- lmer(log(rt) ~ poly(vd,degree = 2, raw = TRUE)*poly(nd,degree = 2, raw = TRUE)*cluster_condition*eq + (1| subject_id), data = model_dat)
 # # mlm1 <- lmer(log(rt) ~ vd*nd*cluster_condition*eq  + (1| subject_id), data = model_dat)
@@ -749,6 +851,94 @@ df %>%
 #weighted_transitivity (clustering)
 #we find a main effect of network difference
 
-  
 #closeness as well
-  
+
+
+#####rating distributions
+
+subject_ratings %>% as.data.frame() %>% 
+  filter(subject_idx != 1) %>%
+  filter(subject_idx != 4) %>%
+  filter(subject_idx != 8) %>%
+  filter(subject_idx != 24) %>%
+  filter(subject_idx != 25) %>%
+  filter(subject_idx != 27) %>%
+  mutate(condition = factor(condition)) %>% 
+  ggplot(aes(sum_rating, fill = condition)) + 
+  geom_histogram(aes(y = ..density..),
+                 colour = 1) +
+  geom_density(lwd = 1, alpha = 0.25)+
+  facet_grid(~condition)+
+  scale_fill_brewer(palette = "Set1")
+
+
+rp1 <- subject_ratings %>% as.data.frame() %>% 
+  filter(subject_idx != 1) %>%
+  filter(subject_idx != 4) %>%
+  filter(subject_idx != 8) %>%
+  filter(subject_idx != 24) %>%
+  filter(subject_idx != 25) %>%
+  filter(subject_idx != 27) %>%
+  mutate(condition = factor(condition)) %>% 
+  ggplot(aes(x = condition, y = sum_rating, fill = condition)) +
+  geom_violin(trim = FALSE,
+              alpha = 0.8) +
+  geom_boxplot(width = 0.07)+
+  theme_classic()+
+  labs(title = "distribution of sum ratings for stimuli per condition",
+       y = "Sum Value")+
+  scale_fill_brewer(palette = "Set1")+
+  scale_x_discrete("Stimuli Groups",
+                   labels = c(
+                     "1" = "Clusters 1,5,6,7",
+                     "2" = "Clusters 2,3",
+                     "3" = "Without high degree items",
+                     "4" = "Without low degree items"
+                   ))+
+  theme(legend.position="none")
+
+rp2 <- subject_ratings %>% as.data.frame() %>% 
+  filter(subject_idx != 1) %>%
+  filter(subject_idx != 4) %>%
+  filter(subject_idx != 8) %>%
+  filter(subject_idx != 24) %>%
+  filter(subject_idx != 25) %>%
+  filter(subject_idx != 27) %>%
+  mutate(condition = factor(condition)) %>% 
+  ggplot(aes(x = condition, y = net_stat, fill = condition)) +
+  geom_violin(trim = FALSE,
+              alpha = 0.8) +
+  geom_boxplot(width = 0.07)+
+  theme_classic()+
+  labs(title = "distribution of centrality measure for stimuli per condition",
+       y = "Sum Centrality")+
+  scale_fill_brewer(palette = "Set1")+
+  scale_x_discrete("Stimuli Groups",
+                   labels = c(
+                     "1" = "Clusters 1,5,6,7",
+                     "2" = "Clusters 2,3",
+                     "3" = "Without high degree items",
+                     "4" = "Without low degree items"
+                   ))+
+  theme(legend.position="none")
+
+rp1/rp2
+
+mean(as.data.frame(subject_ratings)$sum_rating)
+subject_ratings %>% as.data.frame() %>% 
+  filter(subject_idx != 1) %>%
+  filter(subject_idx != 4) %>%
+  filter(subject_idx != 8) %>%
+  filter(subject_idx != 24) %>%
+  filter(subject_idx != 25) %>%
+  filter(subject_idx != 27) %>%
+  mutate(stimuli = factor(stimuli)) %>% 
+  ggplot(aes(x = stimuli, y = sum_rating, fill = stimuli)) +
+  geom_boxplot()+
+  theme_classic()+
+  theme(legend.position="none")+
+  geom_hline(yintercept = 316.3543, size = 1.5, linetype = "dashed")+
+  labs(title = "distribution of sum ratings for stimuli per item",
+       y = "Sum Rating")
+
+
