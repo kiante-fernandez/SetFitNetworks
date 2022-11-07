@@ -34,6 +34,10 @@ library(ggforce) # Accelerating 'ggplot2'
 library(ggdist) # Visualizations of Distributions and Uncertainty
 library(patchwork) # The Composer of Plots
 
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+
 # helper functions for working with lists
 list.do <- function(.data, fun, ...) {
   do.call(what = fun, args = as.list(.data), ...)
@@ -84,7 +88,8 @@ net_degree <- data.frame(degree= degree(g),
                          closeness = NetworkToolbox::closeness(adj_temp, weighted = TRUE),
                          closeness2 = closeness(G), #weighted
                          betweenness = betweenness(G),
-                         participation = NetworkToolbox::participation(adj_temp, comm = V(g)$snack_type)$overall) %>%
+                         participation = NetworkToolbox::participation(adj_temp, comm = V(g)$snack_type)$overall,
+                         sds = apply(cor_snack_food, 2, sd)) %>%
   tibble::rownames_to_column("Name") %>%
   left_join(foods_in_image, "Name")
 
@@ -92,13 +97,13 @@ net_degree$snack_type <- V(g)$snack_type
 #correlations between stats
 net_degree %>% 
   select("degree", "strength", "eigen", "weighted_transitivity", 
-         "closeness", "closeness2", "betweenness", "page_rank","participation") %>% 
+         "closeness", "closeness2", "betweenness", "page_rank","participation","sds") %>% 
   correlation::correlation()
 
 # correlogram
 net_degree %>% 
   select("degree", "strength", "eigen", "weighted_transitivity", 
-         "closeness", "closeness2", "betweenness","page_rank","participation") %>% 
+         "closeness", "closeness2", "betweenness","page_rank","participation","sds") %>% 
   ggstatsplot::ggcorrmat(
     type = "parametric", # parametric for Pearson, nonparametric for Spearman's correlation
     colors = c("darkred", "white", "steelblue") # change default colors
@@ -132,6 +137,8 @@ organize_group_data <- function(file_idx = 30, net_stat){
     set_network_temp <- vector(mode = "numeric", length = 100)
     set_cluster_temp <- vector(mode = "numeric", length = 100)
     set_correlations_temp <- vector(mode = "numeric", length = 100)
+    set_sd_temp <- vector(mode = "numeric", length = 100)
+    
     #TODO try also the sum SD of the ratings
     
     #LOAD THE generated subgraphs
@@ -167,6 +174,8 @@ organize_group_data <- function(file_idx = 30, net_stat){
       
       set_values_temp[[foo]] <-  sum(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
       set_correlations_temp[[foo]] <-        sum(apply(cor_snack_food[colnames(cor_snack_food) %in% res[[foo]],],2,mean, na.rm = T)[res[[foo]]])
+      set_sd_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$sds)
+      
       # print(set_correlations_temp)
       
       if (foo %in% 1:25){
@@ -200,12 +209,15 @@ organize_group_data <- function(file_idx = 30, net_stat){
     names(xxxx) <- c("left", "right", "subject_id", "rt", "choice")
     xxxx$network_statistic <- network_stats[[ns]]
     
+    #define variable names for left and right
     xxxx$left_rating <- NULL
     xxxx$right_rating <- NULL
     xxxx$left_net <- NULL
     xxxx$right_net <- NULL
     xxxx$left_correlation <- NULL
     xxxx$right_correlation <- NULL
+    xxxx$left_sd <- NULL
+    xxxx$right_sd <- NULL
     xxxx$left_cluster_condition <- NULL
     xxxx$left_cluster_condition <- NULL
     
@@ -216,6 +228,8 @@ organize_group_data <- function(file_idx = 30, net_stat){
       xxxx$right_net[[foo]] <- as.numeric(set_network_temp[xxxx$right[[foo]]])
       xxxx$left_correlation[[foo]] <- as.numeric(set_correlations_temp[xxxx$left[[foo]]])
       xxxx$right_correlation[[foo]] <- as.numeric(set_correlations_temp[xxxx$right[[foo]]])
+      xxxx$left_sd[[foo]] <- as.numeric(set_sd_temp[xxxx$left[[foo]]])
+      xxxx$right_sd[[foo]] <- as.numeric(set_sd_temp[xxxx$right[[foo]]])
       xxxx$left_cluster_condition[[foo]] <- as.numeric(set_cluster_temp[xxxx$left[[foo]]])
       xxxx$right_cluster_condition[[foo]] <- as.numeric(set_cluster_temp[xxxx$right[[foo]]])
     }
@@ -227,16 +241,18 @@ organize_group_data <- function(file_idx = 30, net_stat){
   
   df <- as.data.frame(do.call(rbind, subject_df)) %>%
     unnest(cols = c(left_rating, right_rating, left_net, right_net, left_cluster_condition, right_cluster_condition,
-                    left_correlation,right_correlation))
+                    left_correlation,right_correlation,left_sd,right_sd))
   return(df)
 }
 
 net_stats <- c("degree", "strength", "eigen", "weighted_transitivity", 
 "closeness", "betweenness", "page_rank","participation")
 
-df <- organize_group_data(net_stat = net_stats[[2]])
+# df <- organize_group_data(net_stat = net_stats[[2]])
 
 plts <- vector("list", length = length(net_stats))
+# net_idx = 2
+
 for (net_idx in 1:8){
 print(paste0("############### ",net_stats[[net_idx]]," ###############"))
 df <- organize_group_data(net_stat = net_stats[[net_idx]])
@@ -340,16 +356,24 @@ model_dat <- df %>%
   mutate(
     nd = scale(left_net - right_net),
     vd = scale(left_rating - right_rating),
-    cd = scale(left_correlation - right_correlation)
+    cd = scale(left_correlation - right_correlation),
+    sds = scale(left_sd - right_sd),
+    ov = scale(left_rating + right_rating),
+    on = scale(left_net + right_net)
   )
 
-
+# pca_res <- prcomp(model_dat[,c("nd","vd", "cd","sds","ov","on")],center = F, scale. = FALSE)
+# summary(pca_res)
+# plot(pca_res)
+# biplot(pca_res, scale = 0,choices = c(1,3))
+# model_dat$PC1 <- pca_res$x[,1]
+# model_dat$PC2 <- pca_res$x[,3]
 
 #check correlations
-# model_dat %>% 
-#   ungroup() %>% 
-#   select(vd, nd, cd) %>% 
-#   correlation::correlation() %>% 
+# model_dat %>%
+#   ungroup() %>%
+#   select(vd, nd, cd) %>%
+#   correlation::correlation() %>%
 #   print()
 
 # mlm2 <- glmer(choice ~ vd*nd*cd + (vd*nd*cd | subject_id), data = model_dat, 
@@ -357,31 +381,119 @@ model_dat <- df %>%
 #               control=glmerControl(optimizer="bobyqa",
 #                                    optCtrl=list(maxfun=2e5)))
 ####choice
-mlm2 <- glmer(choice ~ vd*nd*cd + (vd*nd*cd| subject_id), data = model_dat, 
+# mlm2 <- glmer(choice ~ vd*nd + ov + (vd*nd + ov| subject_id), data = model_dat, 
+#               family=binomial(link="logit"),
+#               control=glmerControl(optimizer="bobyqa",
+#                                    optCtrl=list(maxfun=2e5)))
+
+mlm2_0 <- glmer(choice ~ vd + ov + (vd + ov | subject_id), data = model_dat, 
               family=binomial(link="logit"),
               control=glmerControl(optimizer="bobyqa",
                                    optCtrl=list(maxfun=2e5)))
-temp_res <- broom.mixed::tidy(mlm2)
-temp_res$p.value <-  round(temp_res$p.value, 4)
-print(knitr::kable(temp_res[temp_res$effect == "fixed",3:7],digits = 3,
-                   caption = paste0("Choice ",net_stats[[net_idx]])))
+mlm2_1 <- glmer(choice ~ vd + ov + nd + (vd + ov + nd| subject_id), data = model_dat, 
+                family=binomial(link="logit"),
+                control=glmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm2_2 <- glmer(choice ~ vd + ov + nd + on + (vd + ov + nd + on| subject_id), data = model_dat, 
+                family=binomial(link="logit"),
+                control=glmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm2_3 <- glmer(choice ~ vd*nd + ov + on + (vd*nd + ov + on | subject_id), data = model_dat, 
+                family=binomial(link="logit"),
+                control=glmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm2_4 <- glmer(choice ~ vd*nd + ov*on + (vd*nd + ov*on | subject_id), data = model_dat, 
+                family=binomial(link="logit"),
+                control=glmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm2_5 <- glmer(choice ~ vd*nd + ov*on + cd + (vd*nd + ov*on + cd | subject_id), data = model_dat, 
+                family=binomial(link="logit"),
+                control=glmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm2_6 <- glmer(choice ~ vd*nd + ov*on + sds + ( vd*nd + ov*on + sds | subject_id), data = model_dat, 
+                family=binomial(link="logit"),
+                control=glmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm2_7 <- glmer(choice ~ vd*nd + ov*on + sds + cd + ( vd*nd + ov*on + sds + cd| subject_id), data = model_dat, 
+                family=binomial(link="logit"),
+                control=glmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+
+file_name <- here::here("tables", paste0("choice_",net_stats[[net_idx]], ".html"))
+print(tab_model(mlm2_0,mlm2_1,mlm2_2,mlm2_3,mlm2_4,mlm2_5,mlm2_6,mlm2_7,
+          show.intercept = F,
+          show.aic = T,
+          show.re.var = F,
+          show.ci = FALSE,
+          dv.labels = c("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8"),
+          pred.labels = c("Value Difference (vd)", "Overall Value (ov)",
+                          "Nework Difference (nd)", "Overall Network (on)",
+                          "vd:nd","ov:on","Correlation Difference",
+                          "Standard-Deviation Difference"
+                          ),
+          file = file_name))
+
+# summary(mlm2_4)
+# temp_res <- broom.mixed::tidy(mlm2_4)
+# temp_res$p.value <-  round(temp_res$p.value, 4)
+# print(knitr::kable(temp_res[temp_res$effect == "fixed",3:7],digits = 3,
+#                    caption = paste0("Choice ",net_stats[[net_idx]])))
 ####RT
-model_dat <- df %>% 
-  exlusions() %>% 
-  mutate(eq = left_cluster_condition == right_cluster_condition) %>% 
+model_dat <- df %>%
+  exlusions() %>%
+  mutate(eq = left_cluster_condition == right_cluster_condition) %>%
   group_by(subject_id) %>%
   mutate(
     nd = scale(abs(left_net - right_net)),
     vd = scale(abs(left_rating - right_rating)),
-    cd = scale(abs(left_correlation - right_correlation))
+    cd = scale(abs(left_correlation - right_correlation)),
+    sds = scale(abs(left_sd - right_sd)),
+    ov = scale(left_rating + right_rating),
+    on = scale(left_net + right_net)
   )
-mlm1 <- lmer(log(rt) ~ vd*nd*cd + (vd*nd*cd | subject_id), data = model_dat,
-              control=lmerControl(optimizer="bobyqa",
-                                   optCtrl=list(maxfun=2e5)))
-temp_res <- broom.mixed::tidy(mlm1)
-temp_res$p.value <-  round(temp_res$p.value, 4)
-print(knitr::kable(temp_res[temp_res$effect == "fixed",3:8],digits = 3,
-                   caption = paste0("RT ",net_stats[[net_idx]])))
+mlm1_0 <- lmer(log(rt) ~ vd + ov + (vd + ov | subject_id), data = model_dat, 
+                control=lmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm1_1 <- lmer(log(rt)  ~ vd + ov + nd + (vd + ov + nd| subject_id), data = model_dat, 
+                control=lmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm1_2 <- lmer(log(rt)  ~ vd + ov + nd + on + (vd + ov + nd + on| subject_id), data = model_dat, 
+                control=lmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm1_3 <- lmer(log(rt)  ~ vd*nd + ov + on + (vd*nd + ov + on | subject_id), data = model_dat, 
+                control=lmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm1_4 <- lmer(log(rt)  ~ vd*nd + ov*on + (vd*nd + ov*on | subject_id), data = model_dat, 
+                control=lmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm1_5 <- lmer(log(rt)  ~ vd*nd + ov*on + cd + (vd*nd + ov*on + cd | subject_id), data = model_dat, 
+                control=lmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm1_6 <- lmer(log(rt)  ~ vd*nd + ov*on + sds + ( vd*nd + ov*on + sds | subject_id), data = model_dat, 
+                control=lmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm1_7 <- lmer(log(rt)  ~ vd*nd + ov*on + sds + cd + ( vd*nd + ov*on + sds + cd| subject_id), data = model_dat, 
+                control=lmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+
+file_name <- here::here("tables", paste0("rt_",net_stats[[net_idx]], ".html"))
+
+print(tab_model(mlm1_0,mlm1_1,mlm1_2,mlm1_3,mlm1_4,mlm1_5,mlm1_6,mlm1_7,
+          show.intercept = F,
+          show.aic = T,
+          show.re.var = F,
+          show.ci = FALSE,
+          dv.labels = c("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8"),
+          pred.labels = c("Value Difference (vd)", "Overall Value (ov)",
+                          "Nework Difference (nd)", "Overall Network (on)",
+                          "vd:nd","ov:on","Correlation Difference",
+                          "Standard-Deviation Difference"),
+          file = file_name))
+
+# temp_res <- broom.mixed::tidy(mlm1_6)
+# temp_res$p.value <-  round(temp_res$p.value, 4)
+# print(knitr::kable(temp_res[temp_res$effect == "fixed",3:8],digits = 3,
+#                    caption = paste0("RT ",net_stats[[net_idx]])))
 }
 
 # mlm2_00 <- glmer(choice ~ vd + (vd | subject_id), data = model_dat, 

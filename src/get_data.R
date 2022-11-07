@@ -189,8 +189,8 @@ for (pp in seq_len(file_idx)) {
     for (foo in 1:100) {
       #set_values_temp[[foo]] <- sum(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% pilot_5_stimuli_sets[[foo]], ]$response))
       #proper way (when you save the images correctly)
-      set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$degree)
-      # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$strength)
+      # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$degree)
+      set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$strength)
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$weighted_transitivity)
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$eigen)
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$closeness)
@@ -208,13 +208,13 @@ for (pp in seq_len(file_idx)) {
         set_cluster_temp[[foo]] <- 1
       }else if(foo %in% 26:50){
         #wsize
-        set_cluster_temp[[foo]] <- 2
+        set_cluster_temp[[foo]] <- -1
       }else if(foo %in% 51:75){
         #losize
-        set_cluster_temp[[foo]] <- 3
+        set_cluster_temp[[foo]] <- 2 #3
       }else {
         #hosize
-        set_cluster_temp[[foo]] <- 4
+        set_cluster_temp[[foo]] <- -2 #4
       }
     }
     rat_idx <- seq(1,100) + rate_counter
@@ -269,11 +269,19 @@ df <- as.data.frame(do.call(rbind, subject_df)) %>%
   unnest(cols = c(left_rating, right_rating, left_net, right_net, left_cluster_condition, right_cluster_condition,
                   left_correlation,right_correlation))
 
-df$cluster_condition <- df$left_cluster_condition %in% c(3,4) | df$right_cluster_condition %in% c(3,4)
+df$cluster_condition <- df$left_cluster_condition %in% c(2,4) | df$right_cluster_condition %in% c(2,4)
+
 # df$degree_condition <- df$left_cluster_condition %in% c(1,2) | df$right_cluster_condition %in% c(1,2)
 df$degree_condition <- df$left_cluster_condition %in% c(1) | df$right_cluster_condition %in% c(1)
 # df$degree_condition <- df$left_cluster_condition %in% c(2) | df$right_cluster_condition %in% c(2)
+#this tests the difference in conditions for selecting from grouping 1 or 2, or
+# selecting from within a given grouping 
+df$eq <- factor(df$left_cluster_condition + df$right_cluster_condition)
+df$eq <- relevel(df$eq, ref = "0")
 
+df %>%
+  select(left_cluster_condition,right_cluster_condition,eq) %>%
+  distinct() %>% arrange(eq)
 
 df %>%
   select(subject_id,value_network_corr, value_network_corr_p) %>%
@@ -291,10 +299,15 @@ for (subject_idx in 1:30){
     filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
     mutate(
       vd = scale(left_rating - right_rating),
-    )
+      nd = scale(left_net - right_net))
   print(paste0("######## subject: ", subject_idx, " #######"))
-  print(broom::tidy(glm(choice ~ vd, family = binomial, data = temp_df)))
+  # print(broom::tidy(glm(choice ~ vd*eq, family = binomial, data = temp_df)))
+  # temp_res <- broom::tidy(glm(choice ~ vd, family = binomial, data = temp_df))
+  temp_res <- broom::tidy(lm(rt ~ eq, data = temp_df))
+  temp_res$p.value <-  round(temp_res$p.value, 4)
+  print(temp_res)
 }
+
 # 1,4,8,16,24,25,27
 
 df$correct <- df$left_rating > df$right_rating & df$choice == 1
@@ -714,7 +727,6 @@ model_dat <- df %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
-  mutate(eq = left_cluster_condition == right_cluster_condition) %>% 
   group_by(subject_id) %>%
   mutate(
     nd = scale(left_net - right_net),
@@ -723,9 +735,10 @@ model_dat <- df %>%
   )
 
 model_dat$cluster_condition = factor(model_dat$cluster_condition,labels = c("No Comparison", "Cluster Comparison"))
-model_dat$eq = factor(model_dat$eq,labels = c("Distinct", "Same"))
+# model_dat$eq = factor(model_dat$eq,labels = c("Distinct", "Same"))
 
-mlm1 <- lmer(log(rt) ~ abs(vd)*abs(nd) + (vd*nd| subject_id), data = model_dat)
+# mlm1 <- lmer(log(rt) ~ abs(vd)*abs(nd) + (vd*nd| subject_id), data = model_dat)
+
 # mlm1 <- lmer(log(rt) ~  poly(vd,degree = 2, raw = TRUE)*poly(nd,degree = 2, raw = TRUE) + (vd*nd| subject_id), data = model_dat)
 # # mlm1 <- lmer(log(rt) ~ poly(vd,degree = 2, raw = TRUE)*poly(nd,degree = 2, raw = TRUE)*cluster_condition*eq + (1| subject_id), data = model_dat)
 # # mlm1 <- lmer(log(rt) ~ vd*nd*cluster_condition*eq  + (1| subject_id), data = model_dat)
@@ -757,6 +770,27 @@ mlm2_3 <- glmer(choice ~ vd*nd*cd +  (vd*nd*cd | subject_id), data = model_dat,
                                      optCtrl=list(maxfun=2e5)))
 summary(mlm2_3)
 
+model_dat <- df %>% 
+  group_by(subject_id) %>%
+  mutate(Q1 = quantile(rt, .25),
+         Q3 = quantile(rt, .75),
+         IQR = IQR(rt)) %>% 
+  filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 9) %>%
+  # filter(subject_id != 13) %>%
+  # filter(subject_id != 4) %>%
+  ungroup() %>%
+  filter(!rt <= 250) %>% 
+  filter(!rt >= 10000) %>% 
+  group_by(subject_id) %>%
+  mutate(
+    nd = scale(abs(left_net - right_net)),
+    vd = scale(abs(left_rating - right_rating)),
+    cd = scale(abs(left_correlation - right_correlation))
+  )
+mlm1 <- lmer(log(rt) ~ vd*nd+ (vd*nd| subject_id), data = model_dat)
+summary(mlm1)
 
 # library(brms)
 # fit<- brm(choice ~ vd*nd +  (vd*nd | subject_id), data = model_dat, family = "bernoulli", cores = 10)
