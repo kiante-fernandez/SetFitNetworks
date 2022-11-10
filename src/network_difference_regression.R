@@ -271,12 +271,15 @@ net_stats <- c("degree", "strength", "eigen", "weighted_transitivity",
 # df <- organize_group_data(net_stat = net_stats[[2]])
 
 plts <- vector("list", length = length(net_stats))
-# net_idx = 2
+net_idx = 2
 df <- organize_group_data(net_stat = net_stats[[2]])
 
 for (net_idx in 1:8){
 print(paste0("############### ",net_stats[[net_idx]]," ###############"))
 df <- organize_group_data(net_stat = net_stats[[net_idx]])
+
+###code it as correct incorrect instead
+df$correct <- as.numeric((df$left_rating > df$right_rating & df$choice == 1) | (df$left_rating < df$right_rating & df$choice == 0))
 
 # df$cluster_condition <- df$left_cluster_condition %in% c(3,4) | df$right_cluster_condition %in% c(3,4)
 # df$degree_condition <- df$left_cluster_condition %in% c(1,2) | df$right_cluster_condition %in% c(1,2)
@@ -284,10 +287,10 @@ df <- organize_group_data(net_stat = net_stats[[net_idx]])
 # df$degree_condition <- df$left_cluster_condition %in% c(2) | df$right_cluster_condition %in% c(2)
 
 
-df %>%
-  select(subject_id,value_network_corr, value_network_corr_p) %>%
-  distinct() %>%
-  filter(value_network_corr_p > .05)
+# df %>%
+#   select(subject_id,value_network_corr, value_network_corr_p) %>%
+#   distinct() %>%
+#   filter(value_network_corr_p > .05)
 
 # df$correct <- df$left_rating > df$right_rating & df$choice == 1
 
@@ -302,60 +305,122 @@ df %>%
 #robustness check for correlation between net stat and value
 # df <- df %>% filter(value_network_corr_p > .05)
 
-plt <- df %>% 
-  group_by(subject_id) %>%
-  mutate(Q1 = quantile(rt, .25),
-         Q3 = quantile(rt, .75),
-         IQR = IQR(rt)) %>% 
-  filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  # filter(subject_id != 9) %>%
-  # filter(subject_id != 13) %>%
-  filter(subject_id != 1) %>%
-  filter(subject_id != 4) %>%
-  filter(subject_id != 8) %>%
-  filter(subject_id != 24) %>%
-  filter(subject_id != 25) %>%
-  filter(subject_id != 27) %>%
-  mutate(vd = left_rating - right_rating,
-         nd = left_net - right_net) %>% 
+##make a plot of the vd:nd interaction
+# plt <- df %>%
+#   group_by(subject_id) %>%
+#   mutate(Q1 = quantile(rt, .25),
+#          Q3 = quantile(rt, .75),
+#          IQR = IQR(rt)) %>%
+#   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>%
+#   # filter(subject_id != 9) %>%
+#   # filter(subject_id != 13) %>%
+#   filter(subject_id != 1) %>%
+#   filter(subject_id != 4) %>%
+#   filter(subject_id != 8) %>%
+#   filter(subject_id != 24) %>%
+#   filter(subject_id != 25) %>%
+#   filter(subject_id != 27) %>%
+#   mutate(vd = left_rating - right_rating,
+#          nd = left_net - right_net) %>%
+#   mutate(
+#     binned_value_diff = as.numeric(cut_number(vd,7)) - 4,
+#   ) %>%
+#   group_by(subject_id,binned_value_diff) %>%
+#   mutate(
+#     binned_net_diff = as.numeric(cut_number(nd,5)) - 3
+#   ) %>%
+#   group_by(binned_net_diff,binned_value_diff) %>%
+#   mutate(n = n(),
+#          m_left = mean(choice),
+#          se = sqrt(var(choice) / length(choice))
+#   ) %>%
+#   ungroup() %>%
+#   ggplot(aes(x = binned_value_diff, y = m_left, color = factor(binned_net_diff))) +
+#   geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se)) +
+#   theme_classic() +
+#   geom_line(size = 1) +
+#   geom_hline(yintercept = .5, linetype = "dashed") +
+#   scale_color_brewer(palette = "Set1") +
+#   scale_y_continuous(limits = c(0, 1.01)) +
+#   labs(title = paste0(net_stats[[net_idx]]),
+#     y = "Probability of Choosing Left",
+#     x = "Value Difference (L-R) bins",
+#     color = "Network Difference (L-R) bins"
+#   ) +  theme(legend.position="top")
+
+# print(plt)
+# plts[[net_idx]] <- plt
+
+#correct absolute value plot
+print(df %>%
+  exlusions() %>% 
+  # mutate(eq = left_cluster_condition == right_cluster_condition) %>% 
+  # filter(eq == 1) %>%
+  mutate(vd = abs(left_rating - right_rating),
+         nd = abs(left_net - right_net)) %>% 
   mutate(
-    binned_value_diff = as.numeric(cut_number(vd,7)) - 4,
+    binned_value_diff = as.numeric(cut_number(vd,4)) - 1,
   ) %>% 
-  group_by(subject_id,binned_value_diff) %>%
+  group_by(binned_value_diff) %>%
   mutate(
-    binned_net_diff = as.numeric(cut_number(nd,5)) - 3
-  ) %>% 
+    binned_net_diff = as.numeric(cut_number(nd,6)) - 1
+  ) %>%
   group_by(binned_net_diff,binned_value_diff) %>%
   mutate(n = n(),
-         m_left = mean(choice),
-         se = sqrt(var(choice) / length(choice))
-  ) %>% 
-  ungroup() %>% 
-  ggplot(aes(x = binned_value_diff, y = m_left, color = factor(binned_net_diff))) +
-  geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se)) +
+         m_correct = mean(correct),
+         se = sqrt(var(correct) / length(correct))
+  ) %>%
+  ungroup() %>%
+  ggplot(aes(x = binned_net_diff, y = m_correct, color = factor(binned_value_diff))) +
+  geom_pointrange(aes(ymin = m_correct - se, ymax = m_correct + se)) +
   theme_classic() +
   geom_line(size = 1) +
   geom_hline(yintercept = .5, linetype = "dashed") +
   scale_color_brewer(palette = "Set1") +
   scale_y_continuous(limits = c(0, 1.01)) +
   labs(title = paste0(net_stats[[net_idx]]),
-    y = "Probability of Choosing Left",
-    x = "Value Difference (L-R) bins",
-    color = "Network Difference (L-R) bins"
-  ) +  theme(legend.position="top")
+       y = "Accuracy",
+       x = "Absolute Network Difference (L-R)",
+       color = "Absolute Value Difference (L-R)"
+  ) +  theme(legend.position="top"))
 
-print(plt)
-plts[[net_idx]] <- plt
+
+print(df %>%
+  exlusions() %>% 
+  # mutate(eq = left_cluster_condition == right_cluster_condition) %>%
+  # filter(eq == 0) %>%
+  mutate(nd = abs(left_net - right_net)) %>% 
+  mutate(
+    binned_net_diff = as.numeric(cut_number(nd,10)) - 1
+  ) %>%
+  group_by(binned_net_diff) %>%
+  mutate(n = n(),
+         m_correct = mean(correct),
+         se = sqrt(var(correct) / length(correct))
+  ) %>%
+  ungroup() %>%
+  ggplot(aes(x = binned_net_diff, y = m_correct)) +
+  geom_pointrange(aes(ymin = m_correct - se, ymax = m_correct + se)) +
+  theme_classic() +
+  geom_line(size = 1) +
+  geom_hline(yintercept = .5, linetype = "dashed") +
+  scale_color_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1.01)) +
+  labs(title = paste0(net_stats[[net_idx]]),
+       y = "Accuracy",
+       x = "Absolute Network Difference (L-R)"
+  ) +  theme(legend.position="top"))
+
 ####data analysis
 
 #find the trials with condition one involved
 # df$degree_condition <- df$left_cluster_condition %in% c(1) | df$right_cluster_condition %in% c(1)
 # df <- df %>% filter(degree_condition != 1) #remove them
 
+
 model_dat <- df %>% 
   exlusions() %>% 
-  mutate(eq = left_cluster_condition == right_cluster_condition) %>% 
-  group_by(subject_id) %>%
+  # group_by(subject_id) %>% #what if we do variable wise standardization?
   mutate(
     nd = scale(left_net - right_net),
     vd = scale(left_rating - right_rating),
@@ -444,8 +509,7 @@ print(tab_model(mlm2_0,mlm2_1,mlm2_2,mlm2_3,mlm2_4,mlm2_5,mlm2_6,mlm2_7,
 ####RT
 model_dat <- df %>%
   exlusions() %>%
-  mutate(eq = left_cluster_condition == right_cluster_condition) %>%
-  group_by(subject_id) %>%
+  # group_by(subject_id) %>%
   mutate(
     nd = scale(abs(left_net - right_net)),
     vd = scale(abs(left_rating - right_rating)),
@@ -454,6 +518,7 @@ model_dat <- df %>%
     ov = scale(left_rating + right_rating),
     on = scale(left_net + right_net)
   )
+
 mlm1_0 <- lmer(log(rt) ~ vd + ov + (vd + ov | subject_id), data = model_dat, 
                 control=lmerControl(optimizer="bobyqa",
                                      optCtrl=list(maxfun=2e5)))
@@ -493,11 +558,77 @@ print(tab_model(mlm1_0,mlm1_1,mlm1_2,mlm1_3,mlm1_4,mlm1_5,mlm1_6,mlm1_7,
                           "Standard-Deviation Difference"),
           file = file_name))
 
+
+model_dat <- df %>% 
+  exlusions() %>% 
+  mutate(eq = left_cluster_condition == right_cluster_condition) %>%
+  # filter(eq == 1) %>%
+  # group_by(subject_id) %>%
+  mutate(
+    nd = scale(abs(left_net - right_net)),
+    vd = scale(abs(left_rating - right_rating)),
+    cd = scale(abs(left_correlation - right_correlation)),
+    sds = scale(abs(left_sd - right_sd)),
+    ov = scale(left_rating + right_rating),
+    on = scale(left_net + right_net)
+  ) %>% 
+  select(choice,correct,left_rating,right_rating,vd,nd,cd,sds,ov,on,rt,subject_id, eq)
+
+mlm2_0 <- glmer(correct ~ vd + ov + (vd + ov | subject_id), data = model_dat, 
+                family=binomial(link="logit"),
+                control=glmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm2_1 <- glmer(correct ~ vd + ov + nd + (vd + ov + nd| subject_id), data = model_dat, 
+                family=binomial(link="logit"),
+                control=glmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm2_2 <- glmer(correct ~ vd + ov + nd + on + (vd + ov + nd + on| subject_id), data = model_dat, 
+                family=binomial(link="logit"),
+                control=glmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm2_3 <- glmer(correct ~ vd*nd + ov + on + (vd*nd + ov + on | subject_id), data = model_dat, 
+                family=binomial(link="logit"),
+                control=glmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm2_4 <- glmer(correct ~ vd*nd + ov*on + (vd*nd + ov*on | subject_id), data = model_dat, 
+                family=binomial(link="logit"),
+                control=glmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm2_5 <- glmer(correct ~ vd*nd + ov*on + cd + (vd*nd + ov*on + cd | subject_id), data = model_dat, 
+                family=binomial(link="logit"),
+                control=glmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm2_6 <- glmer(correct ~ vd*nd + ov*on + sds + ( vd*nd + ov*on + sds | subject_id), data = model_dat, 
+                family=binomial(link="logit"),
+                control=glmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+mlm2_7 <- glmer(correct ~ vd*nd + ov*on + sds + cd + ( vd*nd + ov*on + sds + cd| subject_id), data = model_dat, 
+                family=binomial(link="logit"),
+                control=glmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+#create table for the correct incorrect model
+file_name <- here::here("tables", paste0("correct_",net_stats[[net_idx]], ".html"))
+print(tab_model(mlm2_0,mlm2_1,mlm2_2,mlm2_3,mlm2_4,mlm2_5,mlm2_6,mlm2_7,
+                show.intercept = F,
+                show.aic = T,
+                show.re.var = F,
+                show.ci = FALSE,
+                dv.labels = c("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8"),
+                pred.labels = c("Value Difference (vd)", "Overall Value (ov)",
+                                "Nework Difference (nd)", "Overall Network (on)",
+                                "vd:nd","ov:on","Correlation Difference",
+                                "Standard-Deviation Difference"
+                ),
+                file = file_name))
+
+
+
 # temp_res <- broom.mixed::tidy(mlm1_6)
 # temp_res$p.value <-  round(temp_res$p.value, 4)
 # print(knitr::kable(temp_res[temp_res$effect == "fixed",3:8],digits = 3,
 #                    caption = paste0("RT ",net_stats[[net_idx]])))
 }
+
 
 # mlm2_00 <- glmer(choice ~ vd + (vd | subject_id), data = model_dat, 
 #                 family=binomial(link="logit"),
@@ -599,4 +730,15 @@ plot(ggeffects::ggpredict(fit, terms = c("vd [all]", "nd [-2, -1, 0, 1, 2]"), ty
 # summary(mlm1)
 #(plts[[1]] | plts[[2]] |  plts[[3]] |  plts[[4]])/(plts[[5]] | plts[[6]] |  plts[[7]] |  plts[[8]])
 
+#
+library(brms)
+fit<- brm(correct ~ vd*nd +  (vd*nd | subject_id), data = model_dat, family = "bernoulli", cores = 10,
+          iter = 10000)
+summary(fit)
+plot(fit)
+report::report(fit)
+plot(ggeffects::ggpredict(fit, terms = c("nd[all]")))
+#see the the frame work example
+#https://easystats.github.io/bayestestR/reference/sexit.html#:~:text=The%20SEXIT%20is%20a%20new,parameters%20under%20a%20Bayesian%20framework.
+bayestestR::sexit(fit, significant = "default", large = "default", ci = 0.95)
 
