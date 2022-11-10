@@ -208,13 +208,13 @@ for (pp in seq_len(file_idx)) {
         set_cluster_temp[[foo]] <- 1
       }else if(foo %in% 26:50){
         #wsize
-        set_cluster_temp[[foo]] <- -1
+        set_cluster_temp[[foo]] <- 2
       }else if(foo %in% 51:75){
         #losize
-        set_cluster_temp[[foo]] <- 2 #3
+        set_cluster_temp[[foo]] <- 3 #3
       }else {
         #hosize
-        set_cluster_temp[[foo]] <- -2 #4
+        set_cluster_temp[[foo]] <- 4 #4
       }
     }
     rat_idx <- seq(1,100) + rate_counter
@@ -403,7 +403,7 @@ df %>%
     m_rt = mean(rts),
     se = sqrt(var(rts) / length(rts))
   ) %>%
-  ggplot(aes(x = binned_value_diff, y = m_rt, color = factor(quantiles))) +
+  ggplot(aes(x = binned_value_diff, y = m_rt, color = factor(quantiles), shape =factor(binned_net_diff))) +
   geom_pointrange(aes(ymin = m_rt - se, ymax = m_rt + se)) +
   theme_classic() +
   geom_line(size = 1) +
@@ -411,7 +411,55 @@ df %>%
   labs(
     y = "RT(s)",
     x = "Value Difference (L-R)"
-  ) + facet_wrap(~ binned_net_diff, ncol = 5) + theme(legend.position="top")
+  ) + theme(legend.position="top") + facet_wrap(~quantiles)
+
+
+df %>%
+  group_by(subject_id) %>%
+  mutate(Q1 = quantile(rt, .25),
+         Q3 = quantile(rt, .75),
+         IQR = IQR(rt)) %>% 
+  filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
+  filter(subject_id != 1) %>%
+  filter(subject_id != 4) %>%
+  filter(subject_id != 8) %>%
+  filter(subject_id != 24) %>%
+  filter(subject_id != 25) %>%
+  filter(subject_id != 27) %>%
+  ungroup() %>%
+  filter(!rt <= 250) %>% 
+  filter(!rt >= 10000) %>% 
+  mutate(vd = left_rating + right_rating,
+         nd = left_net - right_net) %>% 
+  mutate(
+    binned_value_diff = as.numeric(cut_number(vd,7))
+  ) %>%
+  group_by(subject_id,binned_value_diff) %>%
+  mutate(
+    q1 = quantile(rt, .1),
+    q3 = quantile(rt, .3),
+    q5 = quantile(rt, .5),
+    q7 = quantile(rt, .7),
+    q9 = quantile(rt, .9),
+  ) %>%
+  pivot_longer(cols = q1:q9,
+               names_to = "quantiles",
+               values_to = "rts"
+  ) %>% ungroup() %>% 
+  group_by(quantiles,binned_value_diff) %>%
+  mutate(n = n(),
+         m_rt = mean(rts),
+         se = sqrt(var(rts) / length(rts))
+  ) %>%
+  ggplot(aes(x = binned_value_diff, y = m_rt, color = factor(quantiles))) +
+  geom_pointrange(aes(ymin = m_rt - se, ymax = m_rt + se)) +
+  theme_classic() +
+  geom_line(size = 1) +
+  scale_color_brewer(palette = "Set1") +
+  labs(
+    y = "RT(s)",
+    x = "Value Magnitude (L + R)"
+  ) + theme(legend.position="bottom")
 
 
 tune <- 1
@@ -903,6 +951,22 @@ subject_ratings %>% as.data.frame() %>%
                  colour = 1) +
   geom_density(lwd = 1, alpha = 0.25)+
   facet_grid(~condition)+
+  scale_fill_brewer(palette = "Set1")+
+  theme_classic()
+
+subject_ratings %>% as.data.frame() %>% 
+  filter(subject_idx != 1) %>%
+  filter(subject_idx != 4) %>%
+  filter(subject_idx != 8) %>%
+  filter(subject_idx != 24) %>%
+  filter(subject_idx != 25) %>%
+  filter(subject_idx != 27) %>%
+  mutate(condition = factor(condition)) %>% 
+  ggplot(aes(net_stat, fill = condition)) + 
+  geom_histogram(aes(y = ..density..),
+                 colour = 1, binwidth = .08) +
+  geom_density(lwd = 1, alpha = 0.25)+
+  facet_grid(~condition)+
   scale_fill_brewer(palette = "Set1")
 
 
@@ -967,12 +1031,22 @@ subject_ratings %>% as.data.frame() %>%
   filter(subject_idx != 25) %>%
   filter(subject_idx != 27) %>%
   mutate(stimuli = factor(stimuli)) %>% 
-  ggplot(aes(x = stimuli, y = sum_rating, fill = stimuli)) +
+  ggplot(aes(x = stimuli, y = sum_rating)) +
   geom_boxplot()+
   theme_classic()+
   theme(legend.position="none")+
   geom_hline(yintercept = 316.3543, size = 1.5, linetype = "dashed")+
-  labs(title = "distribution of sum ratings for stimuli per item",
-       y = "Sum Rating")
+  labs(title = "distribution of ratings for stimuli per item",
+       y = "Rating")
 
-
+subject_ratings %>% as.data.frame() %>% 
+  filter(subject_idx != 1) %>%
+  filter(subject_idx != 4) %>%
+  filter(subject_idx != 8) %>%
+  filter(subject_idx != 24) %>%
+  filter(subject_idx != 25) %>%
+  filter(subject_idx != 27) %>%
+  ggplot(aes(x = stimuli, y = net_stat, color = factor(condition))) +
+  geom_point()+
+  theme_classic()+
+  theme(legend.position="none")

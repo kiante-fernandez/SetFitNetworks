@@ -245,6 +245,26 @@ organize_group_data <- function(file_idx = 30, net_stat){
   return(df)
 }
 
+exlusions <- function (df){
+  #function for data exclusions
+  temp <- df %>% 
+    group_by(subject_id) %>% #response times
+    mutate(Q1 = quantile(rt, .25),
+           Q3 = quantile(rt, .75),
+           IQR = IQR(rt)) %>% 
+    filter(rt > (Q1 - 1.5*IQR) & rt < (Q3 + 1.5*IQR)) %>% 
+    filter(subject_id != 1) %>% #people with no vd effect
+    filter(subject_id != 4) %>%
+    filter(subject_id != 8) %>%
+    filter(subject_id != 24) %>%
+    filter(subject_id != 25) %>%
+    filter(subject_id != 27) %>%
+    ungroup() %>%
+    filter(!rt <= 250) %>% #response times cutoffs
+    filter(!rt >= 10000)
+  return(temp)
+}
+
 net_stats <- c("degree", "strength", "eigen", "weighted_transitivity", 
 "closeness", "betweenness", "page_rank","participation")
 
@@ -252,6 +272,7 @@ net_stats <- c("degree", "strength", "eigen", "weighted_transitivity",
 
 plts <- vector("list", length = length(net_stats))
 # net_idx = 2
+df <- organize_group_data(net_stat = net_stats[[2]])
 
 for (net_idx in 1:8){
 print(paste0("############### ",net_stats[[net_idx]]," ###############"))
@@ -326,25 +347,7 @@ plt <- df %>%
 print(plt)
 plts[[net_idx]] <- plt
 ####data analysis
-exlusions <- function (df){
-  #function for data exclusions
-  temp <- df %>% 
-    group_by(subject_id) %>% #response times
-    mutate(Q1 = quantile(rt, .25),
-           Q3 = quantile(rt, .75),
-           IQR = IQR(rt)) %>% 
-    filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-    filter(subject_id != 1) %>% #people with no vd effect
-    filter(subject_id != 4) %>%
-    filter(subject_id != 8) %>%
-    filter(subject_id != 24) %>%
-    filter(subject_id != 25) %>%
-    filter(subject_id != 27) %>%
-    ungroup() %>%
-    filter(!rt <= 250) %>% #response times cutoffs
-    filter(!rt >= 10000)
-  return(temp)
-}
+
 #find the trials with condition one involved
 # df$degree_condition <- df$left_cluster_condition %in% c(1) | df$right_cluster_condition %in% c(1)
 # df <- df %>% filter(degree_condition != 1) #remove them
@@ -528,10 +531,31 @@ print(tab_model(mlm1_0,mlm1_1,mlm1_2,mlm1_3,mlm1_4,mlm1_5,mlm1_6,mlm1_7,
 # # summary(mlm2_1)
 # summary(mlm2_2)
 # map(list(mlm2_0,mlm2,mlm2_2,mlm2_3),summary)
-# # library(brms)
-# # fit<- brm(choice ~ vd*nd +  (vd*nd | subject_id), data = model_dat, family = "bernoulli", cores = 10)
-# # summary(fit)
-# 
+
+df <- organize_group_data(net_stat = net_stats[[2]])
+model_dat <- df %>% 
+  exlusions() %>% 
+  mutate(eq = left_cluster_condition == right_cluster_condition) %>% 
+  group_by(subject_id) %>%
+  mutate(
+    nd = scale(left_net - right_net),
+    vd = scale(left_rating - right_rating),
+    cd = scale(left_correlation - right_correlation),
+    sds = scale(left_sd - right_sd),
+    ov = scale(left_rating + right_rating),
+    on = scale(left_net + right_net)
+  )
+
+library(brms)
+fit<- brm(choice ~ vd*nd +  (vd*nd | subject_id), data = model_dat, family = "bernoulli", cores = 10,
+          iter = 10000)
+summary(fit)
+plot(fit)
+report::report(fit)
+
+plot(rstantools::posterior_predict(fit))
+
+plot(ggeffects::ggpredict(fit, terms = c("vd [all]", "nd [-2, -1, 0, 1, 2]"), type = "simulate"))
 # #check correlations
 # df %>%
 #   exlusions() %>% 
