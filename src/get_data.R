@@ -61,6 +61,7 @@ temp_files <- list.files(path = here::here("data", "pilot_30"), pattern = ".json
 # load all the images to calculate the value for a group of foods
 food_folder <- here::here("data", "snackitemnames_nicholas", "Lee_Holyoak_2021_images")
 FoodNames <- readxl::read_excel(here::here("data", "snackitemnames_nicholas", "item_image_numbers_exp2_5_nicholas.xlsx"))
+
 # pilot_5_stimuli_sets <- read_csv("data/pilot_5/pilot_5_stimuli.csv", col_names = FALSE)
 
 # NOTE NEXT TIME YOU WILL USE THIS FILE INSTEAD. THE 'RES' FILE (BC YOU DID THE NAMES RIGHT)
@@ -85,6 +86,8 @@ foods_in_image <- tibble::rowid_to_column(data.frame(Image = as.numeric(foods_in
 foods_in_image <- dplyr::left_join(FoodNames, foods_in_image, "Image")
 
 lee_2021_rating1 <- read_csv(here::here("data", "lee_2021_rating1.csv"), col_names = FALSE)
+names(lee_2021_rating1) <- FoodNames$Name
+
 cor.snack_food <- SemNeT::similarity(lee_2021_rating1, method = "cor")
 cor_snack_food <- data.frame(matrix(cor.snack_food[cor.snack_food != 1], 59, 60))
 names(cor_snack_food) <- FoodNames$Name
@@ -97,8 +100,8 @@ source("exploratory_graph_analysis.R")
 G <- g
 E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
 path_lengths <- distances(G)
-diag(TEST)=NA
-apply(TEST, 2, mean, na.rm = T)
+# diag(TEST)=NA
+# apply(TEST, 2, mean, na.rm = T)
 adj_temp <- igraph::as_adjacency_matrix(g, sparse = F, attr = "weight")
 
 
@@ -138,7 +141,13 @@ subject_df <- vector(mode = "list", length = file_idx)
 subject_ratings <- matrix(NA,nrow = file_idx*100, ncol = 5)
 colnames(subject_ratings) <- c("stimuli", "subject_idx","sum_rating","condition","net_stat")
 # pp = 1
+
+subject_individual_ratings <- matrix(NA,nrow = file_idx*60, ncol = 5)
+colnames(subject_individual_ratings) <- c("subject_idx", "response", "Image", "Item", "Name" )
+
 rate_counter <- 0
+sub_rat_counter <- 0
+
 for (pp in seq_len(file_idx)) {
 # for (pp in 7:file_idx) {
    # pp =7 
@@ -154,6 +163,14 @@ for (pp in seq_len(file_idx)) {
       Image = as.numeric(stringr::str_remove(Image, pattern = ".jpg"))
     ) %>%
     dplyr::left_join(foods_in_image, by = "Image")
+  
+  sub_rat_idx <- seq(1,60) + sub_rat_counter
+  subject_individual_ratings[sub_rat_idx,1] <- rep(pp,60)
+  subject_individual_ratings[sub_rat_idx,5] <-  unlist(subject_rating_temp[,5])
+  subject_individual_ratings[sub_rat_idx,2] <-  unlist(subject_rating_temp[,2])
+  subject_individual_ratings[sub_rat_idx,3] <-  unlist(subject_rating_temp[,3])
+  subject_individual_ratings[sub_rat_idx,4] <-  unlist(subject_rating_temp[,4])
+
   # we need to score each of the stimuli for a subject:
   # BUT somehow the networks are not the ones we saved as images,
   # so, we cannot do this until we generate an excel sheet of the images
@@ -225,6 +242,8 @@ for (pp in seq_len(file_idx)) {
     subject_ratings[rat_idx,5] <-  set_network_temp
     
     rate_counter <- rate_counter + 100
+    sub_rat_counter <- sub_rat_counter + 60
+    
     # print(cor.test(set_values_temp,set_network_temp))
   # value_network_corr[[pp]] <- cor(set_values_temp,set_network_temp)
 
@@ -310,7 +329,7 @@ for (subject_idx in 1:30){
 
 # 1,4,8,16,24,25,27
 
-df$correct <- df$left_rating > df$right_rating & df$choice == 1
+# df$correct <- df$left_rating > df$right_rating & df$choice == 1
 
 # df <- df %>% filter(degree_condition != 1)
 # df <- df %>% filter(cluster_condition != 1)
@@ -1050,3 +1069,183 @@ subject_ratings %>% as.data.frame() %>%
   geom_point()+
   theme_classic()+
   theme(legend.position="none")
+
+
+
+##looking at the rating data we have so far, how does the network compare?
+
+subject_individual_ratings <- as.data.frame(subject_individual_ratings)
+subject_individual_ratings$subject_idx <- as.numeric(subject_individual_ratings$subject_idx)
+subject_individual_ratings$response <- as.numeric(subject_individual_ratings$response)
+subject_individual_ratings$Image <- as.numeric(subject_individual_ratings$Image)
+subject_individual_ratings$Item <- as.numeric(subject_individual_ratings$Item)
+subject_individual_ratings$Name <- as.factor(subject_individual_ratings$Name)
+
+
+
+TEST <- subject_individual_ratings %>% 
+  select(response,Name) %>% 
+  pivot_wider(names_from = Name, values_from = response) %>% 
+  unnest(everything())
+#make the order of the names the same
+TEST<-TEST[names(lee_2021_rating1)]
+
+#make sure the matrix is near positive definite
+cor_x1 <- cor(TEST)
+cor_x1 <- matrix(nearPD(cor_x1, corr=TRUE)$mat, ncol = 60)
+cor_x1 <- (cor_x1 + t(cor_x1)) / 2 # make symmetric
+
+
+test_net <-EGAnet::EGA(cor_x1, n = 30, model = "glasso", algorithm = "walktrap",
+                       corr = "pearson")
+
+
+
+cor(new_TEST)
+myCov <- cov(TEST)
+round(myCov, 2)
+## check whether any correlations are perfect (i.e., collinearity)
+myCor <- cov2cor(myCov)
+noDiag <- myCor
+diag(noDiag) <- 0
+any(noDiag == 1)
+## if not, check for multicollinearity (i.e., is one variable a linear combination of 2+ variables?)
+det(myCov) < 0
+## or
+any(eigen(myCov)$values < 0)
+
+dput(which(eigen(myCov)$values < 0))
+#remove the items with the negative eigen values (the ones that contain redundancy)
+new_TEST <- TEST[, -c(45:60)]
+test_net$Methods
+test_net <-EGAnet::EGA(TEST, n = 30, model = "glasso", algorithm = "walktrap",
+                       corr = "pearson", 
+                       model.args = list(lambda.min.ratio = 0.1,
+                                         nlambda = 300,
+                                         gamma = 0.05))
+
+boot_test <- EGAnet::bootEGA(TEST,
+                             plot.type = "qgraph",
+                             iter = 1000,
+                             type = "resampling",
+                             corr = "pearson",
+                             n = 30,
+                             model = "glasso",
+                             algorithm = "walktrap",
+                             ncores = 10, typicalStructure = T,
+                             model.args = list(lambda.min.ratio = 0.1,
+                                               nlambda = 300)) # gamma = 0.05
+
+boot_test[["plot.typical.ega"]][["layers"]][[6]] <- NULL
+boot_test$plot.typical.ega
+A <- boot_test[["typicalGraph"]][["graph"]]
+# get clusters
+dimattributes <- boot_test[["typicalGraph"]][["wc"]]
+# create igraph object
+g_2 <- graph_from_adjacency_matrix(A, "undirected", weighted = TRUE)
+# add decorate attributes
+V(g_2)$snack_type <- dimattributes
+
+#look at the relationship between the two (doug and my sample graphs)
+library(NetworkComparisonTest)
+
+g_1 <- g #name data from netork one above
+
+#note that this might be the wrong data to feed the models,
+#you might need to feed the function the raw data for each
+nw1 <- igraph::as_adjacency_matrix(g_1, sparse = F, attr = "weight")
+nw2 <- igraph::as_adjacency_matrix(g_2, sparse = F, attr = "weight")
+#note we can create custom estimators! look into this
+
+# Res_1 <- NCT(nw1, nw2, it=1000, gamma = 0.05)
+
+# Res_1 <- NCT(lee_2021_rating1, TEST, it=100, gamma = 0.05,
+#              test.centrality=T,
+#              centrality = "strength")
+# 
+# plot(Res_1, what="network")
+# plot(Res_1, what="strength")
+
+#> Comparison between the two groups were performed using the NetworkComparisonTest package (NCT; van Borkulo et al., 2017; versão 2.2.1) 
+#> with a permutation seed value of ‘123’. Based on 1000 permutations, we investigated 
+#> network invariance (possible edge weight differences) and 
+#> global strength invariance (possible difference on the absolute sum of network edge weights).
+#>
+#>From NCT analyses, we observed that networks seem to be the same for the two groups M:  0.58037 , p-value 0.08, and S:  1.097621 with p = 0.72 
+
+
+graph_sample <- graph_from_adjacency_matrix(boot_test$typicalGraph$graph,
+                                             "undirected",
+                                             weighted = TRUE
+)
+graph_lee <- graph_from_adjacency_matrix(ega_res$typicalGraph$graph,
+                                               "undirected",
+                                               weighted = TRUE
+)
+
+
+value_sample_data <- tibble(items = V(graph_sample)$name) %>%
+  left_join(boot_test$typicalGraph$typical.dim.variables,
+            by = "items"
+  )
+value_lee_data <- tibble(items = V(graph_lee)$name) %>%
+  left_join(ega_res$typicalGraph$typical.dim.variables,
+            by = "items"
+  )
+L <-   qgraph::averageLayout(graph_sample, graph_lee)
+
+#how to get correspondence between the two ?
+clusters <- left_join(value_lee_data, value_sample_data, by = "items")
+
+# value_sample_data$dimension[value_sample_data$dimension == 1] <- 3
+# value_sample_data$dimension[value_sample_data$dimension == 2] <- 4
+# value_sample_data$dimension[value_sample_data$dimension == 3] <- 2
+# value_sample_data$dimension[value_sample_data$dimension == 4] <- 3
+# value_sample_data$dimension[value_sample_data$dimension == 5] <- 6
+# value_sample_data$dimension[value_sample_data$dimension == 6] <- 1
+
+
+
+V(graph_sample)$color <- value_sample_data$dimension
+V(graph_lee)$color <- value_lee_data$dimension
+
+graph_lee$palette <- RColorBrewer::brewer.pal(n = length(unique(value_lee_data$dimension)), name = "Set2")
+graph_sample$palette <- RColorBrewer::brewer.pal(n = length(unique(value_lee_data$dimension)), name = "Set1")
+
+
+E(graph_sample)$color[E(graph_sample)$weight > 0] <- "forestgreen"
+E(graph_sample)$color[E(graph_sample)$weight < 0] <- "red2"
+
+E(graph_lee)$color[E(graph_lee)$weight > 0] <- "forestgreen"
+E(graph_lee)$color[E(graph_lee)$weight < 0] <- "red2"
+
+par(mfrow = c(1, 2)) # set the plotting area into a 1*3 array
+plot(graph_lee,
+     layout = L,
+     margin = .0,
+     vertex.label = V(graph_lee)$name,
+     vertex.label.color = "black",
+     vertex.label.cex = 1,
+     vertex.label.dist = .5,
+     vertex.size = 6,
+     vertex.label.family = "Times",
+     main = "Lee & Coricelli: N = 267",
+     edge.width = abs(E(graph_lee)$weight) * 5,
+     # mark.groups = value_lee_data$dimension
+)
+plot(graph_sample,
+     layout = L,
+     margin = .0,
+     vertex.label = V(graph_sample)$name,
+     vertex.label.color = "black",
+     vertex.label.cex = 1,
+     vertex.label.dist = .5,
+     vertex.size = 6,
+     vertex.label.family = "Times",
+     main = "sample: N = 30",
+     edge.width = abs(E(graph_sample)$weight) * 5,
+     # mark.groups = value_sample_data$dimension
+)
+
+
+
