@@ -45,6 +45,34 @@ list.do <- function(.data, fun, ...) {
 list.cbind <- function(.data) {
   list.do(.data, "cbind")
 }
+
+differenceNet <- function(dat, subject = 1, cut.off = T){
+  #get the individual level network using value difference matrix
+  individual_rate_diff <- matrix(,nrow = ncol(dat), ncol = ncol(dat))
+  for (col_idx in 1:ncol(individual_rate_diff)){
+    food1_temp <- dat[[subject,col_idx]]
+    
+    for (row_idx in 1:nrow(individual_rate_diff)){
+      food2_temp <- dat[[subject,row_idx]]
+      individual_rate_diff[row_idx,col_idx] <- as.numeric(abs(food1_temp - food2_temp))
+    }
+  }
+  colnames(individual_rate_diff) <- FoodNames$Name
+  rownames(individual_rate_diff) <- FoodNames$Name
+  
+  g_temp <- SemNeT::similarity(individual_rate_diff,method = "cosine")
+  graph_individual <- graph_from_adjacency_matrix(g_temp,
+                                                  "undirected",
+                                                  weighted = TRUE,
+                                                  diag = F
+  )
+  if (cut.off == T){
+    cut.off <- mean(abs(E(graph_individual)$weight))
+    graph_individual <- delete_edges(graph_individual, E(graph_individual)[abs(E(graph_individual)$weight) < cut.off])
+  }
+  return(graph_individual)
+}
+
 #####loading the data#####
 temp_files <- list.files(path = here::here("data", "pilot_30"), pattern = ".json", full.names = T)
 
@@ -101,13 +129,13 @@ net_degree %>%
   correlation::correlation()
 
 # correlogram
-net_degree %>% 
-  select("degree", "strength", "eigen", "weighted_transitivity", 
-         "closeness", "closeness2", "betweenness","page_rank","participation","sds") %>% 
-  ggstatsplot::ggcorrmat(
-    type = "parametric", # parametric for Pearson, nonparametric for Spearman's correlation
-    colors = c("darkred", "white", "steelblue") # change default colors
-  )
+# net_degree %>% 
+#   select("degree", "strength", "eigen", "weighted_transitivity", 
+#          "closeness", "closeness2", "betweenness","page_rank","participation","sds") %>% 
+#   ggstatsplot::ggcorrmat(
+#     type = "parametric", # parametric for Pearson, nonparametric for Spearman's correlation
+#     colors = c("darkred", "white", "steelblue") # change default colors
+#   )
 
 # file_idx <- 30
 
@@ -132,6 +160,7 @@ organize_group_data <- function(file_idx = 30, net_stat){
       dplyr::left_join(foods_in_image, by = "Image")
     
     ns <- which.max(map_dbl(map(network_stats, grepl, x = subject_temp$options[subject_temp$screen_id == "task"]),sum))
+    
     
     set_values_temp <- vector(mode = "numeric", length = 100)
     set_network_temp <- vector(mode = "numeric", length = 100)
@@ -162,6 +191,16 @@ organize_group_data <- function(file_idx = 30, net_stat){
         set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$page_rank)
       }else if(net_stat == "participation"){
         set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$participation)
+      }
+      else if(net_stat == "assortment"){
+        #assortnet
+        # pull out a candidate subgraph
+        size <- net_degree[net_degree$Name %in% res[[foo]], ]$Item
+        gt <- igraph::induced_subgraph(g, size)
+        adj_temp <- igraph::as_adjacency_matrix(gt, sparse = F, attr = "weight")
+        #calculate stat
+        assort_temp <- assortnet::assortment.discrete(adj_temp, V(gt)$snack_type, weighted = TRUE, SE = F)$r
+        set_network_temp[[foo]] <- assort_temp
       }
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$degree)
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$strength)
@@ -253,12 +292,16 @@ exlusions <- function (df){
            Q3 = quantile(rt, .75),
            IQR = IQR(rt)) %>% 
     filter(rt > (Q1 - 1.5*IQR) & rt < (Q3 + 1.5*IQR)) %>% 
-    filter(subject_id != 1) %>% #people with no vd effect
-    filter(subject_id != 4) %>%
-    filter(subject_id != 8) %>%
-    filter(subject_id != 24) %>%
-    filter(subject_id != 25) %>%
+    # filter(subject_id != 1) %>% #people with no vd effect
+    # filter(subject_id != 4) %>%
+    # filter(subject_id != 8) %>%
+    # filter(subject_id != 24) %>%
+    # filter(subject_id != 25) %>%
     filter(subject_id != 27) %>%
+    # filter(subject_id != 16) %>%#new subjects start here
+    filter(subject_id != 26) %>%
+    # filter(subject_id != 29) %>%
+    # filter(subject_id != 30) %>%
     ungroup() %>%
     filter(!rt <= 250) %>% #response times cutoffs
     filter(!rt >= 10000)
@@ -266,13 +309,16 @@ exlusions <- function (df){
 }
 
 net_stats <- c("degree", "strength", "eigen", "weighted_transitivity", 
-"closeness", "betweenness", "page_rank","participation")
+"closeness", "betweenness", "page_rank","participation", "assortment")
 
 # df <- organize_group_data(net_stat = net_stats[[2]])
 
 plts <- vector("list", length = length(net_stats))
 net_idx = 2
-df <- organize_group_data(net_stat = net_stats[[2]])
+# df <- organize_group_data(net_stat = net_stats[[9]])
+# net_idx = 9
+
+df <- df[is.nan(df$left_net) == F & is.nan(df$right_net) == F,]
 
 for (net_idx in 1:8){
 print(paste0("############### ",net_stats[[net_idx]]," ###############"))
@@ -291,8 +337,6 @@ df$correct <- as.numeric((df$left_rating > df$right_rating & df$choice == 1) | (
 #   select(subject_id,value_network_corr, value_network_corr_p) %>%
 #   distinct() %>%
 #   filter(value_network_corr_p > .05)
-
-# df$correct <- df$left_rating > df$right_rating & df$choice == 1
 
 # df$degree_condition <- df$left_cluster_condition %in% c(4) & df$right_cluster_condition %in% c(4)
 # df$degree_condition <- df$left_cluster_condition %in% c(1) | df$right_cluster_condition %in% c(1)
@@ -323,11 +367,11 @@ df$correct <- as.numeric((df$left_rating > df$right_rating & df$choice == 1) | (
 #   mutate(vd = left_rating - right_rating,
 #          nd = left_net - right_net) %>%
 #   mutate(
-#     binned_value_diff = as.numeric(cut_number(vd,7)) - 4,
+#     binned_value_diff = as.numeric(cut_number(vd,5)) - 3,
 #   ) %>%
 #   group_by(subject_id,binned_value_diff) %>%
 #   mutate(
-#     binned_net_diff = as.numeric(cut_number(nd,5)) - 3
+#     binned_net_diff = as.numeric(cut_number(nd,3)) - 2
 #   ) %>%
 #   group_by(binned_net_diff,binned_value_diff) %>%
 #   mutate(n = n(),
@@ -347,7 +391,7 @@ df$correct <- as.numeric((df$left_rating > df$right_rating & df$choice == 1) | (
 #     x = "Value Difference (L-R) bins",
 #     color = "Network Difference (L-R) bins"
 #   ) +  theme(legend.position="top")
-
+# 
 # print(plt)
 # plts[[net_idx]] <- plt
 
@@ -501,7 +545,7 @@ print(tab_model(mlm2_0,mlm2_1,mlm2_2,mlm2_3,mlm2_4,mlm2_5,mlm2_6,mlm2_7,
                           ),
           file = file_name))
 
-# summary(mlm2_4)
+summary(mlm2_3)
 # temp_res <- broom.mixed::tidy(mlm2_4)
 # temp_res$p.value <-  round(temp_res$p.value, 4)
 # print(knitr::kable(temp_res[temp_res$effect == "fixed",3:7],digits = 3,
@@ -622,46 +666,12 @@ print(tab_model(mlm2_0,mlm2_1,mlm2_2,mlm2_3,mlm2_4,mlm2_5,mlm2_6,mlm2_7,
                 file = file_name))
 
 
-
+# summary(mlm2_3)
 # temp_res <- broom.mixed::tidy(mlm1_6)
 # temp_res$p.value <-  round(temp_res$p.value, 4)
 # print(knitr::kable(temp_res[temp_res$effect == "fixed",3:8],digits = 3,
 #                    caption = paste0("RT ",net_stats[[net_idx]])))
 }
-
-
-# mlm2_00 <- glmer(choice ~ vd + (vd | subject_id), data = model_dat, 
-#                 family=binomial(link="logit"),
-#                 control=glmerControl(optimizer="bobyqa",
-#                                      optCtrl=list(maxfun=2e5)))
-# mlm2_0 <- glmer(choice ~ vd + nd +  (vd + nd | subject_id), data = model_dat, 
-#               family=binomial(link="logit"),
-#               control=glmerControl(optimizer="bobyqa",
-#                                    optCtrl=list(maxfun=2e5)))
-# mlm2 <- glmer(choice ~ vd*nd +  (vd*nd | subject_id), data = model_dat, 
-#               family=binomial(link="logit"),
-#               control=glmerControl(optimizer="bobyqa",
-#                                    optCtrl=list(maxfun=2e5)))
-# # summary(mlm2)
-# # mlm2_1 <- glmer(choice ~ vd*cd +  (vd*cd | subject_id), data = model_dat, 
-# #                 family=binomial(link="logit"),
-# #                 control=glmerControl(optimizer="bobyqa",
-# #                                      optCtrl=list(maxfun=2e5)))
-# mlm2_2 <- glmer(choice ~ vd*nd + cd +  (vd*nd + cd | subject_id), data = model_dat, 
-#                 family=binomial(link="logit"),
-#                 control=glmerControl(optimizer="bobyqa",
-#                                      optCtrl=list(maxfun=2e5)))
-# mlm2_3 <- glmer(choice ~ vd*nd*cd +  (vd*nd*cd | subject_id), data = model_dat, 
-#                 family=binomial(link="logit"),
-#                 control=glmerControl(optimizer="bobyqa",
-#                                      optCtrl=list(maxfun=2e5)))
-# # anova(mlm2_00,mlm2_0,mlm2,mlm2_2,mlm2_3)
-# 
-# # summary(mlm2_3)
-# # summary(mlm2)
-# # summary(mlm2_1)
-# summary(mlm2_2)
-# map(list(mlm2_0,mlm2,mlm2_2,mlm2_3),summary)
 
 df <- organize_group_data(net_stat = net_stats[[2]])
 model_dat <- df %>% 
@@ -737,7 +747,7 @@ fit<- brm(correct ~ vd*nd +  (vd*nd | subject_id), data = model_dat, family = "b
 summary(fit)
 plot(fit)
 report::report(fit)
-plot(ggeffects::ggpredict(fit, terms = c("nd[all]")))
+plot(ggeffects::ggpredict(fit, terms = c("nd[all]", "vd")))
 #see the the frame work example
 #https://easystats.github.io/bayestestR/reference/sexit.html#:~:text=The%20SEXIT%20is%20a%20new,parameters%20under%20a%20Bayesian%20framework.
 bayestestR::sexit(fit, significant = "default", large = "default", ci = 0.95)

@@ -45,6 +45,33 @@ list.cbind <- function(.data) {
   list.do(.data, "cbind")
 }
 
+differenceNet <- function(dat, subject = 1, cut.off = T){
+  #get the individual level network using value difference matrix
+  individual_rate_diff <- matrix(,nrow = ncol(dat), ncol = ncol(dat))
+  for (col_idx in 1:ncol(individual_rate_diff)){
+    food1_temp <- dat[[subject,col_idx]]
+    
+    for (row_idx in 1:nrow(individual_rate_diff)){
+      food2_temp <- dat[[subject,row_idx]]
+      individual_rate_diff[row_idx,col_idx] <- as.numeric(abs(food1_temp - food2_temp))
+    }
+  }
+  colnames(individual_rate_diff) <- FoodNames$Name
+  rownames(individual_rate_diff) <- FoodNames$Name
+  
+  g_temp <- SemNeT::similarity(individual_rate_diff,method = "cosine")
+  graph_individual <- graph_from_adjacency_matrix(g_temp,
+                                                  "undirected",
+                                                  weighted = TRUE,
+                                                  diag = F
+  )
+  if (cut.off == T){
+    cut.off <- mean(abs(E(graph_individual)$weight))
+    graph_individual <- delete_edges(graph_individual, E(graph_individual)[abs(E(graph_individual)$weight) < cut.off])
+  }
+  return(graph_individual)
+}
+
 # drive_auth_configure(api_key = "AIzaSyBO6kKhgHGvepPphJw4Y6XtGBG98hcwaNs")
 # drive_api_key()
 # # 
@@ -79,6 +106,8 @@ images <- c(
 )
 
 temp <- list.files(path = food_folder, pattern = "*.jpg", full.names = T)
+
+
 foods_in_image <- stringr::str_extract(temp, "item\\d+")
 foods_in_image <- stringr::str_extract(foods_in_image, "\\d+")
 # get row idx for each of the image numbers
@@ -126,13 +155,13 @@ net_degree %>%
   correlation::correlation()
 
 # correlogram
-net_degree %>% 
-  select("degree", "strength", "eigen", "weighted_transitivity", 
-         "closeness", "closeness2", "betweenness", "average_path_length","page_rank") %>% 
-  ggstatsplot::ggcorrmat(
-  type = "parametric", # parametric for Pearson, nonparametric for Spearman's correlation
-  colors = c("darkred", "white", "steelblue") # change default colors
-)
+# net_degree %>% 
+#   select("degree", "strength", "eigen", "weighted_transitivity", 
+#          "closeness", "closeness2", "betweenness", "average_path_length","page_rank") %>% 
+#   ggstatsplot::ggcorrmat(
+#   type = "parametric", # parametric for Pearson, nonparametric for Spearman's correlation
+#   colors = c("darkred", "white", "steelblue") # change default colors
+# )
 
 file_idx <- 30
 subject_df <- vector(mode = "list", length = file_idx)
@@ -148,6 +177,7 @@ colnames(subject_individual_ratings) <- c("subject_idx", "response", "Image", "I
 rate_counter <- 0
 sub_rat_counter <- 0
 
+# pp <- 2
 for (pp in seq_len(file_idx)) {
 # for (pp in 7:file_idx) {
    # pp =7 
@@ -162,7 +192,10 @@ for (pp in seq_len(file_idx)) {
       Image = stringr::str_remove(stimulus, pattern = "../../img/60Foods/item"),
       Image = as.numeric(stringr::str_remove(Image, pattern = ".jpg"))
     ) %>%
-    dplyr::left_join(foods_in_image, by = "Image")
+    dplyr::left_join(foods_in_image, by = "Image") 
+  #zero out the fav item
+  
+  # subject_rating_temp$response[which.max(subject_rating_temp$response)][[1]] <- 0
   
   sub_rat_idx <- seq(1,60) + sub_rat_counter
   subject_individual_ratings[sub_rat_idx,1] <- rep(pp,60)
@@ -176,6 +209,43 @@ for (pp in seq_len(file_idx)) {
   # so, we cannot do this until we generate an excel sheet of the images
   # sort of like the res file, but correct ,
   # this gets the choices in check use old fig temp todo this
+  
+  #use individual networks?
+  # subject_individual_ratings <- as.data.frame(subject_individual_ratings)
+  # subject_individual_ratings$subject_idx <- as.numeric(subject_individual_ratings$subject_idx)
+  # subject_individual_ratings$response <- as.numeric(subject_individual_ratings$response)
+  # subject_individual_ratings$Image <- as.numeric(subject_individual_ratings$Image)
+  # subject_individual_ratings$Item <- as.numeric(subject_individual_ratings$Item)
+  # subject_individual_ratings$Name <- as.factor(subject_individual_ratings$Name)
+  # 
+  # TEST <- subject_individual_ratings %>% 
+  #   filter(subject_idx == pp) %>% 
+  #   select(response,Name) %>% 
+  #   pivot_wider(names_from = Name, values_from = response) %>% 
+  #   unnest(everything())
+  # #make the order of the names the same
+  # TEST<-TEST[names(lee_2021_rating1)]
+  # 
+  # individual_net_temp <- differenceNet(TEST[1,], subject = 1, cut.off = T)
+  # g <- individual_net_temp
+  # G <- g
+  # E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
+  # path_lengths <- distances(G)
+  # adj_temp <- igraph::as_adjacency_matrix(g, sparse = F, attr = "weight")
+  # 
+  # #do the test for each subejct
+  # net_degree <- data.frame(degree= degree(g), 
+  #                          strength = strength(g),
+  #                          eigen = igraph::eigen_centrality(G)$vector,
+  #                          page_rank = page_rank(g)$vector, #weighted
+  #                          weighted_transitivity = transitivity(g, type = "weighted"),
+  #                          closeness = NetworkToolbox::closeness(adj_temp, weighted = TRUE),
+  #                          closeness2 = closeness(G), 
+  #                          betweenness = betweenness(G),
+  #                          average_path_length = apply(path_lengths, 2, mean, na.rm = T)) %>% 
+  #   tibble::rownames_to_column("Name")
+    
+  # plot(individual_net_temp)
   
   #what network wise was the subject?
   ns <- which.max(map_dbl(map(network_stats, grepl, x = subject_temp$options[subject_temp$screen_id == "task"]),sum))
@@ -202,12 +272,20 @@ for (pp in seq_len(file_idx)) {
   # }
     #LOAD THE generated subgraphs
     load(file = here::here("data", paste0(network_stats[[4]], ".RData")))
-
+    
+    #get individual network (the differenceNet function)
+    # foo = 1
     for (foo in 1:100) {
+      
+      
+      # remove_snacks <- net_degree[!net_degree$Name %in% dput(res[,foo]),]$Name
+      # g_temp <- delete_vertices(individual_net_temp, remove_snacks)
+      
+      
       #set_values_temp[[foo]] <- sum(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% pilot_5_stimuli_sets[[foo]], ]$response))
       #proper way (when you save the images correctly)
-      # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$degree)
-      set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$strength)
+      set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$degree)
+      # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$strength)
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$weighted_transitivity)
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$eigen)
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$closeness)
@@ -308,6 +386,10 @@ df %>%
   filter(value_network_corr_p > .05)
 
 for (subject_idx in 1:30){
+  # if (subject_idx %in% c(1,4,8,16,24,25,26,27,29)){next}
+    
+  df$correct <- as.numeric((df$left_rating > df$right_rating & df$choice == 1) | (df$left_rating < df$right_rating & df$choice == 0))
+  
   temp_df <- df %>% 
     filter(subject_id == subject_idx) %>% 
     filter(!rt <= 250) %>% 
@@ -317,14 +399,17 @@ for (subject_idx in 1:30){
            IQR = IQR(rt)) %>% 
     filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
     mutate(
-      vd = scale(left_rating - right_rating),
-      nd = scale(left_net - right_net))
+      vd = scale(abs(left_rating - right_rating)),
+      nd = scale(abs(left_net - right_net)))
   print(paste0("######## subject: ", subject_idx, " #######"))
-  # print(broom::tidy(glm(choice ~ vd*eq, family = binomial, data = temp_df)))
-  # temp_res <- broom::tidy(glm(choice ~ vd, family = binomial, data = temp_df))
-  temp_res <- broom::tidy(lm(rt ~ eq, data = temp_df))
-  temp_res$p.value <-  round(temp_res$p.value, 4)
-  print(temp_res)
+  print(summary(glm(correct ~ vd*nd, family = binomial, data = temp_df)))
+  # print(broom::tidy(glm(correct ~ vd*nd, family = binomial, data = temp_df)))
+  # temp_res <- broom::tidy(glm(choice ~ vd:nd , family = binomial, data = temp_df))
+  # temp_res <- broom::tidy(glm(correct ~ vd*nd , family = binomial, data = temp_df))
+  
+  # temp_res <- broom::tidy(lm(rt ~ eq, data = temp_df))
+  # temp_res$p.value <-  round(temp_res$p.value, 4)
+  # print(temp_res)
 }
 
 # 1,4,8,16,24,25,27
@@ -347,12 +432,22 @@ df %>%
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
   # filter(subject_id != 9) %>%
   # filter(subject_id != 13) %>%
-  filter(subject_id != 1) %>%
-  filter(subject_id != 4) %>%
-  filter(subject_id != 8) %>%
-  filter(subject_id != 24) %>%
-  filter(subject_id != 25) %>%
-  filter(subject_id != 27) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
+filter(subject_id != 1) %>%
+filter(subject_id != 4) %>%
+filter(subject_id != 8) %>%
+filter(subject_id != 24) %>%
+filter(subject_id != 25) %>%
+filter(subject_id != 27) %>%
+filter(subject_id != 16) %>%
+filter(subject_id != 26) %>%
+filter(subject_id != 29) %>%
+filter(subject_id != 30) %>%
   mutate(vd = left_rating - right_rating,
          nd = left_net - right_net) %>% 
   mutate(
@@ -606,12 +701,22 @@ p3 <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 1) %>%
-  filter(subject_id != 4) %>%
-  filter(subject_id != 8) %>%
-  filter(subject_id != 24) %>%
-  filter(subject_id != 25) %>%
-  filter(subject_id != 27) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
+filter(subject_id != 1) %>%
+filter(subject_id != 4) %>%
+filter(subject_id != 8) %>%
+filter(subject_id != 24) %>%
+filter(subject_id != 25) %>%
+filter(subject_id != 27) %>%
+filter(subject_id != 16) %>%
+filter(subject_id != 26) %>%
+filter(subject_id != 29) %>%
+filter(subject_id != 30) %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
@@ -655,12 +760,22 @@ p4 <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 1) %>%
-  filter(subject_id != 4) %>%
-  filter(subject_id != 8) %>%
-  filter(subject_id != 24) %>%
-  filter(subject_id != 25) %>%
-  filter(subject_id != 27) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
+filter(subject_id != 1) %>%
+filter(subject_id != 4) %>%
+filter(subject_id != 8) %>%
+filter(subject_id != 24) %>%
+filter(subject_id != 25) %>%
+filter(subject_id != 27) %>%
+filter(subject_id != 16) %>%
+filter(subject_id != 26) %>%
+filter(subject_id != 29) %>%
+filter(subject_id != 30) %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
@@ -704,12 +819,22 @@ p1 <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
   filter(subject_id != 1) %>%
   filter(subject_id != 4) %>%
   filter(subject_id != 8) %>%
   filter(subject_id != 24) %>%
   filter(subject_id != 25) %>%
   filter(subject_id != 27) %>%
+  filter(subject_id != 16) %>%
+  filter(subject_id != 26) %>%
+  filter(subject_id != 29) %>%
+  filter(subject_id != 30) %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
@@ -743,12 +868,22 @@ p2 <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
   filter(subject_id != 1) %>%
   filter(subject_id != 4) %>%
   filter(subject_id != 8) %>%
   filter(subject_id != 24) %>%
   filter(subject_id != 25) %>%
   filter(subject_id != 27) %>%
+  filter(subject_id != 16) %>%
+  filter(subject_id != 26) %>%
+  filter(subject_id != 29) %>%
+  filter(subject_id != 30) %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
@@ -781,16 +916,24 @@ p1 + p2
 p3 + p4
 
 ####data analysis
+df$correct <- as.numeric((df$left_rating > df$right_rating & df$choice == 1) | (df$left_rating < df$right_rating & df$choice == 0))
+
 model_dat <- df %>% 
   group_by(subject_id) %>%
   mutate(Q1 = quantile(rt, .25),
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  # filter(subject_id != 8) %>%
-  # filter(subject_id != 9) %>%
-  # filter(subject_id != 13) %>%
+  # filter(subject_id != 1) %>%
   # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
+  # filter(subject_id != 16) %>%
+  # filter(subject_id != 26) %>%
+  # filter(subject_id != 29) %>%
+  # filter(subject_id != 30) %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
@@ -837,38 +980,51 @@ mlm2_3 <- glmer(choice ~ vd*nd*cd +  (vd*nd*cd | subject_id), data = model_dat,
                                      optCtrl=list(maxfun=2e5)))
 summary(mlm2_3)
 
+df$correct <- as.numeric((df$left_rating > df$right_rating & df$choice == 1) | (df$left_rating < df$right_rating & df$choice == 0))
+
 model_dat <- df %>% 
   group_by(subject_id) %>%
   mutate(Q1 = quantile(rt, .25),
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  # filter(subject_id != 8) %>%
-  # filter(subject_id != 9) %>%
-  # filter(subject_id != 13) %>%
+  # filter(subject_id != 1) %>%
   # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  filter(subject_id != 27) %>%
+  # filter(subject_id != 16) %>%
+  filter(subject_id != 26) %>%
+  filter(subject_id != 29) %>%
+  # filter(subject_id != 30) %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
-  group_by(subject_id) %>%
+  # group_by(subject_id) %>%
   mutate(
     nd = scale(abs(left_net - right_net)),
     vd = scale(abs(left_rating - right_rating)),
     cd = scale(abs(left_correlation - right_correlation))
   )
-mlm1 <- lmer(log(rt) ~ vd*nd+ (vd*nd| subject_id), data = model_dat)
-summary(mlm1)
+# mlm1 <- lmer(log(rt) ~ vd*nd+ (vd*nd| subject_id), data = model_dat)
+# summary(mlm1)
 
+mlm2_3 <- glmer(correct ~ vd*nd + (vd*nd | subject_id), data = model_dat, 
+                family=binomial(link="logit"),
+                control=glmerControl(optimizer="bobyqa",
+                                     optCtrl=list(maxfun=2e5)))
+summary(mlm2_3)
 # library(brms)
-# fit<- brm(choice ~ vd*nd +  (vd*nd | subject_id), data = model_dat, family = "bernoulli", cores = 10)
+# fit<- brm(correct ~ vd*nd +  (vd*nd | subject_id), data = model_dat, family = "bernoulli", cores = 10)
 # summary(fit)
 
 # library(ggeffects)
-# plot(ggeffects::ggpredict(mlm2, terms = c("vd [all]", "nd[-1 ,0, 1]")))+
+# plot(ggeffects::ggpredict(fit, terms = c("nd [all]", "vd[-1 ,0, 1]")))+
 #   labs(title = "interaction between network strength difference",
-#        x = "value difference",
-#        color = "network difference",
-#        y = "Pr(left)")+
+#        x = "absolute value difference",
+#        color = "absolute network difference",
+#        y = "Acc")+
 #   theme_classic()+
 #   geom_hline(yintercept = .5, linetype = "dashed")
 
@@ -1073,7 +1229,6 @@ subject_ratings %>% as.data.frame() %>%
 
 
 ##looking at the rating data we have so far, how does the network compare?
-
 subject_individual_ratings <- as.data.frame(subject_individual_ratings)
 subject_individual_ratings$subject_idx <- as.numeric(subject_individual_ratings$subject_idx)
 subject_individual_ratings$response <- as.numeric(subject_individual_ratings$response)
@@ -1081,24 +1236,22 @@ subject_individual_ratings$Image <- as.numeric(subject_individual_ratings$Image)
 subject_individual_ratings$Item <- as.numeric(subject_individual_ratings$Item)
 subject_individual_ratings$Name <- as.factor(subject_individual_ratings$Name)
 
-
-
 TEST <- subject_individual_ratings %>% 
   select(response,Name) %>% 
   pivot_wider(names_from = Name, values_from = response) %>% 
   unnest(everything())
 #make the order of the names the same
 TEST<-TEST[names(lee_2021_rating1)]
-
+# TEST <- TEST[1,]
 #make sure the matrix is near positive definite
+# cor_x1 <- SemNeT::similarity(TEST, method = "cor")
 cor_x1 <- cor(TEST)
-cor_x1 <- matrix(nearPD(cor_x1, corr=TRUE)$mat, ncol = 60)
+
+cor_x1 <- matrix(nearPD(cor_x1, corr=TRUE, maxit = 500 )$mat, ncol = 60)
 cor_x1 <- (cor_x1 + t(cor_x1)) / 2 # make symmetric
 
 
-test_net <-EGAnet::EGA(cor_x1, n = 30, model = "glasso", algorithm = "walktrap",
-                       corr = "pearson")
-
+test_net <-EGAnet::EGA(cor_x1, n = 30, model = "glasso", algorithm = "walktrap",corr = "pearson")
 
 
 cor(new_TEST)
@@ -1173,7 +1326,6 @@ nw2 <- igraph::as_adjacency_matrix(g_2, sparse = F, attr = "weight")
 #>
 #>From NCT analyses, we observed that networks seem to be the same for the two groups M:  0.58037 , p-value 0.08, and S:  1.097621 with p = 0.72 
 
-
 graph_sample <- graph_from_adjacency_matrix(boot_test$typicalGraph$graph,
                                              "undirected",
                                              weighted = TRUE
@@ -1182,7 +1334,6 @@ graph_lee <- graph_from_adjacency_matrix(ega_res$typicalGraph$graph,
                                                "undirected",
                                                weighted = TRUE
 )
-
 
 value_sample_data <- tibble(items = V(graph_sample)$name) %>%
   left_join(boot_test$typicalGraph$typical.dim.variables,
@@ -1203,8 +1354,6 @@ clusters <- left_join(value_lee_data, value_sample_data, by = "items")
 # value_sample_data$dimension[value_sample_data$dimension == 4] <- 3
 # value_sample_data$dimension[value_sample_data$dimension == 5] <- 6
 # value_sample_data$dimension[value_sample_data$dimension == 6] <- 1
-
-
 
 V(graph_sample)$color <- value_sample_data$dimension
 V(graph_lee)$color <- value_lee_data$dimension
@@ -1248,4 +1397,108 @@ plot(graph_sample,
 )
 
 
+#individual network (johns idea)
+
+par(mfrow = c(2,2), mar = c(0,0,1,0)) # set the plotting area into a 1*3 array
+# par(mfrow=c(5,5), mar=rep(0,0,0,0))   # plot four figures - 2 rows, 2 columns
+library(jpeg)
+
+# par(mfrow=c(4,4), mar=c(1,1,1,1))
+
+par(mfrow=c(1,2))
+
+nodes_temp <- temp[foods_in_image$rowid]
+
+
+for (pp in 1:30){
+  
+graph_individual <- differenceNet(TEST, subject = pp, cut.off = T)
+
+V(graph_individual)$color <- value_lee_data$dimension
+
+degree <- degree(graph_individual, mode="all")
+# 
+# deg.dist <- degree_distribution(graph_individual, cumulative=T, mode="all")
+# print(plot( x=0:max(deg), y=1-deg.dist, pch=19, cex=1.2, col="orange",
+#       xlab="Degree", ylab="Cumulative Frequency",main =  paste0("individual: ", pp)))
+# 
+
+# E(graph_individual)$color[E(graph_individual)$weight > 0] <- "forestgreen"
+# E(graph_individual)$color[E(graph_individual)$weight < 0] <- "red2"
+
+# E(graph_individual)$weight <- 2**((E(graph_individual)$weight - min(E(graph_individual)$weight)) / diff(range(E(graph_individual)$weight)))
+
+#how to plot the images if you wanted to try that
+# adj_temp <- igraph::as_adjacency_matrix(graph_individual, sparse = F, attr = "weight")
+# qgraph::qgraph(adj_temp, 
+#                layout = layout_nicely(graph_individual),
+#                palette = "ggplot2",
+#                labels = F,
+#                images = nodes_temp,
+#                edge.width = abs(E(graph_individual)$weight) * .3
+#                )
+               
+print(plot(graph_individual,
+     layout = layout_nicely(graph_individual),
+     # layout = layout_components(graph_individual),
+     # layout = layout_with_fr(graph_individual),
+     # layout = layout_with_mds(graph_individual),
+     # layout = layout.circle(graph_individual),
+     margin = .0,
+     vertex.label = V(graph_individual)$name,
+     vertex.label.color = "black",
+     vertex.label.cex = 1,
+     vertex.label.dist = .5,
+     # vertex.shapes = nodes_temp,
+     # vertex.size = deg*.2,
+     vertex.size = as.numeric(TEST[pp,]/10),
+     vertex.label.family = "Times",
+     main = paste0("individual: ", pp),
+     edge.width = abs(E(graph_individual)$weight) * .4,
+     mark.groups = communities(cluster_walktrap(graph_individual, steps = 4))
+     # mark.groups =communities(cluster_spinglass(graph_individual, implementation = "neg"))
+     # mark.groups =communities(cluster_louvain(graph_individual))
+     
+     ))
+}
+
+
+#make the example snack networks
+#use the code below to build the examples:
+
+remove_snacks <- net_degree[!net_degree$Name %in% dput(res[,67]),]$Name
+V(graph_individual)$color <- value_lee_data$dimension
+g3 <- delete_vertices(graph_individual, remove_snacks)
+degree(g3)
+l4 <- layout_in_circle(g3)
+# l4 <- layout_nicely(g3)
+
+plot(g3,
+     layout = l4,
+     margin = .0,
+     vertex.label.color = "black",
+     vertex.label = V(g3)$name,
+     vertex.label.cex = 1.3,
+     vertex.size = 10,
+     vertex.label.family = "Times",
+     edge.width = abs(E(graph_individual)$weight) * .8
+)
+
+#example two 
+remove_snacks <- net_degree[!net_degree$Name %in% dput(res[,35]),]$Name
+V(graph_individual)$color <- value_lee_data$dimension
+g3 <- delete_vertices(graph_individual, remove_snacks)
+l4 <- layout_in_circle(g3)
+# l4 <- layout_nicely(g3)
+
+degree(g3)
+plot(g3,
+     layout = l4,
+     vertex.label = V(g3)$name,
+     vertex.label.color = "black",
+     vertex.label.cex = 1.3,
+     vertex.size = 10,
+     vertex.label.family = "Times",
+     edge.width = abs(E(graph_individual)$weight) * .8
+)
 
