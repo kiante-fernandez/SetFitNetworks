@@ -15,6 +15,9 @@ lee_2021_rating1 <- read_csv(here("data", "lee_2021_rating1.csv"), col_names = F
 lee_2021_nutrition1 <- read_csv(here("data", "lee_2021_nutrition1.csv"), col_names = FALSE)
 lee_2021_pleasure1 <- read_csv(here("data", "lee_2021_pleasure1.csv"), col_names = FALSE)
 
+lee_2023_rating1 <- read_csv(here("data", "lee_2023_valuerating1.csv"), col_names = FALSE)
+
+
 #reponse times network idea
 # lee_2021_rating1 <- readr::read_csv(here("data", "lee_2021_rating1_RT.csv"), col_names = FALSE, show_col_types = F)
 # lee_2021_rating1 <- lee_2021_rating1/1000 
@@ -33,11 +36,16 @@ lee_2021_pleasure1 <- read_csv(here("data", "lee_2021_pleasure1.csv"), col_names
 
 # load the names of the foods (see nick file)
 FoodNames <- readxl::read_excel(here("data", "snackitemnames_nicholas", "item_image_numbers_exp2_5_nicholas.xlsx"))
+#names two needs to be redone
+FoodNames2 <- readxl::read_excel(here("data", "snackitemnames_nicholas", "item_image_numbers_exp1_nicholas.xlsx"))
 
 # create cleaned names
 names(lee_2021_rating1) <- FoodNames$Name
 names(lee_2021_nutrition1) <- FoodNames$Name
 names(lee_2021_pleasure1) <- FoodNames$Name
+
+names(lee_2023_rating1) <- FoodNames2$Name
+# names(lee_2023_rating2) <- FoodNames2$Name
 
 ########################
 # Network estimation
@@ -174,7 +182,22 @@ plot(b1, "strength", order = "sample")
 plot(b2)
 plot(b2, perNode = T, "strength")
 corStability(b2)
+#try the new ratings here! (it works pretty well at first glance)
+# sega_liking <- EGA(lee_2023_rating1,
+#                    n = 107, plot.EGA = TRUE, model = "glasso", algorithm = "walktrap")
+boot_test <- EGAnet::bootEGA(lee_2023_rating1,
+                             iter = 1000,
+                             type = "parametric",
+                             corr = "pearson",
+                             n = 107,
+                             model = "glasso",
+                             algorithm = "walktrap",
+                             ncores = 8, typicalStructure = T
+)
 
+
+boot_test[["plot.typical.ega"]][["layers"]][[6]] <- NULL
+boot_test$plot.typical.ega
 sega_liking <- EGA(lee_2021_rating1,
   n = 267, plot.EGA = TRUE, model = "glasso", algorithm = "walktrap",
   plot.type = "qgraph",

@@ -284,8 +284,8 @@ for (pp in seq_len(file_idx)) {
       
       #set_values_temp[[foo]] <- sum(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% pilot_5_stimuli_sets[[foo]], ]$response))
       #proper way (when you save the images correctly)
-      set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$degree)
-      # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$strength)
+      # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$degree)
+      set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$strength)
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$weighted_transitivity)
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$eigen)
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$closeness)
@@ -366,19 +366,19 @@ df <- as.data.frame(do.call(rbind, subject_df)) %>%
   unnest(cols = c(left_rating, right_rating, left_net, right_net, left_cluster_condition, right_cluster_condition,
                   left_correlation,right_correlation))
 
-df$cluster_condition <- df$left_cluster_condition %in% c(2,4) | df$right_cluster_condition %in% c(2,4)
+# df$cluster_condition <- df$left_cluster_condition %in% c(2,4) | df$right_cluster_condition %in% c(2,4)
 
 # df$degree_condition <- df$left_cluster_condition %in% c(1,2) | df$right_cluster_condition %in% c(1,2)
-df$degree_condition <- df$left_cluster_condition %in% c(1) | df$right_cluster_condition %in% c(1)
+# df$degree_condition <- df$left_cluster_condition %in% c(1) | df$right_cluster_condition %in% c(1)
 # df$degree_condition <- df$left_cluster_condition %in% c(2) | df$right_cluster_condition %in% c(2)
 #this tests the difference in conditions for selecting from grouping 1 or 2, or
 # selecting from within a given grouping 
-df$eq <- factor(df$left_cluster_condition + df$right_cluster_condition)
-df$eq <- relevel(df$eq, ref = "0")
+# df$eq <- factor(df$left_cluster_condition + df$right_cluster_condition)
+# df$eq <- relevel(df$eq, ref = "0")
 
-df %>%
-  select(left_cluster_condition,right_cluster_condition,eq) %>%
-  distinct() %>% arrange(eq)
+# df %>%
+#   select(left_cluster_condition,right_cluster_condition,eq) %>%
+#   distinct() %>% arrange(eq)
 
 df %>%
   select(subject_id,value_network_corr, value_network_corr_p) %>%
@@ -430,24 +430,12 @@ df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  # filter(subject_id != 9) %>%
-  # filter(subject_id != 13) %>%
-  # filter(subject_id != 1) %>%
-  # filter(subject_id != 4) %>%
-  # filter(subject_id != 8) %>%
-  # filter(subject_id != 24) %>%
-  # filter(subject_id != 25) %>%
-  # filter(subject_id != 27) %>%
-filter(subject_id != 1) %>%
-filter(subject_id != 4) %>%
-filter(subject_id != 8) %>%
-filter(subject_id != 24) %>%
-filter(subject_id != 25) %>%
-filter(subject_id != 27) %>%
-filter(subject_id != 16) %>%
-filter(subject_id != 26) %>%
-filter(subject_id != 29) %>%
-filter(subject_id != 30) %>%
+  filter(subject_id != 1) %>%
+  filter(subject_id != 4) %>%
+  filter(subject_id != 8) %>%
+  filter(subject_id != 24) %>%
+  filter(subject_id != 25) %>%
+  filter(subject_id != 27) %>%
   mutate(vd = left_rating - right_rating,
          nd = left_net - right_net) %>% 
   mutate(
@@ -455,7 +443,7 @@ filter(subject_id != 30) %>%
   ) %>% 
   group_by(subject_id,binned_value_diff) %>%
   mutate(
-    binned_net_diff = as.numeric(cut_number(nd,5)) - 3
+    binned_net_diff = as.numeric(cut_number(nd,3)) - 2
   ) %>% 
   group_by(binned_net_diff,binned_value_diff) %>%
   mutate(n = n(),
@@ -572,11 +560,12 @@ df %>%
   scale_color_brewer(palette = "Set1") +
   labs(
     y = "RT(s)",
-    x = "Value Magnitude (L + R)"
+    x = "Value Magnitude (L + R)",
+    color = "quantiles"
   ) + theme(legend.position="bottom")
 
 
-tune <- 1
+# tune <- 1
 df %>% 
   group_by(subject_id) %>%
   mutate(Q1 = quantile(rt, .25),
@@ -701,27 +690,27 @@ p3 <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  # filter(subject_id != 1) %>%
-  # filter(subject_id != 4) %>%
-  # filter(subject_id != 8) %>%
-  # filter(subject_id != 24) %>%
-  # filter(subject_id != 25) %>%
-  # filter(subject_id != 27) %>%
-filter(subject_id != 1) %>%
-filter(subject_id != 4) %>%
-filter(subject_id != 8) %>%
-filter(subject_id != 24) %>%
-filter(subject_id != 25) %>%
-filter(subject_id != 27) %>%
-filter(subject_id != 16) %>%
-filter(subject_id != 26) %>%
-filter(subject_id != 29) %>%
-filter(subject_id != 30) %>%
+  filter(subject_id != 1) %>%
+  filter(subject_id != 4) %>%
+  filter(subject_id != 8) %>%
+  filter(subject_id != 24) %>%
+  filter(subject_id != 25) %>%
+  filter(subject_id != 27) %>%
+# filter(subject_id != 1) %>%
+# filter(subject_id != 4) %>%
+# filter(subject_id != 8) %>%
+# filter(subject_id != 24) %>%
+# filter(subject_id != 25) %>%
+# filter(subject_id != 27) %>%
+# filter(subject_id != 16) %>%
+# filter(subject_id != 26) %>%
+# filter(subject_id != 29) %>%
+# filter(subject_id != 30) %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
-  mutate(vd = left_rating - right_rating,
-         nd = left_net - right_net) %>%
+  mutate(vd = abs(left_rating - right_rating),
+         nd = abs(left_net - right_net)) %>%
   group_by(subject_id) %>%
   mutate(
     binned_value_diff = as.numeric(cut_number(vd,5)),
@@ -748,7 +737,7 @@ filter(subject_id != 30) %>%
   scale_color_brewer(palette = "Set1") +
   labs(
     y = "RT(s)",
-    x = "Value Difference (L-R)"
+    x = "Abs Value Difference (L-R)"
   ) +
   facet_wrap(~subject_id, scales = "free")+
   theme(legend.position="none")
@@ -760,26 +749,26 @@ p4 <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  # filter(subject_id != 1) %>%
-  # filter(subject_id != 4) %>%
-  # filter(subject_id != 8) %>%
-  # filter(subject_id != 24) %>%
-  # filter(subject_id != 25) %>%
-  # filter(subject_id != 27) %>%
-filter(subject_id != 1) %>%
-filter(subject_id != 4) %>%
-filter(subject_id != 8) %>%
-filter(subject_id != 24) %>%
-filter(subject_id != 25) %>%
-filter(subject_id != 27) %>%
-filter(subject_id != 16) %>%
-filter(subject_id != 26) %>%
-filter(subject_id != 29) %>%
-filter(subject_id != 30) %>%
+  filter(subject_id != 1) %>%
+  filter(subject_id != 4) %>%
+  filter(subject_id != 8) %>%
+  filter(subject_id != 24) %>%
+  filter(subject_id != 25) %>%
+  filter(subject_id != 27) %>%
+# filter(subject_id != 1) %>%
+# filter(subject_id != 4) %>%
+# filter(subject_id != 8) %>%
+# filter(subject_id != 24) %>%
+# filter(subject_id != 25) %>%
+# filter(subject_id != 27) %>%
+# filter(subject_id != 16) %>%
+# filter(subject_id != 26) %>%
+# filter(subject_id != 29) %>%
+# filter(subject_id != 30) %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
-  mutate(nd = left_net - right_net) %>%
+  mutate(nd = abs(left_net - right_net)) %>%
   group_by(subject_id) %>%
   mutate(
     binned_network_diff = as.numeric(cut_number(nd,5)),
@@ -806,7 +795,7 @@ filter(subject_id != 30) %>%
   scale_color_brewer(palette = "Set1") +
   labs(
     y = "RT(s)",
-    x = "Network Difference (L-R)"
+    x = "Abs Network Difference (L-R)"
   ) +
   facet_wrap(~subject_id, scales = "free")+
   theme(legend.position="none")
@@ -819,22 +808,22 @@ p1 <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  # filter(subject_id != 1) %>%
-  # filter(subject_id != 4) %>%
-  # filter(subject_id != 8) %>%
-  # filter(subject_id != 24) %>%
-  # filter(subject_id != 25) %>%
-  # filter(subject_id != 27) %>%
   filter(subject_id != 1) %>%
   filter(subject_id != 4) %>%
   filter(subject_id != 8) %>%
   filter(subject_id != 24) %>%
   filter(subject_id != 25) %>%
   filter(subject_id != 27) %>%
-  filter(subject_id != 16) %>%
-  filter(subject_id != 26) %>%
-  filter(subject_id != 29) %>%
-  filter(subject_id != 30) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
+  # filter(subject_id != 16) %>%
+  # filter(subject_id != 26) %>%
+  # filter(subject_id != 29) %>%
+  # filter(subject_id != 30) %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
@@ -868,22 +857,22 @@ p2 <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  # filter(subject_id != 1) %>%
-  # filter(subject_id != 4) %>%
-  # filter(subject_id != 8) %>%
-  # filter(subject_id != 24) %>%
-  # filter(subject_id != 25) %>%
-  # filter(subject_id != 27) %>%
   filter(subject_id != 1) %>%
   filter(subject_id != 4) %>%
   filter(subject_id != 8) %>%
   filter(subject_id != 24) %>%
   filter(subject_id != 25) %>%
   filter(subject_id != 27) %>%
-  filter(subject_id != 16) %>%
-  filter(subject_id != 26) %>%
-  filter(subject_id != 29) %>%
-  filter(subject_id != 30) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
+  # filter(subject_id != 16) %>%
+  # filter(subject_id != 26) %>%
+  # filter(subject_id != 29) %>%
+  # filter(subject_id != 30) %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
   filter(!rt >= 10000) %>% 
@@ -924,12 +913,12 @@ model_dat <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  # filter(subject_id != 1) %>%
-  # filter(subject_id != 4) %>%
-  # filter(subject_id != 8) %>%
-  # filter(subject_id != 24) %>%
-  # filter(subject_id != 25) %>%
-  # filter(subject_id != 27) %>%
+  filter(subject_id != 1) %>%
+  filter(subject_id != 4) %>%
+  filter(subject_id != 8) %>%
+  filter(subject_id != 24) %>%
+  filter(subject_id != 25) %>%
+  filter(subject_id != 27) %>%
   # filter(subject_id != 16) %>%
   # filter(subject_id != 26) %>%
   # filter(subject_id != 29) %>%
@@ -944,7 +933,7 @@ model_dat <- df %>%
     cd = scale(left_correlation - right_correlation)
   )
 
-model_dat$cluster_condition = factor(model_dat$cluster_condition,labels = c("No Comparison", "Cluster Comparison"))
+# model_dat$cluster_condition = factor(model_dat$cluster_condition,labels = c("No Comparison", "Cluster Comparison"))
 # model_dat$eq = factor(model_dat$eq,labels = c("Distinct", "Same"))
 
 # mlm1 <- lmer(log(rt) ~ abs(vd)*abs(nd) + (vd*nd| subject_id), data = model_dat)
@@ -961,6 +950,7 @@ mlm2 <- glmer(choice ~ vd*nd +  (vd*nd | subject_id), data = model_dat,
               family=binomial(link="logit"),
               control=glmerControl(optimizer="bobyqa",
                                    optCtrl=list(maxfun=2e5)))
+report::report(mlm2)
 summary(mlm2)
 mlm2_1 <- glmer(choice ~ vd*cd +  (vd*cd | subject_id), data = model_dat, 
               family=binomial(link="logit"),
@@ -988,15 +978,15 @@ model_dat <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  # filter(subject_id != 1) %>%
-  # filter(subject_id != 4) %>%
-  # filter(subject_id != 8) %>%
-  # filter(subject_id != 24) %>%
-  # filter(subject_id != 25) %>%
-  filter(subject_id != 27) %>%
+  filter(subject_id != 1) %>%
+  filter(subject_id != 4) %>%
+  filter(subject_id != 8) %>%
+  filter(subject_id != 24) %>%
+  filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
   # filter(subject_id != 16) %>%
-  filter(subject_id != 26) %>%
-  filter(subject_id != 29) %>%
+  # filter(subject_id != 26) %>%
+  # filter(subject_id != 29) %>%
   # filter(subject_id != 30) %>%
   ungroup() %>%
   filter(!rt <= 250) %>% 
@@ -1005,10 +995,12 @@ model_dat <- df %>%
   mutate(
     nd = scale(abs(left_net - right_net)),
     vd = scale(abs(left_rating - right_rating)),
-    cd = scale(abs(left_correlation - right_correlation))
+    cd = scale(abs(left_correlation - right_correlation)),
+    ov = scale(left_rating + right_rating)
   )
-# mlm1 <- lmer(log(rt) ~ vd*nd+ (vd*nd| subject_id), data = model_dat)
-# summary(mlm1)
+
+mlm1 <- lmer(log(rt) ~ vd*nd+ov+ (vd*nd + ov| subject_id), data = model_dat)
+summary(mlm1)
 
 mlm2_3 <- glmer(correct ~ vd*nd + (vd*nd | subject_id), data = model_dat, 
                 family=binomial(link="logit"),

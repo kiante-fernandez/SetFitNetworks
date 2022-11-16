@@ -51,64 +51,67 @@ for (foo in seq_len(nrow(lee_2021_choice))) {
   lee_2021_choice$itemL[[foo]] <- foods_in_image[foods_in_image$Image == lee_2021_choice$itemL[[foo]], ]$Name
   lee_2021_choice$itemR[[foo]] <- foods_in_image[foods_in_image$Image == lee_2021_choice$itemR[[foo]], ]$Name
 }
+lee_2021_choice$correct <- as.numeric((lee_2021_choice$ratingR > lee_2021_choice$ratingL & lee_2021_choice$choice == 1) | (lee_2021_choice$ratingR < lee_2021_choice$ratingL & lee_2021_choice$choice == 0))
+
+
 # load graph
 source("exploratory_graph_analysis.R")
 
-g
-V(g)
-E(g)
+G <- g
+E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
+path_lengths <- distances(G)
+adj_temp <- igraph::as_adjacency_matrix(g, sparse = F, attr = "weight")
 
-l <- layout.circle(g)
-E(g)$color[E(g)$weight > 0] <- "forestgreen"
-E(g)$color[E(g)$weight < 0] <- "red2"
-
-plot(g,
-  layout = l,
-  margin = .0,
-  vertex.label = V(g)$name,
-  vertex.label.color = "black",
-  vertex.label.cex = .7,
-  vertex.size = 0,
-  vertex.label.family = "Times",
-  edge.curved = .15,
-  edge.width = abs(E(g)$weight) * 5,
-  main = "How much would you like this as a daily snack?",
-  # mark.groups =  V(g)$snack_type
-)
-
-net_degree <- data.frame(degree(g)) %>%
+#calculate a bunch of measures
+net_degree <- data.frame(degree= degree(g), 
+                         strength = strength(g),
+                         eigen = igraph::eigen_centrality(G)$vector,
+                         page_rank = page_rank(g)$vector, #weighted
+                         weighted_transitivity = transitivity(g, type = "weighted"),
+                         closeness = NetworkToolbox::closeness(adj_temp, weighted = TRUE),
+                         closeness2 = closeness(G), 
+                         betweenness = betweenness(G),
+                         participation = NetworkToolbox::participation(adj_temp, comm = V(g)$snack_type)$overall,
+                         clustWS = clustcoef_auto(g),
+                         diversity = NetworkToolbox::diversity(adj_temp, comm = V(g)$snack_type)$positive) %>%
   tibble::rownames_to_column("Name") %>%
   left_join(foods_in_image, "Name")
 
-net_degree <- data.frame(clustcoef_auto(g)) %>%
-  tibble::rownames_to_column("Name") %>%
-  left_join(net_degree, "Name")
-
-
 lee_2021_choice$degreeL <- NA
 lee_2021_choice$degreeR <- NA
-lee_2021_choice$clusterL <- NA
-lee_2021_choice$clusterR <- NA
 
 for (foo in seq_len(nrow(lee_2021_choice))) {
-  lee_2021_choice$degreeL[[foo]] <- as.numeric(net_degree$degree.g.[lee_2021_choice$itemL[[foo]] == net_degree$Name])
-  lee_2021_choice$degreeR[[foo]] <- as.numeric(net_degree$degree.g.[lee_2021_choice$itemR[[foo]] == net_degree$Name])
-  lee_2021_choice$clusterL[[foo]] <- as.numeric(net_degree$clustWS[lee_2021_choice$itemL[[foo]] == net_degree$Name])
-  lee_2021_choice$clusterR[[foo]] <- as.numeric(net_degree$clustWS[lee_2021_choice$itemR[[foo]] == net_degree$Name])
+  lee_2021_choice$degreeL[[foo]] <- as.numeric(net_degree$closeness2[lee_2021_choice$itemL[[foo]] == net_degree$Name])
+  lee_2021_choice$degreeR[[foo]] <- as.numeric(net_degree$closeness2[lee_2021_choice$itemR[[foo]] == net_degree$Name])
 }
 # relative diff
-lee_2021_choice$rDegreeDiff <- lee_2021_choice$degreeR - lee_2021_choice$degreeL
-lee_2021_choice$rClustDiff <- lee_2021_choice$clusterR - lee_2021_choice$clusterL
+lee_2021_choice$rDegreeDiff <- scale(lee_2021_choice$degreeR - lee_2021_choice$degreeL)
+lee_2021_choice$rDiff <- scale(lee_2021_choice$ratingR - lee_2021_choice$ratingL)
+#overall value
+lee_2021_choice$VSum <- scale(lee_2021_choice$ratingR + lee_2021_choice$ratingL)
+lee_2021_choice$DegreeSum <- scale(lee_2021_choice$degreeR + lee_2021_choice$degreeL)
 
-summary(lm(log(rt) ~ rClustDiff + rDegreeDiff + rDiff, data = lee_2021_choice))
-summary(glm(choice ~ rClustDiff + rDegreeDiff + rDiff, data = lee_2021_choice, family = "binomial"))
-#
-# ssummary(lmer(log(rt) ~ rDiff  + rClustDiff + (1 | subjectid), data = lee_2021_choice))
-# summary(glmer(choice ~ rDiff  + rClustDiff + (1 | subjectid), data = lee_2021_choice, family = "binomial"))
+# cor.test(lee_2021_choice$rDiff,lee_2021_choice$rDegreeDiff)
+# pca_res <- prcomp(lee_2021_choice[, c("rDegreeDiff","rDiff")])
 
-# sub_test <- lee_2021_choice[lee_2021_choice$subjectid == 104,]
-# cor.test(sub_test$rDiff, sub_test$rDegreeDiff)
-# cor.test(sub_test$rDiff, sub_test$rClustDiff)
-#
-# summary(lm(log(rt) ~ rDiff +  rClustDiff + rDegreeDiff + rDiff, data = sub_test))
-# summary(glm(choice ~ rDiff +  rClustDiff + rDegreeDiff, data = sub_test, family = "binomial"))
+# summary(glmer(choice ~ rDiff + (rDiff | subjectid), data = lee_2021_choice, family = "binomial"))
+summary(glmer(choice ~ DegreeSum + (rDegreeSum | subjectid), data = lee_2021_choice, family = "binomial"))
+summary(glmer(choice ~ rDegreeDiff + (rDegreeDiff | subjectid), data = lee_2021_choice, family = "binomial"))
+summary(glmer(choice ~ rDegreeDiff*rDiff + (rDegreeDiff*rDiff  | subjectid), data = lee_2021_choice, family = "binomial"))
+
+lee_2021_choice$absrDegreeDiff <- scale(abs(lee_2021_choice$degreeR - lee_2021_choice$degreeL))
+lee_2021_choice$absrDiff <- scale(abs(lee_2021_choice$ratingR - lee_2021_choice$ratingL))
+
+#coded for correct models
+# summary(glmer(correct ~ absrDiff + (absrDiff  | subjectid), data = lee_2021_choice, family = "binomial"))
+summary(glmer(correct ~ absrDegreeDiff + (absrDegreeDiff  | subjectid), data = lee_2021_choice, family = "binomial"))
+summary(glmer(correct ~ absrDegreeDiff + absrDiff (absrDegreeDiff + absrDiff | subjectid), data = lee_2021_choice, family = "binomial"))
+#rt models
+m_0 <- lmer(log(rt) ~ absrDiff+ absrDegreeDiff + DegreeSum +  VSum + (absrDiff + absrDegreeDiff+ DegreeSum+VSum | subjectid), data = lee_2021_choice)
+summary(m_0)
+# library(ggeffects)
+# plot(ggpredict(m_0, terms = c("absrDiff","absrDegreeDiff[-1, 1]")))
+
+
+#we find no effect of the network measures in the choice data.
+#we can find small effects

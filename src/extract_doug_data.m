@@ -299,3 +299,20 @@ for exp_idk = 1:4
 end
 
 csvwrite('/Users/kiantefernandez/Documents/OSU/SetFitNetworks/data/lee_2021_exp2_5.csv',choice_data);
+
+
+
+%% other task data extract"
+%how many subjects does the dataset have?
+total_subjects = [nSubs]
+sum(total_subjects) %325 subjects
+
+nSubs = total_subjects(1)
+
+ratings = zeros(nSubs,size(itemSet,1));
+%item set tells you which items are in this set
+for sub_idx = 1:nSubs
+    ratings(sub_idx,:) = item{1,sub_idx}.value;
+end
+% 
+csvwrite('/Users/kiantefernandez/Documents/OSU/SetFitNetworks/data/lee_2023_valuerating1.csv',ratings);
