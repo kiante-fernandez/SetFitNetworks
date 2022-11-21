@@ -1270,8 +1270,7 @@ test_net <-EGAnet::EGA(TEST, n = 30, model = "glasso", algorithm = "walktrap",
                                          gamma = 0.05))
 
 boot_test <- EGAnet::bootEGA(TEST,
-                             plot.type = "qgraph",
-                             iter = 1000,
+                             iter = 2500,
                              type = "resampling",
                              corr = "pearson",
                              n = 30,
@@ -1290,6 +1289,10 @@ dimattributes <- boot_test[["typicalGraph"]][["wc"]]
 g_2 <- graph_from_adjacency_matrix(A, "undirected", weighted = TRUE)
 # add decorate attributes
 V(g_2)$snack_type <- dimattributes
+
+
+save(boot_test, g_2, file = here("data", "pilot30_network_graph.RData"))
+
 
 #look at the relationship between the two (doug and my sample graphs)
 library(NetworkComparisonTest)
