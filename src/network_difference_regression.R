@@ -422,7 +422,7 @@ plts <- vector("list", length = length(net_stats))
 
 # df <- df[is.nan(df$left_net) == F & is.nan(df$right_net) == F,]
 
-# net_idx <- 2
+net_idx <- 4
 for (net_idx in 1:length(net_stats)){
 print(paste0("############### ",net_stats[[net_idx]]," ###############"))
 df <- organize_group_data(net_stat = net_stats[[net_idx]])
@@ -742,9 +742,10 @@ print(tab_model(mlm2_3,
 
 fit1 <- brm(choice ~ vd*nd + ov*on + (vd*nd + ov*on | subject_id), data = model_dat, family = "bernoulli", cores = 10, iter = 10000)
 # summary(fit1)
+make_stancode(choice ~ vd*nd + ov*on + (vd*nd + ov*on | subject_id), data = model_dat, family = "bernoulli")
+
 print(bayestestR::sexit(fit1, significant = "default", large = "default", ci = 0.95))
-
-
+equatiomatic::eqOutput(fit1)
 # report::report(mlm2_3)
 # print(tab_model(mlm2_0,mlm2_1,mlm2_2,mlm2_3,mlm2_4,
 #           show.intercept = F,
