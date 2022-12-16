@@ -464,6 +464,45 @@ df %>%
     color = "Network Difference (L-R)"
   )
 
+df %>% 
+  group_by(subject_id) %>%
+  mutate(Q1 = quantile(rt, .25),
+         Q3 = quantile(rt, .75),
+         IQR = IQR(rt)) %>% 
+  filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
+  filter(subject_id != 1) %>%
+  filter(subject_id != 4) %>%
+  filter(subject_id != 8) %>%
+  filter(subject_id != 24) %>%
+  filter(subject_id != 25) %>%
+  filter(subject_id != 27) %>%
+  mutate(vd = left_rating - right_rating,
+         nd = left_net - right_net) %>% 
+  mutate(
+    binned_value_diff = as.numeric(cut_number(vd,7)) - 4,
+  ) %>% 
+  group_by(subject_id,binned_value_diff) %>%
+  mutate(
+    binned_net_diff = as.numeric(cut_number(nd,3)) - 2
+  ) %>% 
+  group_by(binned_net_diff,binned_value_diff) %>%
+  mutate(n = n(),
+         m_rt = mean(rt),
+         se = sqrt(var(rt) / length(rt))
+  ) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = binned_value_diff, y = m_rt, color = factor(binned_net_diff))) +
+  geom_pointrange(aes(ymin = m_rt - se, ymax = m_rt + se)) +
+  theme_classic() +
+  geom_line(size = 1) +
+  scale_color_brewer(palette = "Set1") +
+  labs(
+    y = "RT(ms)",
+    x = "Value Difference (L-R)",
+    color = "Network Difference (L-R)"
+  )
+
+
 df %>%
   group_by(subject_id) %>%
   mutate(Q1 = quantile(rt, .25),
@@ -1462,11 +1501,19 @@ print(plot(graph_individual,
 #use the code below to build the examples:
 
 remove_snacks <- net_degree[!net_degree$Name %in% dput(res[,67]),]$Name
-V(graph_individual)$color <- value_lee_data$dimension
-g3 <- delete_vertices(graph_individual, remove_snacks)
+V(g)$color <- value_lee_data$dimension
+g3 <- delete_vertices(g, remove_snacks)
 degree(g3)
+strength(g3)
+eigen_centrality(g3)
+E(g3)$weight
+edge_density(g3)
+modularity(g3, membership = V(g3)$snack_type)
+
 l4 <- layout_in_circle(g3)
 # l4 <- layout_nicely(g3)
+E(g3)$color[E(g3)$weight > 0] <- "forestgreen"
+E(g3)$color[E(g3)$weight < 0] <- "red2"
 
 plot(g3,
      layout = l4,
@@ -1476,14 +1523,17 @@ plot(g3,
      vertex.label.cex = 1.3,
      vertex.size = 10,
      vertex.label.family = "Times",
-     edge.width = abs(E(graph_individual)$weight) * .8
+     edge.width = abs(E(g)$weight) * 10
 )
 
 #example two 
 remove_snacks <- net_degree[!net_degree$Name %in% dput(res[,35]),]$Name
-V(graph_individual)$color <- value_lee_data$dimension
-g3 <- delete_vertices(graph_individual, remove_snacks)
+g3 <- delete_vertices(g, remove_snacks)
+degree(g3)
 l4 <- layout_in_circle(g3)
+# l4 <- layout_nicely(g3)
+E(g3)$color[E(g3)$weight > 0] <- "forestgreen"
+E(g3)$color[E(g3)$weight < 0] <- "red2"
 # l4 <- layout_nicely(g3)
 
 degree(g3)
@@ -1494,6 +1544,6 @@ plot(g3,
      vertex.label.cex = 1.3,
      vertex.size = 10,
      vertex.label.family = "Times",
-     edge.width = abs(E(graph_individual)$weight) * .8
+     edge.width = abs(E(g3)$weight) * 10
 )
 
