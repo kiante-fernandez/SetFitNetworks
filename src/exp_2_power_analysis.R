@@ -22,36 +22,37 @@
 # ====         ================                       ======================
 # 09/11/22      Kianté  Fernandez                       wrote code
 
-# NOTE YOU NEED TO RUN NETWORK_DIFFERENCES FIRST 
 library(simr)
 library(lme4)
 library(lmerTest)
+library(parallel)
+# Load the data (from other script)
+data <- model_dat
 
-#LOAD THE DATA FROM THE OTHER SCRIPT THEN:
-#RUN THE INTIAL MODEL
-gmlm<- glmer(choice ~ vd*nd + ov + on + (vd*nd + ov + on | subject_id), data = model_dat, 
-                family=binomial(link="logit"),
-                control=glmerControl(optimizer="bobyqa",
-                                     optCtrl=list(maxfun=2e5)))
-summary(gmlm)
-doTest(gmlm,test = fixed("vd:nd"))
+# Define the model
+model <- glmer(correct ~ vd*nd + ov*on + (vd*nd + ov*on | subject_id), 
+               data = data, 
+               family = binomial(link = "logit"),
+               control = glmerControl(optimizer = "bobyqa",
+                                      optCtrl = list(maxfun = 2e5)))
 
-res_p0 <- powerSim(gmlm,test = simr::fixed("vd:nd", "z"),nsim = 100,seed = 2022,alpha = 0.05)
-res_p
-#add 30 subjects?
-model1 <- extend(gmlm, along="subject_id", n=30)
-res_p1 <- powerSim(model1,test = simr::fixed("vd:nd", "z"),nsim = 100,seed = 2022,alpha = 0.05)
-res_p1
-#add 55 subjects?
-model2 <- extend(gmlm,along = "subject_id", n=55)
-res_p2 <- powerSim(model2,test = simr::fixed("vd:nd", "z"),nsim = 100,seed = 2022,alpha = 0.05)
-res_p2
-#add 70 subjects?
-model3 <- extend(gmlm,along = "subject_id", n=70)
-res_p3 <- powerSim(model3,test = simr::fixed("vd:nd", "z"),nsim = 100,seed = 2022,alpha = 0.05)
-res_p3
-#add 100 subjects?
-model4 <- extend(gmlm,along = "subject_id", n=100)
-res_p4 <- powerSim(model4,test = simr::fixed("vd:nd", "z"),nsim = 100,seed = 2022,alpha = 0.05)
-res_p4
+# Print a summary of the model
+summary(model)
+
+# Define a function for simulating power
+simulate_power <- function(model, n, test) {
+  model_n <- simr::extend(model, along = "subject_id", n = n)
+  powerSim(model_n, test = test,
+           nsim = 100, seed = 2022, alpha = 0.05)
+}
+
+n <- c(0, 30, 55, 70, 100)
+# Simulate power for main effect
+main_effect_res <- mclapply(n, simulate_power, model = model, test = simr::fixed("nd", "z"))
+
+# Simulate power for interaction effect
+interaction_effect_res <- mclapply(n, simulate_power, model = model, test = simr::fixed("vd:nd", "z"))
+
+# Stop the parallel cluster
+stopCluster(cluster)
 

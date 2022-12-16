@@ -15,8 +15,7 @@ lee_2021_rating1 <- read_csv(here("data", "lee_2021_rating1.csv"), col_names = F
 lee_2021_nutrition1 <- read_csv(here("data", "lee_2021_nutrition1.csv"), col_names = FALSE)
 lee_2021_pleasure1 <- read_csv(here("data", "lee_2021_pleasure1.csv"), col_names = FALSE)
 
-lee_2023_rating1 <- read_csv(here("data", "lee_2023_valuerating1.csv"), col_names = FALSE)
-
+lee_2023_rating2 <- read_csv(here("data", "lee_2021_rating2.csv"), col_names = FALSE)
 
 #reponse times network idea
 # lee_2021_rating1 <- readr::read_csv(here("data", "lee_2021_rating1_RT.csv"), col_names = FALSE, show_col_types = F)
@@ -353,6 +352,7 @@ plot(graph_pleasure,
 
 # testing differences between networks
 library(NetworkComparisonTest)
+
 netvalue <- estimateNetwork(lee_2021_rating1,
   default = "EBICglasso",
   tuning = 0.5,
