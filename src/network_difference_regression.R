@@ -121,13 +121,10 @@ names(cor_snack_food) <- FoodNames$Name
 #calculate a bunch of network measures to look at relationship to stuff
 
 source("exploratory_graph_analysis.R")
-<<<<<<< HEAD
 load(here::here("data", "pilot30_network_graph.RData"))
 # g <- g_2
-=======
 # load(here::here("data", "pilot30_network_graph.RData"))
 # g <- g2
->>>>>>> 24e630413649d26c133a326d3586a10379d1ec2c
 #get non-negative weights for certain measures
 G <- g
 E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
@@ -158,7 +155,6 @@ net_degree %>%
   correlation::correlation()
 
 # correlogram
-<<<<<<< HEAD
 net_degree %>%
   select("degree", "strength", "eigen", "weighted_transitivity", "closeness2", "betweenness","page_rank","participation") %>%
   ggstatsplot::ggcorrmat(
@@ -168,7 +164,6 @@ net_degree %>%
 
 # file_idx <- 1
 # net_stat = "degree"
-=======
 # net_degree %>% 
 #   select("degree", "strength", "eigen", "weighted_transitivity", 
 #          "closeness", "closeness2", "betweenness","page_rank","participation","sds") %>% 
@@ -179,7 +174,6 @@ net_degree %>%
 
 file_idx <- 30
 # net_stat <- "strength"
->>>>>>> 24e630413649d26c133a326d3586a10379d1ec2c
 organize_group_data <- function(file_idx = 30, net_stat){
   ############################
   ##organize the data and calculate value of group of items and net stats for each subject
@@ -215,17 +209,14 @@ organize_group_data <- function(file_idx = 30, net_stat){
     load(file = here::here("data", paste0(network_stats[[1]], ".RData")))
     
     for (foo in 1:100) {
-<<<<<<< HEAD
       # foo = 35
       #select which stat to calculate
-=======
       # foo <- 12
       # pull out a candidate sub graph
       size <- net_degree[net_degree$Name %in% res[[foo]], ]$Item
       subgraph <- igraph::induced_subgraph(g, size)
       graph_stats <- NetworkStat(subgraph)
       
->>>>>>> 24e630413649d26c133a326d3586a10379d1ec2c
       if(net_stat == "degree"){
         set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$degree)
         
@@ -410,13 +401,10 @@ exlusions <- function (df){
     mutate(Q1 = quantile(rt, .25),
            Q3 = quantile(rt, .75),
            IQR = IQR(rt)) %>% 
-<<<<<<< HEAD
     filter(rt > (Q1 - 1.5*IQR) & rt < (Q3 + 1.5*IQR)) %>% 
     filter(subject_id != 1) %>%
-=======
     filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
     filter(subject_id != 1) %>% #people with no vd effect
->>>>>>> 24e630413649d26c133a326d3586a10379d1ec2c
     filter(subject_id != 4) %>%
     filter(subject_id != 8) %>%
     filter(subject_id != 24) %>%
@@ -441,17 +429,14 @@ net_stats <- c("strength","eigen","edge_density","modularity")
 
 
 plts <- vector("list", length = length(net_stats))
-<<<<<<< HEAD
 net_idx = 1
 # df <- organize_group_data(net_stat = net_stats[[9]])
 net_idx = 2
-=======
 # net_idx = 2
 # df <- organize_group_data(net_stat = net_stats[[net_idx]])
 # net_idx = 9
 # df <- organize_group_data(net_stat ="efficiency")
 # unique(df$left_net)
->>>>>>> 24e630413649d26c133a326d3586a10379d1ec2c
 
 # df <- df[is.nan(df$left_net) == F & is.nan(df$right_net) == F,]
 
@@ -489,7 +474,6 @@ df$correct <- as.numeric((df$left_rating > df$right_rating & df$choice == 1) | (
 #robustness check for correlation between net stat and value
 # df <- df %>% filter(value_network_corr_p > .05)
 
-<<<<<<< HEAD
 ##make a plot of the vd:nd interaction
 plt <- df %>%   exlusions() %>% 
   group_by(subject_id) %>% 
@@ -644,7 +628,7 @@ print(df %>%
        y = "Accuracy",
        x = "Absolute Network Difference (L-R)"
   ) +  theme(legend.position="top"))
-=======
+
 # ##make a plot of the vd:nd interaction
 # plt <- df %>% 
 #   exlusions() %>%
@@ -826,7 +810,6 @@ print(df %>%
 #        y = "Accuracy",
 #        x = "Absolute Network Difference (L-R)"
 #   ) +  theme(legend.position="top"))
->>>>>>> 24e630413649d26c133a326d3586a10379d1ec2c
 
 ####data analysis
 
@@ -917,7 +900,7 @@ mlm2_3 <- glmer(choice ~ vd*nd + ov*on + (vd*nd + ov*on | subject_id), data = mo
 #                                      optCtrl=list(maxfun=2e5)))
 
 file_name <- here::here("tables", paste0("choice_",net_stats[[net_idx]], ".html"))
-<<<<<<< HEAD
+
 print(tab_model(mlm2_0,mlm2_1,mlm2_2,mlm2_3,mlm2_4,mlm2_5,mlm2_6,mlm2_7,
           show.intercept = F,
           show.aic = T,
@@ -930,7 +913,7 @@ print(tab_model(mlm2_0,mlm2_1,mlm2_2,mlm2_3,mlm2_4,mlm2_5,mlm2_6,mlm2_7,
                           "Standard-Deviation Difference"
                           ),
           file = file_name))
-=======
+
 print(tab_model(mlm2_3,
                 show.intercept = T,
                 show.aic = T,
@@ -963,7 +946,6 @@ equatiomatic::eqOutput(fit1)
 #                           "vd:nd","ov:on"
 #                           ),
 #           file = file_name))
->>>>>>> 24e630413649d26c133a326d3586a10379d1ec2c
 
 # summary(mlm2_3)
 # temp_res <- broom.mixed::tidy(mlm2_4)
@@ -1214,12 +1196,9 @@ tab_model(fit1,fit3,fit2,dv.labels = c("choice", "correct","RT"), show.re.var = 
 #                                  optCtrl=list(maxfun=2e5)))
 # # mlm1 <- lmer(log(rt) ~ vd*nd*cd + (vd*nd*cd| subject_id), data = model_dat)
 # summary(mlm1)
-<<<<<<< HEAD
 (plts[[1]] | plts[[2]] |  plts[[3]] |  plts[[4]])/(plts[[5]] | plts[[6]] |  plts[[7]] |  plts[[8]])
-=======
 # (plts[[1]] | plts[[2]] |  plts[[3]] |  plts[[4]])/(plts[[5]] | plts[[6]] |  plts[[7]] |plts[[8]])
 # (plts[[1]] | plts[[2]] |  plts[[3]] |  plts[[4]] | plts[[5]])
->>>>>>> 24e630413649d26c133a326d3586a10379d1ec2c
 
 # 
 # library(brms)
