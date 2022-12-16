@@ -31,7 +31,7 @@ library(here) # A Simpler Way to Find Your Files
 source("exploratory_graph_analysis.R")
 
 #### subgraph algorithm
-make_subgraphs <- function(g, C = 6, stat_range, nsubgraphs = 25, n_statistic = "assortment", epsilon = 0.05) {
+make_subgraphs <- function(g, C = 6, stat_range, nsubgraphs = 25, n_statistic = "assortment", epsilon = 0.05, interations = 250) {
   #list of network statistics build into function or to be built 
   
   #assortment.discrete:Assortment on discrete vertex values
@@ -83,9 +83,13 @@ make_subgraphs <- function(g, C = 6, stat_range, nsubgraphs = 25, n_statistic = 
   subgraphs <- vector(mode = "list", length = nsubgraphs)
   # difference between the target value and calculated r
   r_diff <- NULL
+
   for (graph_idk in seq_len(nsubgraphs)) {
     # Updates the current state
     pb$tick()
+    dign_tic <- 1
+    diganostic_rS <- vector(mode = "numeric", length = interations)
+    
     repeat {
       # get starting subgraph
       size <- sample(seq_len(nnodes), C, replace = F)
@@ -114,7 +118,30 @@ make_subgraphs <- function(g, C = 6, stat_range, nsubgraphs = 25, n_statistic = 
       } else if (n_statistic == "smallworldness") {
         rS[[graph_idk]] <- NetworkToolbox::smallworldness(adj_temp,iter = 100, method = "TJHBL")$swm
       }
-      #print(rS[[graph_idk]])
+      else if (n_statistic == "modularity") {
+        rS[[graph_idk]] <- igraph::modularity(gt, V(gt)$snack_type)
+      }
+      
+      
+      print(rS[[graph_idk]])
+      diganostic_rS[[dign_tic]] <- rS[[graph_idk]]
+      dign_tic <- dign_tic + 1
+      
+      if (dign_tic == interations){
+        temp <- diganostic_rS
+        # temp <- rnorm(200)
+        plt <- ggplot2::qplot(temp) + ggplot2::theme_classic()
+        print("ERROR: could not find a graph within range, check graph")
+        # tryCatch(stop(e), error = function(e) e, finally = print("Hello"))
+        
+        return(list(temp,plt))
+      }
+      #store a set of them to examine a range visually:
+      #use a tick system and have it break and give a graph if the solution
+      #does not give an answer
+      #throw an error message:"could not find a graph within range, 
+      #please select a new epsilon of range of values
+      
       if (is.na(rS[[graph_idk]])) {
         next
       }
@@ -135,6 +162,7 @@ nsubgraphs <- 30
 #list of names of each network statistic to calculate
 network_stats <- c("assortment","edge_density","weighted_clustering_coefficient","average_degree","internal_density","diversity")
 network_stats <- c("assortment","edge_density","weighted_clustering_coefficient")
+network_stats <- c("modularity")
 
 
 # range of target value for each statistic
@@ -147,14 +175,17 @@ stat_ranges <- list(c(-.95, .95),
 
 epsilons <- list( 0.05, 0.05, 0.06, 0.005, 0.005,.15)
 
+stat_ranges <- list(c(-.5,0.70))
+subgraphs <- make_subgraphs(g,C,stat_range = stat_ranges[[1]], nsubgraphs = 200, n_statistic = "modularity", epsilon = .09,
+                            interations = 3000)
 
-# subgraphs <- make_subgraphs(g,C, stat_range = , nsubgraphs = 101, n_statistic = "average_degree")
-
-
+# ?make_subgraphs
 # get image of all the sim subgraphs together
 #needs to be adjusted for changes in nsubgraphs
 par(mfrow = c(3, 10)) # set the plotting area into a 1*2 array
 
+network_stat_idx = 1
+nsubgraphs = 200
 for (network_stat_idx in seq_len(length(network_stats))){
   print(paste0("GENERATING SUBGRAPHS FOR: ", network_stats[[network_stat_idx]]))
   
@@ -171,12 +202,12 @@ for (network_stat_idx in seq_len(length(network_stats))){
          layout = l,
          margin = .0,
          vertex.label.color = "black",
-         vertex.label.cex = 1,
-         vertex.label.dist = .7,
-         vertex.size = 21,
+         vertex.label.cex = 1.2,
+         vertex.label.dist = .9,
+         vertex.size = 20,
          vertex.label.family = "Times",
-         edge.curved = .05,
-         edge.width = abs(E(subgraphs[[graph_idk]])$weight) * 7,
+         edge.curved = .01,
+         edge.width = abs(E(subgraphs[[graph_idk]])$weight) * 8,
          main = paste0(network_stats[[network_stat_idx]]," = ", round(rT[[graph_idk]], 3))
     )
   }
@@ -191,7 +222,7 @@ for (network_stat_idx in seq_len(length(network_stats))){
   }
   # remove the temp
   res <- res[, -1]
-  save(subgraphs,res, file = here("data",   paste0(network_stats[[network_stat_idx]],"_",nsubgraphs,"_", C, ".RData")))
+  # save(subgraphs,res, file = here("data",   paste0(network_stats[[network_stat_idx]],"_",nsubgraphs,"_", C, ".RData")))
 }
 # now you can take the res results over to the generate_image_group.R
 
