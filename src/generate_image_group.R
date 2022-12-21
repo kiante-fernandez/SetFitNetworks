@@ -73,7 +73,8 @@ for (idx in 1:length(temp)) {
 }
 ############## subgraph approach
 network_stats <- c("assortment", "edge_density", "weighted_clustering_coefficient")
-
+network_stats <- c("modularity")
+network_stat_idx <- 1
 for (network_stat_idx in 1:3) {
   print(paste0("GENERATING STIMULI FOR: ", network_stats[[network_stat_idx]]))
   # get the information for each trial from the sub graph selection output trial generator (here titled `res`)
@@ -103,14 +104,19 @@ for (network_stat_idx in 1:3) {
 }
 
 ####### get the information for each trial from the sub graph selection output trial generator (here titled `res`)
+#study one
 load(file = here::here("data", "LowHighWithinBetween.RData"))
-  
+#for study two
+load(file = here::here("data", "modularity_100_6.RData"))
+
 trial_set <- vector(mode = "list", length = ncol(res))
 for (graph_idk in seq_len(ncol(res))) {
     trial_set[[graph_idk]] <- dplyr::filter(foods_in_image, foods_in_image$Name %in% res[, graph_idk])$rowid
 }
   
-file_name <- paste0("LowHighWithinBetween","_")
+# file_name <- paste0("LowHighWithinBetween","_") #study one
+file_name <- paste0("modularity","_") #study two
+
 ncol <- 3
   
 for (grid_idx in seq_len(ncol(res))) {

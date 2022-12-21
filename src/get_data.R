@@ -93,7 +93,7 @@ FoodNames <- readxl::read_excel(here::here("data", "snackitemnames_nicholas", "i
 
 # NOTE NEXT TIME YOU WILL USE THIS FILE INSTEAD. THE 'RES' FILE (BC YOU DID THE NAMES RIGHT)
 network_stats <- c("assortment", "edge_density", "weighted_clustering_coefficient", 
-                   "LowHighWithinBetween")
+                   "LowHighWithinBetween","modularity")
 
 # load(file = here::here("data", paste0(network_stats[[1]], "_", 30, "_", 6, ".RData")))
 # The 60 items we have in this data set.
@@ -184,6 +184,9 @@ for (pp in seq_len(file_idx)) {
    #load the  subjects data
   subject_temp <- parse_json(read_json(temp_files[[pp]]), simplifyVector = T)
   
+  # careless_check <- subject_temp %>% filter(screen_id == "ratings") %>% select(trial_index, response) %>% unnest() # check Intra-individual Response Variability
+  # careless_irv <- careless::irv(careless_check$response, split = FALSE)
+  
   # this gets the ratings in check
   subject_rating_temp <- subject_temp %>%
     filter(screen_id == "ratings") %>%
@@ -273,6 +276,8 @@ for (pp in seq_len(file_idx)) {
     #LOAD THE generated subgraphs
     load(file = here::here("data", paste0(network_stats[[4]], ".RData")))
     
+    # load(file = here::here("data", "modularity_100_6.RData"))
+    
     #get individual network (the differenceNet function)
     # foo = 1
     for (foo in 1:100) {
@@ -295,7 +300,10 @@ for (pp in seq_len(file_idx)) {
       
       set_values_temp[[foo]] <-  sum(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
       
+    
       set_correlations_temp[[foo]] <-        sum(apply(cor_snack_food[colnames(cor_snack_food) %in% res[[foo]],],2,mean, na.rm = T)[res[[foo]]])
+      # set_correlations_temp[[foo]] <-        mean(apply(cor_snack_food[colnames(cor_snack_food) %in% res[[foo]],],2,mean, na.rm = T)[res[[foo]]])
+      #dput(round(set_correlations_temp, 2) * 100) #how to get the rating for the bonus payment
       # print(set_correlations_temp)
 
       if (foo %in% 1:25){
@@ -1283,6 +1291,7 @@ cor_x1 <- (cor_x1 + t(cor_x1)) / 2 # make symmetric
 
 
 test_net <-EGAnet::EGA(cor_x1, n = 30, model = "glasso", algorithm = "walktrap",corr = "pearson")
+test_net <-EGAnet::EGA(TEST, n = 30, model = "glasso", algorithm = "walktrap",corr = "pearson")
 
 
 cor(new_TEST)
@@ -1300,16 +1309,16 @@ any(eigen(myCov)$values < 0)
 
 dput(which(eigen(myCov)$values < 0))
 #remove the items with the negative eigen values (the ones that contain redundancy)
-new_TEST <- TEST[, -c(45:60)]
+new_TEST <- TEST[, -c(38:60)]
 test_net$Methods
-test_net <-EGAnet::EGA(TEST, n = 30, model = "glasso", algorithm = "walktrap",
+test_net <-EGAnet::EGA(new_TEST, n = 30, model = "glasso", algorithm = "walktrap",
                        corr = "pearson", 
                        model.args = list(lambda.min.ratio = 0.1,
                                          nlambda = 300,
                                          gamma = 0.05))
 
 boot_test <- EGAnet::bootEGA(TEST,
-                             iter = 2500,
+                             iter = 100,
                              type = "resampling",
                              corr = "pearson",
                              n = 30,
