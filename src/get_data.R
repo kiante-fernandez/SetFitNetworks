@@ -83,7 +83,9 @@ differenceNet <- function(dat, subject = 1, cut.off = T){
 #   drive_download(temp, here::here("data", "pilot_5", temp), overwrite = TRUE)
 # }
 
-temp_files <- list.files(path = here::here("data", "pilot_30"), pattern = ".json", full.names = T)
+# temp_files <- list.files(path = here::here("data", "pilot_30"), pattern = ".json", full.names = T)
+
+temp_files <- list.files(path = here::here("data", "exp_2"), pattern = ".json", full.names = T)
 
 # load all the images to calculate the value for a group of foods
 food_folder <- here::here("data", "snackitemnames_nicholas", "Lee_Holyoak_2021_images")
@@ -163,7 +165,7 @@ net_degree %>%
 #   colors = c("darkred", "white", "steelblue") # change default colors
 # )
 
-file_idx <- 30
+file_idx <- 75
 subject_df <- vector(mode = "list", length = file_idx)
 #we want the ratings with the condition indicator to test for rating bias
 # subject_ratings <- vector(mode = "list", length = file_idx)
@@ -274,9 +276,9 @@ for (pp in seq_len(file_idx)) {
   #   }
   # }
     #LOAD THE generated subgraphs
-    load(file = here::here("data", paste0(network_stats[[4]], ".RData")))
+    # load(file = here::here("data", paste0(network_stats[[4]], ".RData")))
     
-    # load(file = here::here("data", "modularity_100_6.RData"))
+    load(file = here::here("data", "modularity_100_6.RData"))
     
     #get individual network (the differenceNet function)
     # foo = 1
@@ -299,6 +301,7 @@ for (pp in seq_len(file_idx)) {
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$page_rank)
       
       set_values_temp[[foo]] <-  sum(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
+      # set_values_temp[[foo]] <-  mean(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
       
     
       set_correlations_temp[[foo]] <-        sum(apply(cor_snack_food[colnames(cor_snack_food) %in% res[[foo]],],2,mean, na.rm = T)[res[[foo]]])
@@ -438,12 +441,12 @@ df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 1) %>%
-  filter(subject_id != 4) %>%
-  filter(subject_id != 8) %>%
-  filter(subject_id != 24) %>%
-  filter(subject_id != 25) %>%
-  filter(subject_id != 27) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
   mutate(vd = left_rating - right_rating,
          nd = left_net - right_net) %>% 
   mutate(
@@ -478,12 +481,12 @@ df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 1) %>%
-  filter(subject_id != 4) %>%
-  filter(subject_id != 8) %>%
-  filter(subject_id != 24) %>%
-  filter(subject_id != 25) %>%
-  filter(subject_id != 27) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
   mutate(vd = left_rating - right_rating,
          nd = left_net - right_net) %>% 
   mutate(
@@ -517,15 +520,15 @@ df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 1) %>%
-  filter(subject_id != 4) %>%
-  filter(subject_id != 8) %>%
-  filter(subject_id != 24) %>%
-  filter(subject_id != 25) %>%
-  filter(subject_id != 27) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
   ungroup() %>%
-  filter(!rt <= 250) %>% 
-  filter(!rt >= 10000) %>% 
+  # filter(!rt <= 250) %>% 
+  # filter(!rt >= 10000) %>% 
   mutate(vd = left_rating - right_rating,
          nd = left_net - right_net) %>% 
   mutate(
@@ -569,15 +572,15 @@ df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 1) %>%
-  filter(subject_id != 4) %>%
-  filter(subject_id != 8) %>%
-  filter(subject_id != 24) %>%
-  filter(subject_id != 25) %>%
-  filter(subject_id != 27) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
   ungroup() %>%
-  filter(!rt <= 250) %>% 
-  filter(!rt >= 10000) %>% 
+  # filter(!rt <= 250) %>% 
+  # filter(!rt >= 10000) %>% 
   mutate(vd = left_rating + right_rating,
          nd = left_net - right_net) %>% 
   mutate(
@@ -619,12 +622,12 @@ df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 1) %>%
-  filter(subject_id != 4) %>%
-  filter(subject_id != 8) %>%
-  filter(subject_id != 24) %>%
-  filter(subject_id != 25) %>%
-  filter(subject_id != 27) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
   mutate(vd = left_rating - right_rating,
          nd = left_net - right_net) %>%
   mutate(
@@ -709,15 +712,15 @@ df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 1) %>%
-  filter(subject_id != 4) %>%
-  filter(subject_id != 8) %>%
-  filter(subject_id != 24) %>%
-  filter(subject_id != 25) %>%
-  filter(subject_id != 27) %>%
-  filter(!rt <= 250) %>% 
-  filter(!rt >= 10000) %>% 
-  mutate(rt = rt/1000) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
+  filter(!rt <= 300) %>%
+  filter(!rt >= 9000) %>%
+  # mutate(rt = rt/1000) %>%
   ggplot(aes(subject_id, rt, fill = factor(subject_id), group = factor(subject_id))) +
   ggdist::stat_halfeye(justification = -.3, point_colour = NA) +
   geom_boxplot(width = .1, outlier.shape = NA) +
@@ -737,12 +740,12 @@ p3 <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 1) %>%
-  filter(subject_id != 4) %>%
-  filter(subject_id != 8) %>%
-  filter(subject_id != 24) %>%
-  filter(subject_id != 25) %>%
-  filter(subject_id != 27) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
 # filter(subject_id != 1) %>%
 # filter(subject_id != 4) %>%
 # filter(subject_id != 8) %>%
@@ -754,8 +757,8 @@ p3 <- df %>%
 # filter(subject_id != 29) %>%
 # filter(subject_id != 30) %>%
   ungroup() %>%
-  filter(!rt <= 250) %>% 
-  filter(!rt >= 10000) %>% 
+  # filter(!rt <= 300) %>% 
+  # filter(!rt >= 9000) %>% 
   mutate(vd = abs(left_rating - right_rating),
          nd = abs(left_net - right_net)) %>%
   group_by(subject_id) %>%
@@ -796,12 +799,12 @@ p4 <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 1) %>%
-  filter(subject_id != 4) %>%
-  filter(subject_id != 8) %>%
-  filter(subject_id != 24) %>%
-  filter(subject_id != 25) %>%
-  filter(subject_id != 27) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
 # filter(subject_id != 1) %>%
 # filter(subject_id != 4) %>%
 # filter(subject_id != 8) %>%
@@ -813,8 +816,8 @@ p4 <- df %>%
 # filter(subject_id != 29) %>%
 # filter(subject_id != 30) %>%
   ungroup() %>%
-  filter(!rt <= 250) %>% 
-  filter(!rt >= 10000) %>% 
+  # filter(!rt <= 300) %>% 
+  # filter(!rt >= 9000) %>% 
   mutate(nd = abs(left_net - right_net)) %>%
   group_by(subject_id) %>%
   mutate(
@@ -855,12 +858,12 @@ p1 <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 1) %>%
-  filter(subject_id != 4) %>%
-  filter(subject_id != 8) %>%
-  filter(subject_id != 24) %>%
-  filter(subject_id != 25) %>%
-  filter(subject_id != 27) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
   # filter(subject_id != 1) %>%
   # filter(subject_id != 4) %>%
   # filter(subject_id != 8) %>%
@@ -872,8 +875,8 @@ p1 <- df %>%
   # filter(subject_id != 29) %>%
   # filter(subject_id != 30) %>%
   ungroup() %>%
-  filter(!rt <= 250) %>% 
-  filter(!rt >= 10000) %>% 
+  # filter(!rt <= 300) %>% 
+  # filter(!rt >= 9000) %>% 
   mutate(vd = left_rating - right_rating) %>%
   group_by(subject_id) %>%
   mutate(
@@ -904,12 +907,12 @@ p2 <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 1) %>%
-  filter(subject_id != 4) %>%
-  filter(subject_id != 8) %>%
-  filter(subject_id != 24) %>%
-  filter(subject_id != 25) %>%
-  filter(subject_id != 27) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
   # filter(subject_id != 1) %>%
   # filter(subject_id != 4) %>%
   # filter(subject_id != 8) %>%
@@ -921,8 +924,8 @@ p2 <- df %>%
   # filter(subject_id != 29) %>%
   # filter(subject_id != 30) %>%
   ungroup() %>%
-  filter(!rt <= 250) %>% 
-  filter(!rt >= 10000) %>% 
+  # filter(!rt <= 300) %>% 
+  # filter(!rt >= 9000) %>% 
   mutate(nd = left_net - right_net) %>%
   group_by(subject_id) %>%
   mutate(
@@ -960,19 +963,19 @@ model_dat <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 1) %>%
-  filter(subject_id != 4) %>%
-  filter(subject_id != 8) %>%
-  filter(subject_id != 24) %>%
-  filter(subject_id != 25) %>%
-  filter(subject_id != 27) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
+  # filter(subject_id != 27) %>%
   # filter(subject_id != 16) %>%
   # filter(subject_id != 26) %>%
   # filter(subject_id != 29) %>%
   # filter(subject_id != 30) %>%
   ungroup() %>%
-  filter(!rt <= 250) %>% 
-  filter(!rt >= 10000) %>% 
+  filter(!rt <= 300) %>% 
+  filter(!rt >= 9000) %>% 
   group_by(subject_id) %>%
   mutate(
     nd = scale(left_net - right_net),
@@ -997,7 +1000,7 @@ mlm2 <- glmer(choice ~ vd*nd +  (vd*nd | subject_id), data = model_dat,
               family=binomial(link="logit"),
               control=glmerControl(optimizer="bobyqa",
                                    optCtrl=list(maxfun=2e5)))
-report::report(mlm2)
+# report::report(mlm2)
 summary(mlm2)
 mlm2_1 <- glmer(choice ~ vd*cd +  (vd*cd | subject_id), data = model_dat, 
               family=binomial(link="logit"),
@@ -1025,19 +1028,19 @@ model_dat <- df %>%
          Q3 = quantile(rt, .75),
          IQR = IQR(rt)) %>% 
   filter(rt > (Q1 - 2*IQR) & rt < (Q3 + 2*IQR)) %>% 
-  filter(subject_id != 1) %>%
-  filter(subject_id != 4) %>%
-  filter(subject_id != 8) %>%
-  filter(subject_id != 24) %>%
-  filter(subject_id != 25) %>%
+  # filter(subject_id != 1) %>%
+  # filter(subject_id != 4) %>%
+  # filter(subject_id != 8) %>%
+  # filter(subject_id != 24) %>%
+  # filter(subject_id != 25) %>%
   # filter(subject_id != 27) %>%
   # filter(subject_id != 16) %>%
   # filter(subject_id != 26) %>%
   # filter(subject_id != 29) %>%
   # filter(subject_id != 30) %>%
   ungroup() %>%
-  filter(!rt <= 250) %>% 
-  filter(!rt >= 10000) %>% 
+  filter(!rt <= 300) %>% 
+  filter(!rt >= 9000) %>% 
   # group_by(subject_id) %>%
   mutate(
     nd = scale(abs(left_net - right_net)),
@@ -1153,12 +1156,12 @@ df %>%
 #####rating distributions
 
 subject_ratings %>% as.data.frame() %>% 
-  filter(subject_idx != 1) %>%
-  filter(subject_idx != 4) %>%
-  filter(subject_idx != 8) %>%
-  filter(subject_idx != 24) %>%
-  filter(subject_idx != 25) %>%
-  filter(subject_idx != 27) %>%
+  # filter(subject_idx != 1) %>%
+  # filter(subject_idx != 4) %>%
+  # filter(subject_idx != 8) %>%
+  # filter(subject_idx != 24) %>%
+  # filter(subject_idx != 25) %>%
+  # filter(subject_idx != 27) %>%
   mutate(condition = factor(condition)) %>% 
   ggplot(aes(sum_rating, fill = condition)) + 
   geom_histogram(aes(y = ..density..),
@@ -1169,12 +1172,12 @@ subject_ratings %>% as.data.frame() %>%
   theme_classic()
 
 subject_ratings %>% as.data.frame() %>% 
-  filter(subject_idx != 1) %>%
-  filter(subject_idx != 4) %>%
-  filter(subject_idx != 8) %>%
-  filter(subject_idx != 24) %>%
-  filter(subject_idx != 25) %>%
-  filter(subject_idx != 27) %>%
+  # filter(subject_idx != 1) %>%
+  # filter(subject_idx != 4) %>%
+  # filter(subject_idx != 8) %>%
+  # filter(subject_idx != 24) %>%
+  # filter(subject_idx != 25) %>%
+  # filter(subject_idx != 27) %>%
   mutate(condition = factor(condition)) %>% 
   ggplot(aes(net_stat, fill = condition)) + 
   geom_histogram(aes(y = ..density..),
@@ -1185,12 +1188,12 @@ subject_ratings %>% as.data.frame() %>%
 
 
 rp1 <- subject_ratings %>% as.data.frame() %>% 
-  filter(subject_idx != 1) %>%
-  filter(subject_idx != 4) %>%
-  filter(subject_idx != 8) %>%
-  filter(subject_idx != 24) %>%
-  filter(subject_idx != 25) %>%
-  filter(subject_idx != 27) %>%
+  # filter(subject_idx != 1) %>%
+  # filter(subject_idx != 4) %>%
+  # filter(subject_idx != 8) %>%
+  # filter(subject_idx != 24) %>%
+  # filter(subject_idx != 25) %>%
+  # filter(subject_idx != 27) %>%
   mutate(condition = factor(condition)) %>% 
   ggplot(aes(x = condition, y = sum_rating, fill = condition)) +
   geom_violin(trim = FALSE,
@@ -1210,12 +1213,12 @@ rp1 <- subject_ratings %>% as.data.frame() %>%
   theme(legend.position="none")
 
 rp2 <- subject_ratings %>% as.data.frame() %>% 
-  filter(subject_idx != 1) %>%
-  filter(subject_idx != 4) %>%
-  filter(subject_idx != 8) %>%
-  filter(subject_idx != 24) %>%
-  filter(subject_idx != 25) %>%
-  filter(subject_idx != 27) %>%
+  # filter(subject_idx != 1) %>%
+  # filter(subject_idx != 4) %>%
+  # filter(subject_idx != 8) %>%
+  # filter(subject_idx != 24) %>%
+  # filter(subject_idx != 25) %>%
+  # filter(subject_idx != 27) %>%
   mutate(condition = factor(condition)) %>% 
   ggplot(aes(x = condition, y = net_stat, fill = condition)) +
   geom_violin(trim = FALSE,
@@ -1238,12 +1241,12 @@ rp1/rp2
 
 mean(as.data.frame(subject_ratings)$sum_rating)
 subject_ratings %>% as.data.frame() %>% 
-  filter(subject_idx != 1) %>%
-  filter(subject_idx != 4) %>%
-  filter(subject_idx != 8) %>%
-  filter(subject_idx != 24) %>%
-  filter(subject_idx != 25) %>%
-  filter(subject_idx != 27) %>%
+  # filter(subject_idx != 1) %>%
+  # filter(subject_idx != 4) %>%
+  # filter(subject_idx != 8) %>%
+  # filter(subject_idx != 24) %>%
+  # filter(subject_idx != 25) %>%
+  # filter(subject_idx != 27) %>%
   mutate(stimuli = factor(stimuli)) %>% 
   ggplot(aes(x = stimuli, y = sum_rating)) +
   geom_boxplot()+
@@ -1254,12 +1257,12 @@ subject_ratings %>% as.data.frame() %>%
        y = "Rating")
 
 subject_ratings %>% as.data.frame() %>% 
-  filter(subject_idx != 1) %>%
-  filter(subject_idx != 4) %>%
-  filter(subject_idx != 8) %>%
-  filter(subject_idx != 24) %>%
-  filter(subject_idx != 25) %>%
-  filter(subject_idx != 27) %>%
+  # filter(subject_idx != 1) %>%
+  # filter(subject_idx != 4) %>%
+  # filter(subject_idx != 8) %>%
+  # filter(subject_idx != 24) %>%
+  # filter(subject_idx != 25) %>%
+  # filter(subject_idx != 27) %>%
   ggplot(aes(x = stimuli, y = net_stat, color = factor(condition))) +
   geom_point()+
   theme_classic()+
@@ -1268,12 +1271,35 @@ subject_ratings %>% as.data.frame() %>%
 
 
 ##looking at the rating data we have so far, how does the network compare?
+
 subject_individual_ratings <- as.data.frame(subject_individual_ratings)
+subject_individual_ratings <- subject_individual_ratings %>% group_by(subject_idx) %>% mutate(trial = 1:60) %>% ungroup()
 subject_individual_ratings$subject_idx <- as.numeric(subject_individual_ratings$subject_idx)
 subject_individual_ratings$response <- as.numeric(subject_individual_ratings$response)
 subject_individual_ratings$Image <- as.numeric(subject_individual_ratings$Image)
 subject_individual_ratings$Item <- as.numeric(subject_individual_ratings$Item)
 subject_individual_ratings$Name <- as.factor(subject_individual_ratings$Name)
+
+subject_individual_ratings <- subject_individual_ratings %>% group_by(subject_idx) %>% mutate(responsenormalized = (response - min(response))/range(response)) %>% ungroup()
+
+
+subject_individual_ratings %>%
+  ggplot(aes(trial, responsenormalized, group = subject_idx))+
+  geom_line()+
+  facet_wrap(~subject_idx)+
+  theme_classic()
+#check using careless package if something is up with the ratings
+careing <- subject_individual_ratings %>% 
+  select(response,trial) %>% 
+  pivot_wider(names_from = trial, values_from = response) %>% 
+  unnest(everything())
+
+which.min(careless::irv(careing)) 
+which.max(careless::irv(careing)) 
+order(careless::irv(careing))
+
+careless::longstring(careing)
+careless::mahad(careing)
 
 TEST <- subject_individual_ratings %>% 
   select(response,Name) %>% 
@@ -1291,7 +1317,7 @@ cor_x1 <- (cor_x1 + t(cor_x1)) / 2 # make symmetric
 
 
 test_net <-EGAnet::EGA(cor_x1, n = 30, model = "glasso", algorithm = "walktrap",corr = "pearson")
-test_net <-EGAnet::EGA(TEST, n = 30, model = "glasso", algorithm = "walktrap",corr = "pearson")
+test_net <-EGAnet::EGA(TEST, n = 75, model = "glasso", algorithm = "walktrap",corr = "pearson")
 
 
 cor(new_TEST)
@@ -1321,7 +1347,7 @@ boot_test <- EGAnet::bootEGA(TEST,
                              iter = 100,
                              type = "resampling",
                              corr = "pearson",
-                             n = 30,
+                             n = 75,
                              model = "glasso",
                              algorithm = "walktrap",
                              ncores = 10, typicalStructure = T,
