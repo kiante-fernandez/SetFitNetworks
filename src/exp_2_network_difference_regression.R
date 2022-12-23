@@ -36,64 +36,28 @@ library(patchwork) # The Composer of Plots
 library(sjPlot)
 library(sjmisc)
 library(sjlabelled)
-
 library(brms)
 
-# helper functions for working with lists
-list.do <- function(.data, fun, ...) {
-  do.call(what = fun, args = as.list(.data), ...)
-}
-list.cbind <- function(.data) {
-  list.do(.data, "cbind")
-}
-
-NetworkStat <- function(subgraph) {
-  G <- subgraph
-  E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
-  # path_lengths <- distances(G)
-  diag(path_lengths) <- NA # path length to oneself is zero
-  adj_temp <- igraph::as_adjacency_matrix(subgraph, sparse = F, attr = "weight")
-  
-  net_stat_temp <- data.frame(
-    degree = degree(subgraph),
-    strength = strength(subgraph),
-    eigen = igraph::eigen_centrality(G)$vector,
-    page_rank = page_rank(subgraph)$vector, # weighted
-    weighted_transitivity = transitivity(subgraph, type = "weighted"),
-    closeness = NetworkToolbox::closeness(adj_temp, weighted = TRUE),
-    closeness2 = closeness(G), # weighted
-    betweenness = betweenness(G),
-    participation = NetworkToolbox::participation(adj_temp, comm = V(subgraph)$snack_type)$overall
-  ) %>%
-    tibble::rownames_to_column("Name")
-  
-  return(net_stat_temp)
-}
+source(here::here("src", "utils.R"))
 
 ##### loading the data#####
 temp_files <- list.files(path = here::here("data", "exp_2"), pattern = ".json", full.names = T)
+#load subgraphs
+load(file = here::here("data", "modularity_100_6.RData"))
 
-# load all the images to calculate the value for a group of foods
-food_folder <- here::here("data", "snackitemnames_nicholas", "Lee_Holyoak_2021_images")
-FoodNames <- readxl::read_excel(here::here("data", "snackitemnames_nicholas", "item_image_numbers_exp2_5_nicholas.xlsx"))
+load_food_names()
 
-network_stats <- "modularity"
-
-temp <- list.files(path = food_folder, pattern = "*.jpg", full.names = T)
-foods_in_image <- stringr::str_extract(temp, "item\\d+")
-foods_in_image <- stringr::str_extract(foods_in_image, "\\d+")
-# get row idx for each of the image numbers
-foods_in_image <- tibble::rowid_to_column(data.frame(Image = as.numeric(foods_in_image)))
-foods_in_image <- dplyr::left_join(FoodNames, foods_in_image, "Image")
 # get correlations between items
 lee_2021_rating1 <- read_csv(here::here("data", "lee_2021_rating1.csv"), col_names = FALSE)
 cor.snack_food <- SemNeT::similarity(lee_2021_rating1, method = "cor")
 cor_snack_food <- data.frame(matrix(cor.snack_food[cor.snack_food != 1], 59, 60))
-names(cor_snack_food) <- FoodNames$Name
+names(cor_snack_food) <- load_food_names()$FoodNames$Name
+
 
 ######
 # calculate a bunch of network measures to look at relationship to stuff
 source("exploratory_graph_analysis.R")
+
 G <- g
 E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
 path_lengths <- distances(G)
@@ -115,7 +79,7 @@ net_degree <- data.frame(
   sds = apply(cor_snack_food, 2, sd)
 ) %>%
   tibble::rownames_to_column("Name") %>%
-  left_join(foods_in_image, "Name")
+  dplyr::left_join(load_food_names()$foods_in_image, "Name")
 
 net_degree$snack_type <- V(g)$snack_type
 
@@ -155,9 +119,7 @@ organize_group_data <- function(file_idx = 75, net_stat) {
     
     # TODO try also the sum SD of the ratings
     
-    # LOAD THE generated subgraphs
-    load(file = here::here("data", "modularity_100_6.RData"))
-    
+
     # foo = 1
     for (foo in 1:100) {
       # select which stat to calculate
@@ -250,6 +212,7 @@ organize_group_data <- function(file_idx = 75, net_stat) {
         
         # print(impact_temp)
       }
+      #for modularity you want to subtract a constant so the scale is all positive
       set_network_temp <- set_network_temp - min(set_network_temp)
       
       set_values_temp[[foo]] <- sum(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
