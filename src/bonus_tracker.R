@@ -26,8 +26,8 @@ library(jsonlite) # A Simple and Robust JSON Parser and Generator for R
 library(purrr) # Functional Programming Tools
 library(tidyverse) # Easily Install and Load the 'Tidyverse'
 
-drive_auth_configure(api_key = "AIzaSyBO6kKhgHGvepPphJw4Y6XtGBG98hcwaNs")
-drive_api_key()
+# drive_auth_configure(api_key = "AIzaSyBO6kKhgHGvepPphJw4Y6XtGBG98hcwaNs")
+# drive_api_key()
 #
 
 # # apply to a browser URL for, e.g., a Google Sheet
@@ -43,18 +43,36 @@ drive_api_key()
 
 temp_files <- list.files(path = here::here("data", "exp_2"), pattern = ".json", full.names = T)
 temp_files
+tracker_dat <- readr::read_csv(here::here("data", "prolific_bonus_tracker.csv"))
+
+tracker_dat$bonus <- NA
 #load the  subjects data
 subject_temp <- parse_json(read_json(temp_files[[14]]), simplifyVector = T)
 
 bonus_tracker <- function(x){
   subject_temp <- parse_json(read_json(x), simplifyVector = T)
+  
   ans <- ifelse(stringr::str_detect(subject_temp$stimulus[subject_temp$screen_id == "bonus"][[6]],"Bonus two dollars"), 1,0)
+
   return(ans)
 }
-# for (foo in 1:77){
-#   print(foo)
-#   print(bonus_tracker(temp_files[[foo]]))
-# }
+
+for (foo in 1:75){
+  subject_temp <- parse_json(read_json(temp_files[[foo]]), simplifyVector = T)
+  
+  ans <- ifelse(stringr::str_detect(subject_temp$stimulus[subject_temp$screen_id == "bonus"][[6]],"Bonus two dollars"), 1,0)
+  if (ans == 1){
+    tracker_dat$bonus[which(unique(subject_temp$subject_id) == tracker_dat$`Participant id`)] = ",2"
+  }else {
+    tracker_dat$bonus[which(unique(subject_temp$subject_id) == tracker_dat$`Participant id`)] = 0
+  }
+}
+
+to_pay <- tracker_dat %>% select(`Participant id`, bonus) %>% 
+  filter(bonus == ",2")
+
+write.csv(to_pay,here::here("data", "bonus_payment.csv"))
+
 #map through and get each subjects bonus
 sum(unlist(purrr::map(temp_files, bonus_tracker))) #we had 40 subjects get the bonus payment
 
