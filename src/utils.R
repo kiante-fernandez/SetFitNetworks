@@ -198,6 +198,8 @@ organize_group_data <- function(file_idx = 75, net_stat = "modularity") {
         # print(impact_temp)
       }
       #for modularity you want to add a constant so the scale is all positive
+      set_network_temp <- abs(min(set_network_temp)) + set_network_temp
+      
       # set_network_temp <- set_network_temp + min(set_network_temp)
       # set_network_temp <- set_network_temp + 1
       
