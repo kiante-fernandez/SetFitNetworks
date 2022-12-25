@@ -178,13 +178,13 @@ net_degree %>%
 #   )
 
 file_idx <- 30
-# net_stat <- "strength"
+net_stat <- "modularity"
 organize_group_data <- function(file_idx = 30, net_stat) {
   ############################
   ## organize the data and calculate value of group of items and net stats for each subject
   ##
   subject_df <- vector(mode = "list", length = file_idx)
-  # pp <- 1
+  pp <- 1
   for (pp in seq_len(file_idx)) {
     # load the  subjects data
     subject_temp <- parse_json(read_json(temp_files[[pp]]), simplifyVector = T)
@@ -309,6 +309,8 @@ organize_group_data <- function(file_idx = 30, net_stat) {
         # print(impact_temp)
       }
 
+      #for modularity you want to add a constant so the scale is all positive?
+      set_network_temp <- set_network_temp + min(set_network_temp)
 
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$degree)
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$strength)
@@ -442,7 +444,7 @@ net_idx <- 2
 
 # df <- df[is.nan(df$left_net) == F & is.nan(df$right_net) == F,]
 
-# net_idx <- 2
+net_idx <- 4
 for (net_idx in 1:length(net_stats)) {
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
   df <- organize_group_data(net_stat = net_stats[[net_idx]])

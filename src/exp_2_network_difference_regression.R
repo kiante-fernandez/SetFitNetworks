@@ -123,7 +123,7 @@ for (subject_idx in 1:75){
   # temp_res <- broom::tidy(glm(correct ~ vd, family = binomial, data = temp_df))
   # temp_res <- broom::tidy(lm(rt ~ eq, data = temp_df))
   temp_res$p.value <-  round(temp_res$p.value, 7)
-  if (temp_res[2,5][[1]] > 0.10){ #check p-value
+  if (temp_res[2,5][[1]] > 0.05){ #check p-value (prereg -- 0.05. check robustness across values)
     # print(paste0("######## subject: ", unique(temp_df$subject_id), " #######"))
     # print(unique(temp_df$subject_id))
     # print(paste0("######## percent trials excluded: ", temp_df$pct_excluded, " #######"))
@@ -263,9 +263,9 @@ for (net_idx in 1:length(net_stats)) {
   #                 file = file_name
   # ))
   # get_prior(choice ~ vd * nd + ov * on + (vd * nd + ov * on | subject_id), data = model_dat, family = "bernoulli", cores = 10, iter = 10000)
-  fit1 <- brm(choice ~ vd * nd + ov * on + (vd * nd + ov * on | subject_id), data = model_dat, family = "bernoulli", cores = 10, iter = 10000)
+  # fit1 <- brm(choice ~ vd * nd + ov * on + (vd * nd + ov * on | subject_id), data = model_dat, family = "bernoulli", cores = 10, iter = 10000)
   # summary(fit1)
-  print(bayestestR::sexit(fit1, significant = "default", large = "default", ci = 0.95))
+  # print(bayestestR::sexit(fit1, significant = "default", large = "default", ci = 0.95))
   
   
   # report::report(mlm2_3)
@@ -298,31 +298,17 @@ for (net_idx in 1:length(net_stats)) {
       sds = scale(abs(left_sd - right_sd)),
       ov = scale(left_rating + right_rating),
       on = scale(left_net + right_net)
-    )
+    ) %>%
+    select(correct, vd, nd, cd, sds, ov, on, subject_id, rt)
   
   rt_res <- estimate_rt_mlms(model_dat)
   map(rt_res, summary)
 
   # file_name <- here::here("tables", paste0("rt_", net_stats[[net_idx]], ".html"))
   # 
-  # print(tab_model(mlm1_2,
-  #                 show.intercept = T,
-  #                 show.aic = T,
-  #                 show.re.var = F,
-  #                 show.ci = FALSE,
-  #                 show.icc = FALSE,
-  #                 digits = 4,
-  #                 dv.labels = paste0(net_stats[[net_idx]]),
-  #                 pred.labels = c(
-  #                   "Intercept", "Value Difference (vd)", "Overall Value (ov)",
-  #                   "Nework Difference (nd)", "Overall Network (on)"
-  #                 ),
-  #                 file = file_name
-  # ))
-  
-  fit2 <- brm(log(rt) ~ vd * nd + ov * on + (vd * nd + ov * on | subject_id), data = model_dat, cores = 10, iter = 10000)
+  # fit2 <- brm(log(rt) ~ vd * nd + ov * on + (vd * nd + ov * on | subject_id), data = model_dat, cores = 10, iter = 10000)
   # summary(fit2)
-  print(bayestestR::sexit(fit2, significant = "default", large = "default", ci = 0.95))
+  # print(bayestestR::sexit(fit2, significant = "default", large = "default", ci = 0.95))
   # print(tab_model(mlm1_0,mlm1_1,mlm1_2,mlm1_3,mlm1_4,
   #           show.intercept = F,
   #           show.aic = T,
@@ -335,27 +321,13 @@ for (net_idx in 1:length(net_stats)) {
   #                           "vd:nd","ov:on"),
   #           file = file_name))
   
-  
-  model_dat <- df %>%
-    exlusions() %>%
-    group_by(subject_id) %>%
-    mutate(
-      nd = scale(abs(left_net - right_net)),
-      vd = scale(abs(left_rating - right_rating)),
-      cd = scale(abs(left_correlation - right_correlation)),
-      sds = scale(abs(left_sd - right_sd)),
-      ov = scale(left_rating + right_rating),
-      on = scale(left_net + right_net)
-    ) %>%
-    select(correct, vd, nd, cd, sds, ov, on, subject_id)
-  
   correct_res <- estimate_correct_mlms(model_dat)
   map(correct_res, summary)
 
   
-  fit3 <- brm(correct ~ vd * nd + ov * on + (vd * nd + ov * on | subject_id), data = model_dat, family = "bernoulli", cores = 10, iter = 10000)
+  # fit3 <- brm(correct ~ vd * nd + ov * on + (vd * nd + ov * on | subject_id), data = model_dat, family = "bernoulli", cores = 10, iter = 10000)
   # summary(fit3)
-  print(bayestestR::sexit(fit3, significant = "default", large = "default", ci = 0.95))
+  # print(bayestestR::sexit(fit3, significant = "default", large = "default", ci = 0.95))
   
   # create table for the correct incorrect model
   file_name <- here::here("tables", paste0("correct_", net_stats[[net_idx]], ".html"))
