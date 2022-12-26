@@ -382,13 +382,13 @@ estimate_mlms <- function(df, outcome = "choice") {
     # add overall similarity
     model5 <- glmer(choice ~ vd + ov + nd + sd + on + os + (vd + ov + nd + sd + on + os | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction vd:nd (write out to be explicit)
-    model6 <- glmer(choice ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model6 <- glmer(choice ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id),data = df,  family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction vd:sd
-    model7 <- glmer(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model7 <- glmer(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction ov:on
-    model8 <- glmer(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model8 <- glmer(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction ov:os
-    model9 <- glmer(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model9 <- glmer(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id),data = df,  family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
   } else if (outcome == "correct"){
     # base model
     model1 <- glmer(correct ~ vd + ov + (vd + ov | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
@@ -401,13 +401,13 @@ estimate_mlms <- function(df, outcome = "choice") {
     # add overall similarity
     model5 <- glmer(correct ~ vd + ov + nd + sd + on + os + (vd + ov + nd + sd + on + os | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction vd:nd (write out to be explicit)
-    model6 <- glmer(correct ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model6 <- glmer(correct ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id),data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction vd:sd
-    model7 <- glmer(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model7 <- glmer(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id),data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction ov:on
-    model8 <- glmer(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model8 <- glmer(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id),data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction ov:os
-    model9 <- glmer(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model9 <- glmer(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id),data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
   } else if (outcome == "rt"){
     # base model
     model1 <- lmer(log(rt) ~ vd + ov + (vd + ov | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
@@ -420,13 +420,13 @@ estimate_mlms <- function(df, outcome = "choice") {
     # add overall similarity
     model5 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + (vd + ov + nd + sd + on + os | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction vd:nd (write out to be explicit)
-    model6 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id), control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model6 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction vd:sd
-    model7 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id), control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model7 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id),data = df,  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction ov:on
-    model8 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model8 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id),data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction ov:os
-    model9 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model9 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id),data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
   }
   # create a list of the model outputs for further analysis
   list(model1, model2, model3, model4, model5, model6, model7, model8, model9)

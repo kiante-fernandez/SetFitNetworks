@@ -173,7 +173,7 @@ for (subject_idx in 1:75) {
 }
 
 print(p_values)
-# so far we have a 40%! exclusion rate...
+# so far we have a 34% exclusion rate
 length(as.numeric(na.omit(p_values))) / 75
 
 as.numeric(na.omit(p_values))
@@ -206,7 +206,6 @@ for (net_idx in 1:length(net_stats)) {
   
   #generate the dataset with the network statistic of interest
   df <- organize_group_data(net_stat = net_stats[[net_idx]])
-
   #### data analysis (regressions)
   #### coded for choice
   choice_res <- estimate_mlms(create_dataset(df, type = "choice"), outcome = "choice")
@@ -214,12 +213,14 @@ for (net_idx in 1:length(net_stats)) {
   correct_res <- estimate_mlms(create_dataset(df, type = "correct/rt"), outcome = "correct")
   ###response times
   rt_res <- estimate_mlms(create_dataset(df, type = "correct/rt"), outcome = "rt")
-
+  #store the results from each set of models
   res_netstats[[net_idx]] <- list(choice_res,correct_res, rt_res)
   
   # map(rt_res, summary)
   # map(correct_res, summary)
   # map(choice_res, summary)
+  
+  # map(choice_res, BIC)
 
   # Bayes analysis
   
