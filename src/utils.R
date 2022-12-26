@@ -114,6 +114,19 @@ organize_group_data <- function(file_idx = 75, net_stat = "modularity") {
     set_correlations_temp <- vector(mode = "numeric", length = 100)
     set_sd_temp <- vector(mode = "numeric", length = 100)
     
+    set_similarity_temp <- vector(mode = "numeric", length = 100)
+    
+    #similarity ratings
+    subject_similarity_temp <- subject_temp %>%
+      filter(screen_id == "similarity") %>%
+      select(stimulus, response) %>% # think about RT
+      mutate(
+        stimulus = stringr::str_remove(stimulus, pattern = "../../img/grid_stimuli/grid_6_modularity_"),
+        stimulus = as.numeric(stringr::str_remove(stimulus, pattern = ".jpg"))
+      ) %>%
+      unnest(response)
+  
+    
     # TODO try also the sum SD of the ratings
     
     # foo = 1
@@ -198,16 +211,15 @@ organize_group_data <- function(file_idx = 75, net_stat = "modularity") {
         # print(impact_temp)
       }
       #for modularity you want to add a constant so the scale is all positive
-      set_network_temp <- abs(min(set_network_temp)) + set_network_temp
-      
-      # set_network_temp <- set_network_temp + min(set_network_temp)
-      # set_network_temp <- set_network_temp + 1
+      # set_network_temp <- abs(min(set_network_temp)) + set_network_temp
       
       set_values_temp[[foo]] <- sum(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
       # set_values_temp[[foo]] <- mean(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
       
       set_correlations_temp[[foo]] <- sum(apply(cor_snack_food[colnames(cor_snack_food) %in% res[[foo]], ], 2, mean, na.rm = T)[res[[foo]]])
       set_sd_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$sds)
+      
+      set_similarity_temp[[foo]] <- subject_similarity_temp$response[[foo]]
       
     }
     
@@ -228,6 +240,8 @@ organize_group_data <- function(file_idx = 75, net_stat = "modularity") {
     xxxx$right_rating <- NULL
     xxxx$left_net <- NULL
     xxxx$right_net <- NULL
+    xxxx$left_sim <- NULL
+    xxxx$right_sim <- NULL
     xxxx$left_correlation <- NULL
     xxxx$right_correlation <- NULL
     xxxx$left_sd <- NULL
@@ -238,6 +252,8 @@ organize_group_data <- function(file_idx = 75, net_stat = "modularity") {
       xxxx$right_rating[[foo]] <- as.numeric(set_values_temp[xxxx$right[[foo]]])
       xxxx$left_net[[foo]] <- as.numeric(set_network_temp[xxxx$left[[foo]]])
       xxxx$right_net[[foo]] <- as.numeric(set_network_temp[xxxx$right[[foo]]])
+      xxxx$left_sim[[foo]] <- as.numeric(set_similarity_temp[xxxx$left[[foo]]])
+      xxxx$right_sim[[foo]] <- as.numeric(set_similarity_temp[xxxx$right[[foo]]])
       xxxx$left_correlation[[foo]] <- as.numeric(set_correlations_temp[xxxx$left[[foo]]])
       xxxx$right_correlation[[foo]] <- as.numeric(set_correlations_temp[xxxx$right[[foo]]])
       xxxx$left_sd[[foo]] <- as.numeric(set_sd_temp[xxxx$left[[foo]]])
@@ -251,7 +267,7 @@ organize_group_data <- function(file_idx = 75, net_stat = "modularity") {
   
   df <- as.data.frame(do.call(rbind, subject_df)) %>%
     unnest(cols = c(
-      left_rating, right_rating, left_net, right_net,
+      left_rating, right_rating, left_net, right_net,left_sim,right_sim,
       left_correlation, right_correlation, left_sd, right_sd
     ))
   #add the correct response col

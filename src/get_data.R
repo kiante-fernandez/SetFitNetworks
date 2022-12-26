@@ -615,7 +615,6 @@ df %>%
   ) + theme(legend.position="bottom")
 
 
-# tune <- 1
 df %>% 
   group_by(subject_id) %>%
   mutate(Q1 = quantile(rt, .25),

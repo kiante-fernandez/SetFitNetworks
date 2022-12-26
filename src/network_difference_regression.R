@@ -310,7 +310,8 @@ organize_group_data <- function(file_idx = 30, net_stat) {
       }
 
       #for modularity you want to add a constant so the scale is all positive?
-      set_network_temp <- set_network_temp + min(set_network_temp)
+      # set_network_temp <- abs(min(set_network_temp)) + set_network_temp
+      
 
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$degree)
       # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$strength)
@@ -910,6 +911,7 @@ for (net_idx in 1:length(net_stats)) {
       optCtrl = list(maxfun = 2e5)
     )
   )
+  summary(mlm2_3)
   # mlm2_4 <- glmer(choice ~ vd*nd + ov*on + (vd*nd + ov*on | subject_id), data = model_dat,
   #                 family=binomial(link="logit"),
   #                 control=glmerControl(optimizer="bobyqa",
@@ -1020,6 +1022,7 @@ for (net_idx in 1:length(net_stats)) {
       optCtrl = list(maxfun = 2e5)
     )
   )
+  summary(mlm1_2)
   # mlm1_3 <- lmer(log(rt)  ~ vd*nd + ov + on + (vd*nd + ov + on | subject_id), data = model_dat,
   #                 control=lmerControl(optimizer="bobyqa",
   #                                      optCtrl=list(maxfun=2e5)))
@@ -1116,6 +1119,7 @@ for (net_idx in 1:length(net_stats)) {
       optCtrl = list(maxfun = 2e5)
     )
   )
+  summary(mlm2_3)
   # mlm2_4 <- glmer(correct ~ vd*nd + ov*on + (vd*nd + ov*on | subject_id), data = model_dat,
   #                 family=binomial(link="logit"),
   #                 control=glmerControl(optimizer="bobyqa",

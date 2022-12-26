@@ -103,7 +103,9 @@ for (subject_idx in 1:75){
     filter(!rt <= 300) %>% # response times cutoffs
     filter(!rt >= 9000) %>%
     mutate(vd = left_rating - right_rating) %>% 
-    mutate(nd = left_net - right_net)
+    mutate(nd = left_net - right_net) %>% 
+    mutate(sd = left_sim - right_sim) 
+    
     
     
   if(subject_idx %in% c(35)){ #remove the one subject that removes all the trials
@@ -120,6 +122,7 @@ for (subject_idx in 1:75){
   # print(summary(glm(correct ~ vd*nd, family = binomial, data = temp_df)))
   # print(broom::tidy(glm(correct ~ vd*nd, family = binomial, data = temp_df)))
   temp_res <- broom::tidy(glm(choice ~ vd, family = binomial, data = temp_df))
+
   # temp_res <- broom::tidy(glm(correct ~ vd, family = binomial, data = temp_df))
   # temp_res <- broom::tidy(lm(rt ~ eq, data = temp_df))
   temp_res$p.value <-  round(temp_res$p.value, 7)
@@ -186,15 +189,17 @@ exlusions <- function(df) {
   return(temp)
 }
 
-
 estimate_choice_mlms <- function(df) {
   model1 <-  glmer(choice ~ vd + ov + (vd + ov | subject_id), data = df,family=binomial(link="logit"), control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
   model2 <-  glmer(choice ~ vd + ov + nd  + ( vd + ov + nd | subject_id), data = df,family=binomial(link="logit"), control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
   model3 <-  glmer(choice ~ vd + ov + nd + on + (vd + ov + nd + on | subject_id), data = df,family=binomial(link="logit"), control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
   model4 <- glmer(choice  ~ vd*nd + ov*on + (vd*nd + ov*on | subject_id), data = df,family=binomial(link="logit"), control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+  
+  model5 <-  glmer(choice ~ vd + ov + nd + on + sd + os + (vd + ov + nd + on + sd + os | subject_id), data = df,family=binomial(link="logit"), control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+  
   # model4 <- glmer(choice  ~ vd*nd + ov*on + (vd + ov + nd + on | subject_id), data = df,family=binomial(link="logit"), control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
   
-  list(model1, model2, model3, model4)
+  list(model1, model2, model3, model4, model5)
 }
 
 estimate_correct_mlms <- function(df) {
@@ -204,7 +209,9 @@ estimate_correct_mlms <- function(df) {
   model4 <- glmer(correct  ~ vd*nd + ov*on + (vd*nd + ov*on | subject_id), data = df,family=binomial(link="logit"), control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
   # model4 <- glmer(correct  ~ vd*nd + ov*on + (vd + nd + ov + on | subject_id), data = df,family=binomial(link="logit"), control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
   
-  list(model1, model2, model3, model4)
+  model5 <-  glmer(correct ~ vd + ov + nd + on + sd + os + (vd + ov + nd + on + sd + os | subject_id), data = df,family=binomial(link="logit"), control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+  
+  list(model1, model2, model3, model4, model5)
 }
 
 estimate_rt_mlms <- function(df) {
@@ -212,7 +219,9 @@ estimate_rt_mlms <- function(df) {
   model2 <-  lmer(log(rt) ~ vd + ov + nd + ( vd + ov + nd | subject_id), data = df, control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
   model3 <-  lmer(log(rt) ~ vd + ov + nd + on + (vd + ov + nd + on | subject_id), data = df, control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
   model4 <- lmer(log(rt) ~ vd*nd + ov*on + (vd*nd + ov*on | subject_id), data = df, control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
-  list(model1, model2, model3, model4)
+  model5 <-  lmer(log(rt) ~ vd + ov + nd + on + sd + os + (vd + ov + nd + on + sd + os | subject_id), data = df, control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+  
+  list(model1, model2, model3, model4, model5)
 }
 
 net_stats <- c("strength", "eigen", "edge_density", "modularity")
@@ -229,16 +238,17 @@ for (net_idx in 1:length(net_stats)) {
     mutate(
       nd = scale(left_net - right_net),
       vd = scale(left_rating - right_rating),
+      sd = scale(left_sim - right_sim),
       cd = scale(left_correlation - right_correlation),
-      sds = scale(left_sd - right_sd),
       ov = scale(left_rating + right_rating),
-      on = scale(left_net + right_net)
+      on = scale(left_net + right_net),
+      os = scale(left_sim + right_sim)
     ) %>% ungroup()
   
   # check correlations
   model_dat %>%
     ungroup() %>%
-    select(vd, nd,ov,on) %>%
+    select(vd,nd,sd,ov,on,os) %>%
     correlation::correlation() %>%
     print()
   
@@ -295,12 +305,14 @@ for (net_idx in 1:length(net_stats)) {
       nd = scale(abs(left_net - right_net)),
       vd = scale(abs(left_rating - right_rating)),
       cd = scale(abs(left_correlation - right_correlation)),
-      sds = scale(abs(left_sd - right_sd)),
+      sd = scale(abs(left_sim - right_sim)),
       ov = scale(left_rating + right_rating),
-      on = scale(left_net + right_net)
+      on = scale(left_net + right_net),
+      os = scale(left_sim + right_sim)
     ) %>%
-    select(correct, vd, nd, cd, sds, ov, on, subject_id, rt)
+    select(correct, vd, nd, cd, sd, ov, on, os, subject_id, rt)
   
+    
   rt_res <- estimate_rt_mlms(model_dat)
   map(rt_res, summary)
 
@@ -320,6 +332,42 @@ for (net_idx in 1:length(net_stats)) {
   #                           "Nework Difference (nd)", "Overall Network (on)",
   #                           "vd:nd","ov:on"),
   #           file = file_name))
+  
+  model_dat <- df %>%
+    exlusions() %>%
+    group_by(subject_id) %>%
+    mutate(
+      nd = left_net - right_net,
+      vd = left_rating - right_rating,
+      sd = left_sim - right_sim
+    ) %>%
+    select(correct,choice, vd, nd, sd, rt)
+  # 
+    # ggplot(model_dat,aes(nd,vt))+geom_point()+
+    #   geom_smooth(method = "lm")
+  
+  # pca_df <- model_dat %>%
+  #   ungroup() %>%
+  #   select(nd, sd, vd)
+  # pca_res <- prcomp(pca_df, center = T)
+  # pca_res
+  # summary(pca_res)
+  # par(mfrow = c(1, 3)) # set the plotting area into a 1*3 array
+  # 
+  # biplot(pca_res, scale = 0,choices = c(2,1))
+  # biplot(pca_res, scale = 0,choices = c(2,3))
+  # biplot(pca_res, scale = 0,choices = c(1,3))
+  
+  # model_dat$PC1 <- pca_res$x[,1]
+  # model_dat$PC2 <- pca_res$x[,2]
+  # model_dat$PC3 <- pca_res$x[,3]
+  # testing <-  lmer(log(rt) ~ PC1 + PC2 + PC3 + (1 + PC1 + PC2 + PC3 | subject_id), data = model_dat, control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+  # summary(testing)
+  # 
+  # testing <-  glmer(correct ~ PC1 + PC2 + PC3 + (1 + PC1 + PC2 + PC3 | subject_id), data = model_dat,family=binomial(link="logit"), control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+  # testing <-  glmer(choice ~ PC1 + PC2 + PC3 + (1 + PC1 + PC2 + PC3 | subject_id), data = model_dat,family=binomial(link="logit"), control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+  # 
+  # summary(testing)
   
   correct_res <- estimate_correct_mlms(model_dat)
   map(correct_res, summary)
