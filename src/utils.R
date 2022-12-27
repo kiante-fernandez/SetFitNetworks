@@ -86,7 +86,24 @@ network_stats <- c(
   "LowHighWithinBetween", "modularity"
 )
 
-organize_group_data <- function(file_idx = 75, net_stat = "modularity") {
+organize_group_data <- function(experiment, net_stat = "modularity") {
+  
+  #which data set are we working with?
+  if (experiment == 1){
+    temp_files <- list.files(path = here::here("data", "pilot_30"), pattern = ".json", full.names = T)
+    network_stats <- "LowHighWithinBetween"
+    #load subgraphs
+    load(file = here::here("data", "LowHighWithinBetween.RData"))
+    
+  } else if (experiment == 2){
+    temp_files <- list.files(path = here::here("data", "exp_2"), pattern = ".json", full.names = T)
+    network_stats <- "modularity"
+    #load subgraphs
+    load(file = here::here("data", "modularity_100_6.RData"))
+    
+  }
+
+  file_idx <- length(temp_files) #how many subjects data to preprocess
   ############################
   ## organize the data and calculate value of group of items and net stats for each subject
   ##
@@ -213,6 +230,7 @@ organize_group_data <- function(file_idx = 75, net_stat = "modularity") {
       set_correlations_temp[[foo]] <- sum(apply(cor_snack_food[colnames(cor_snack_food) %in% res[[foo]], ], 2, mean, na.rm = T)[res[[foo]]])
       set_sd_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$sds)
 
+      if (experiment == 1){next}
       set_similarity_temp[[foo]] <- subject_similarity_temp$response[[foo]]
     }
 

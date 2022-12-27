@@ -41,12 +41,6 @@ library(brms)
 
 source(here::here("src", "utils.R"))
 
-##### loading the data#####
-temp_files <- list.files(path = here::here("data", "exp_2"), pattern = ".json", full.names = T)
-# load subgraphs
-load(file = here::here("data", "modularity_100_6.RData"))
-
-network_stats <- c("LowHighWithinBetween", "modularity")
 
 # get correlations between items
 lee_2021_rating1 <- readr::read_csv(here::here("data", "lee_2021_rating1.csv"), col_names = FALSE)
@@ -57,14 +51,12 @@ names(cor_snack_food) <- load_food_names()$FoodNames$Name
 ######
 # calculate a bunch of network measures to look at relationship to stuff
 source("exploratory_graph_analysis.R")
-
 net_degree <- calculate_net_stats(g)
 
-file_idx <- 75
-net_stat <- "modularity"
-df <- organize_group_data()
+##### loading the data#####
+df <- organize_group_data(experiment = 2)
 
-# check for response time exclusions (before or after choice?)
+### check for response time exclusions (before or after choice?)
 for (subject_idx in 1:75) {
   temp_df <- df %>%
     filter(subject_id == subject_idx) %>%

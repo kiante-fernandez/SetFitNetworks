@@ -40,362 +40,22 @@ library(sjlabelled)
 
 library(brms)
 
-# helper functions for working with lists
-list.do <- function(.data, fun, ...) {
-  do.call(what = fun, args = as.list(.data), ...)
-}
-list.cbind <- function(.data) {
-  list.do(.data, "cbind")
-}
-NetworkStat <- function(subgraph) {
-  G <- subgraph
-  E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
-  # path_lengths <- distances(G)
-  diag(path_lengths) <- NA # path length to oneself is zero
-  adj_temp <- igraph::as_adjacency_matrix(subgraph, sparse = F, attr = "weight")
+#load helper functions
+source(here::here("src", "utils.R"))
 
-  net_stat_temp <- data.frame(
-    degree = degree(subgraph),
-    strength = strength(subgraph),
-    eigen = igraph::eigen_centrality(G)$vector,
-    page_rank = page_rank(subgraph)$vector, # weighted
-    weighted_transitivity = transitivity(subgraph, type = "weighted"),
-    closeness = NetworkToolbox::closeness(adj_temp, weighted = TRUE),
-    closeness2 = closeness(G), # weighted
-    betweenness = betweenness(G),
-    participation = NetworkToolbox::participation(adj_temp, comm = V(subgraph)$snack_type)$overall
-  ) %>%
-    tibble::rownames_to_column("Name")
-
-  return(net_stat_temp)
-}
-
-differenceNet <- function(dat, subject = 1, cut.off = T) {
-  # get the individual level network using value difference matrix
-  individual_rate_diff <- matrix(, nrow = ncol(dat), ncol = ncol(dat))
-  for (col_idx in 1:ncol(individual_rate_diff)) {
-    food1_temp <- dat[[subject, col_idx]]
-
-    for (row_idx in 1:nrow(individual_rate_diff)) {
-      food2_temp <- dat[[subject, row_idx]]
-      individual_rate_diff[row_idx, col_idx] <- as.numeric(abs(food1_temp - food2_temp))
-    }
-  }
-  colnames(individual_rate_diff) <- FoodNames$Name
-  rownames(individual_rate_diff) <- FoodNames$Name
-
-  g_temp <- SemNeT::similarity(individual_rate_diff, method = "cosine")
-  graph_individual <- graph_from_adjacency_matrix(g_temp,
-    "undirected",
-    weighted = TRUE,
-    diag = F
-  )
-  if (cut.off == T) {
-    cut.off <- mean(abs(E(graph_individual)$weight))
-    graph_individual <- delete_edges(graph_individual, E(graph_individual)[abs(E(graph_individual)$weight) < cut.off])
-  }
-  return(graph_individual)
-}
-
-##### loading the data#####
-temp_files <- list.files(path = here::here("data", "pilot_30"), pattern = ".json", full.names = T)
-
-# load all the images to calculate the value for a group of foods
-food_folder <- here::here("data", "snackitemnames_nicholas", "Lee_Holyoak_2021_images")
-FoodNames <- readxl::read_excel(here::here("data", "snackitemnames_nicholas", "item_image_numbers_exp2_5_nicholas.xlsx"))
-
-# NOTE NEXT TIME YOU WILL USE THIS FILE INSTEAD. THE 'RES' FILE (BC YOU DID THE NAMES RIGHT)
-network_stats <- "LowHighWithinBetween"
-
-temp <- list.files(path = food_folder, pattern = "*.jpg", full.names = T)
-foods_in_image <- stringr::str_extract(temp, "item\\d+")
-foods_in_image <- stringr::str_extract(foods_in_image, "\\d+")
-# get row idx for each of the image numbers
-foods_in_image <- tibble::rowid_to_column(data.frame(Image = as.numeric(foods_in_image)))
-foods_in_image <- dplyr::left_join(FoodNames, foods_in_image, "Image")
 # get correlations between items
-lee_2021_rating1 <- read_csv(here::here("data", "lee_2021_rating1.csv"), col_names = FALSE)
+lee_2021_rating1 <- readr::read_csv(here::here("data", "lee_2021_rating1.csv"), col_names = FALSE)
 cor.snack_food <- SemNeT::similarity(lee_2021_rating1, method = "cor")
 cor_snack_food <- data.frame(matrix(cor.snack_food[cor.snack_food != 1], 59, 60))
-names(cor_snack_food) <- FoodNames$Name
+names(cor_snack_food) <- load_food_names()$FoodNames$Name
 
 ######
 # calculate a bunch of network measures to look at relationship to stuff
-
 source("exploratory_graph_analysis.R")
-# load(here::here("data", "pilot30_network_graph.RData"))
-# g <- g2
-# get non-negative weights for certain measures
-G <- g
-E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
-path_lengths <- distances(G)
-diag(path_lengths) <- NA # path length to oneself is zero
-# apply(path_lengths, 2, mean, na.rm = T)
-adj_temp <- igraph::as_adjacency_matrix(g, sparse = F, attr = "weight")
+net_degree <- calculate_net_stats(g)
 
-# here I calculate a range of metrics on the graph
-net_degree <- data.frame(
-  degree = degree(g),
-  strength = strength(g),
-  eigen = igraph::eigen_centrality(G)$vector,
-  page_rank = page_rank(g)$vector, # weighted
-  weighted_transitivity = transitivity(g, type = "weighted"),
-  closeness = NetworkToolbox::closeness(adj_temp, weighted = TRUE),
-  closeness2 = closeness(G), # weighted
-  betweenness = betweenness(G),
-  participation = NetworkToolbox::participation(adj_temp, comm = V(g)$snack_type)$overall,
-  sds = apply(cor_snack_food, 2, sd)
-) %>%
-  tibble::rownames_to_column("Name") %>%
-  left_join(foods_in_image, "Name")
-
-net_degree$snack_type <- V(g)$snack_type
-# correlations between stats
-net_degree %>%
-  select(
-    "degree", "strength", "eigen", "weighted_transitivity",
-    "closeness", "closeness2", "betweenness", "page_rank", "participation", "sds"
-  ) %>%
-  correlation::correlation()
-
-# correlogram
-
-net_degree %>%
-  select("degree", "strength", "eigen", "weighted_transitivity", "closeness2", "betweenness", "page_rank", "participation") %>%
-  ggstatsplot::ggcorrmat(
-    type = "parametric", # parametric for Pearson, nonparametric for Spearman's correlation
-    colors = c("darkred", "white", "steelblue") # change default colors
-  )
-
-# file_idx <- 1
-# net_stat = "degree"
-# net_degree %>%
-#   select("degree", "strength", "eigen", "weighted_transitivity",
-#          "closeness", "closeness2", "betweenness","page_rank","participation","sds") %>%
-#   ggstatsplot::ggcorrmat(
-#     type = "parametric", # parametric for Pearson, nonparametric for Spearman's correlation
-#     colors = c("darkred", "white", "steelblue") # change default colors
-#   )
-
-file_idx <- 30
-net_stat <- "modularity"
-organize_group_data <- function(file_idx = 30, net_stat) {
-  ############################
-  ## organize the data and calculate value of group of items and net stats for each subject
-  ##
-  subject_df <- vector(mode = "list", length = file_idx)
-  pp <- 1
-  for (pp in seq_len(file_idx)) {
-    # load the  subjects data
-    subject_temp <- parse_json(read_json(temp_files[[pp]]), simplifyVector = T)
-
-    # this gets the ratings in check
-    subject_rating_temp <- subject_temp %>%
-      filter(screen_id == "ratings") %>%
-      select(stimulus, response) %>%
-      mutate(
-        Image = stringr::str_remove(stimulus, pattern = "../../img/60Foods/item"),
-        Image = as.numeric(stringr::str_remove(Image, pattern = ".jpg"))
-      ) %>%
-      dplyr::left_join(foods_in_image, by = "Image")
-
-    ns <- which.max(map_dbl(map(network_stats, grepl, x = subject_temp$options[subject_temp$screen_id == "task"]), sum))
-
-
-    set_values_temp <- vector(mode = "numeric", length = 100)
-    set_network_temp <- vector(mode = "numeric", length = 100)
-    set_cluster_temp <- vector(mode = "numeric", length = 100)
-    set_correlations_temp <- vector(mode = "numeric", length = 100)
-    set_sd_temp <- vector(mode = "numeric", length = 100)
-
-    # TODO try also the sum SD of the ratings
-
-    # LOAD THE generated subgraphs
-    load(file = here::here("data", paste0(network_stats[[1]], ".RData")))
-
-    for (foo in 1:100) {
-      # foo = 35
-      # select which stat to calculate
-
-      # foo <- 12
-      # pull out a candidate sub graph
-      size <- net_degree[net_degree$Name %in% res[[foo]], ]$Item
-      subgraph <- igraph::induced_subgraph(g, size)
-      graph_stats <- NetworkStat(subgraph)
-
-      if (net_stat == "degree") {
-        set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$degree)
-
-        # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$degree)
-      } else if (net_stat == "strength") {
-        set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$strength)
-
-        # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$strength)
-      } else if (net_stat == "weighted_transitivity") {
-        # pull out a candidate sub graph
-        size <- net_degree[net_degree$Name %in% res[[foo]], ]$Item
-        gt <- igraph::induced_subgraph(g, size)
-        # calculate stat
-        clust_temp <- transitivity(gt, "global")
-        set_network_temp[[foo]] <- clust_temp
-
-        # set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$weighted_transitivity)
-
-        # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$weighted_transitivity)
-      } else if (net_stat == "eigen") {
-        set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$eigen)
-        # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$eigen)
-      } else if (net_stat == "closeness") {
-        set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$closeness)
-        # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$closeness)
-      } else if (net_stat == "betweenness") {
-        set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$betweenness)
-        # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$betweenness)
-      } else if (net_stat == "page_rank") {
-        set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$page_rank)
-        # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$page_rank)
-      } else if (net_stat == "participation") {
-        set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$participation)
-        # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$participation)
-      } else if (net_stat == "assortment") {
-        # assortnet
-        # pull out a candidate sub graph
-        size <- net_degree[net_degree$Name %in% res[[foo]], ]$Item
-        gt <- igraph::induced_subgraph(g, size)
-        adj_temp <- igraph::as_adjacency_matrix(gt, sparse = F, attr = "weight")
-        # calculate stat
-        assort_temp <- assortnet::assortment.discrete(adj_temp, V(gt)$snack_type, weighted = TRUE, SE = F)$r
-        set_network_temp[[foo]] <- assort_temp
-      } else if (net_stat == "edge_density") {
-        # pull out a candidate sub graph
-        # size <- net_degree[net_degree$Name %in% res[[foo]], ]$Item
-        # gt <- igraph::induced_subgraph(g, size)
-        # calculate stat
-        ed_temp <- as.numeric(edge_density(subgraph))
-        set_network_temp[[foo]] <- ed_temp
-      } else if (net_stat == "diversity") {
-        # pull out a candidate sub graph
-        size <- net_degree[net_degree$Name %in% res[[foo]], ]$Item
-        gt <- igraph::induced_subgraph(g, size)
-        adj_temp <- igraph::as_adjacency_matrix(gt, sparse = F, attr = "weight")
-
-        # calculate stat
-        diverse_temp <- NetworkToolbox::diversity(adj_temp, V(gt)$snack_type)$overall
-        diverse_temp[!is.finite(diverse_temp)] <- NA
-
-        set_network_temp[[foo]] <- sum(diverse_temp, na.rm = T)
-      } else if (net_stat == "efficiency") {
-        # pull out a candidate sub graph
-
-        E(subgraph)$weight <- 2**((E(subgraph)$weight - min(E(subgraph)$weight)) / diff(range(E(subgraph)$weight)))
-        # calculate stat
-        # igraph::global_efficiency(subgraph,directed = F)
-        leverage_temp <- as.numeric(igraph::global_efficiency(subgraph, directed = F))
-        set_network_temp[[foo]] <- as.numeric(leverage_temp)
-      } else if (net_stat == "modularity") {
-        # pull out a candidate sub graph
-        # size <- net_degree[net_degree$Name %in% res[[foo]], ]$Item
-        # gt <- igraph::induced_subgraph(g, size)
-        # adj_temp <- igraph::as_adjacency_matrix(subgraph, sparse = F, attr = "weight")
-        # calculate stat
-        # impact_temp <- networktools::bridge(gt,  V(gt)$snack_type)$Strength
-        impact_temp <- as.numeric(modularity(subgraph, V(subgraph)$snack_type))
-
-        # cohesion(g)
-        # impact_temp[!is.finite(impact_temp)] <- NA
-
-        set_network_temp[[foo]] <- impact_temp
-
-        # print(impact_temp)
-      }
-
-      #for modularity you want to add a constant so the scale is all positive?
-      # set_network_temp <- abs(min(set_network_temp)) + set_network_temp
-      
-
-      # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$degree)
-      # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$strength)
-      # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$weighted_transitivity)
-      # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$eigen)
-      # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$closeness)
-      # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$betweenness)
-      # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$page_rank)
-      # set_network_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$participation)
-
-      set_values_temp[[foo]] <- sum(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
-      set_correlations_temp[[foo]] <- sum(apply(cor_snack_food[colnames(cor_snack_food) %in% res[[foo]], ], 2, mean, na.rm = T)[res[[foo]]])
-      set_sd_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$sds)
-
-      # print(set_correlations_temp)
-
-      if (foo %in% 1:25) {
-        # rsize
-        set_cluster_temp[[foo]] <- 1
-      } else if (foo %in% 26:50) {
-        # wsize
-        set_cluster_temp[[foo]] <- 2
-      } else if (foo %in% 51:75) {
-        # losize
-        set_cluster_temp[[foo]] <- 3
-      } else {
-        # hosize
-        set_cluster_temp[[foo]] <- 4
-      }
-    }
-    # print(paste0("######## subject: ", pp, " #######"))
-    # print(cor.test(set_values_temp,set_network_temp))
-    # print(cor.test(set_values_temp,set_correlations_temp))
-
-
-    task_temp <- subject_temp %>%
-      filter(screen_id == "task") %>%
-      select(subject_id, rt, options, key_press) %>%
-      mutate(key_press = ifelse(key_press == "f", 1, 0)) # if left 1, ow right 0
-    xxxx <- as.data.frame(do.call(rbind, task_temp$options)) %>% mutate(subject_id = pp)
-    xxxx[, 1] <- as.numeric(str_remove(str_remove(xxxx[, 1], pattern = paste0("../../img/grid_stimuli/grid_6_", network_stats[[ns]], "_")), ".jpg"))
-    xxxx[, 2] <- as.numeric(str_remove(str_remove(xxxx[, 2], pattern = paste0("../../img/grid_stimuli/grid_6_", network_stats[[ns]], "_")), ".jpg"))
-    xxxx$rt <- task_temp$rt
-    xxxx$choice <- task_temp$key_press
-    names(xxxx) <- c("left", "right", "subject_id", "rt", "choice")
-    xxxx$network_statistic <- network_stats[[ns]]
-
-    # define variable names for left and right
-    xxxx$left_rating <- NULL
-    xxxx$right_rating <- NULL
-    xxxx$left_net <- NULL
-    xxxx$right_net <- NULL
-    xxxx$left_correlation <- NULL
-    xxxx$right_correlation <- NULL
-    xxxx$left_sd <- NULL
-    xxxx$right_sd <- NULL
-    xxxx$left_cluster_condition <- NULL
-    xxxx$left_cluster_condition <- NULL
-    # foo <- 1
-    for (foo in seq_len(nrow(xxxx))) {
-      xxxx$left_rating[[foo]] <- as.numeric(set_values_temp[xxxx$left[[foo]]])
-      xxxx$right_rating[[foo]] <- as.numeric(set_values_temp[xxxx$right[[foo]]])
-      xxxx$left_net[[foo]] <- as.numeric(set_network_temp[xxxx$left[[foo]]])
-      xxxx$right_net[[foo]] <- as.numeric(set_network_temp[xxxx$right[[foo]]])
-      xxxx$left_correlation[[foo]] <- as.numeric(set_correlations_temp[xxxx$left[[foo]]])
-      xxxx$right_correlation[[foo]] <- as.numeric(set_correlations_temp[xxxx$right[[foo]]])
-      xxxx$left_sd[[foo]] <- as.numeric(set_sd_temp[xxxx$left[[foo]]])
-      xxxx$right_sd[[foo]] <- as.numeric(set_sd_temp[xxxx$right[[foo]]])
-      xxxx$left_cluster_condition[[foo]] <- as.numeric(set_cluster_temp[xxxx$left[[foo]]])
-      xxxx$right_cluster_condition[[foo]] <- as.numeric(set_cluster_temp[xxxx$right[[foo]]])
-    }
-    xxxx$value_network_corr <- cor(set_values_temp, set_network_temp)
-    xxxx$value_network_corr_p <- cor.test(set_values_temp, set_network_temp)$p.value
-
-    subject_df[[pp]] <- xxxx
-  }
-
-  df <- as.data.frame(do.call(rbind, subject_df)) %>%
-    unnest(cols = c(
-      left_rating, right_rating, left_net, right_net, left_cluster_condition, right_cluster_condition,
-      left_correlation, right_correlation, left_sd, right_sd
-    ))
-  return(df)
-}
+##### loading the data#####
+df <- organize_group_data(experiment = 1, net_stat = "modularity")
 
 exlusions <- function(df) {
   # function for data exclusions
@@ -423,61 +83,14 @@ exlusions <- function(df) {
   return(temp)
 }
 
-# net_stats <- c("degree", "strength", "eigen", "weighted_transitivity",
-# "closeness", "betweenness", "page_rank","participation", "assortment")
-
-# unique(df$left_net)
-# net_stats <- c("degree", "strength", "eigen","participation","assortment","edge_density","modularity","efficiency")
 net_stats <- c("strength", "eigen", "edge_density", "modularity")
 
-
 plts <- vector("list", length = length(net_stats))
-
-net_idx <- 1
-# df <- organize_group_data(net_stat = net_stats[[9]])
-net_idx <- 2
-
-# net_idx = 2
-# df <- organize_group_data(net_stat = net_stats[[net_idx]])
-# net_idx = 9
-# df <- organize_group_data(net_stat ="efficiency")
-# unique(df$left_net)
-
-# df <- df[is.nan(df$left_net) == F & is.nan(df$right_net) == F,]
-
 net_idx <- 4
+
 for (net_idx in 1:length(net_stats)) {
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
   df <- organize_group_data(net_stat = net_stats[[net_idx]])
-
-  # df <- df[is.nan(df$left_net) == F & is.nan(df$right_net) == F,]
-
-  # print(unique(df$left_net))
-
-  ### code it as correct incorrect instead
-  df$correct <- as.numeric((df$left_rating > df$right_rating & df$choice == 1) | (df$left_rating < df$right_rating & df$choice == 0))
-
-  # df$cluster_condition <- df$left_cluster_condition %in% c(3,4) | df$right_cluster_condition %in% c(3,4)
-  # df$degree_condition <- df$left_cluster_condition %in% c(1,2) | df$right_cluster_condition %in% c(1,2)
-  # df$degree_condition <- df$left_cluster_condition %in% c(2) | df$right_cluster_condition %in% c(2)
-  # df$degree_condition <- df$left_cluster_condition %in% c(2) | df$right_cluster_condition %in% c(2)
-
-
-  # df %>%
-  #   select(subject_id,value_network_corr, value_network_corr_p) %>%
-  #   distinct() %>%
-  #   filter(value_network_corr_p > .05)
-
-  # df$degree_condition <- df$left_cluster_condition %in% c(4) & df$right_cluster_condition %in% c(4)
-  # df$degree_condition <- df$left_cluster_condition %in% c(1) | df$right_cluster_condition %in% c(1)
-  # df <- df %>% filter(degree_condition != 1)
-  # df$degree_condition <- df$left_cluster_condition %in% c(3) | df$right_cluster_condition %in% c(3)
-  # df <- df %>% filter(degree_condition != 1)
-
-  # df <- df %>% filter(cluster_condition != 1)
-
-  # robustness check for correlation between net stat and value
-  # df <- df %>% filter(value_network_corr_p > .05)
 
   ## make a plot of the vd:nd interaction
   plt <- df %>%
@@ -838,57 +451,9 @@ for (net_idx in 1:length(net_stats)) {
 
   #### data analysis
 
-  # find the trials with condition one involved
-  # df$degree_condition <- df$left_cluster_condition %in% c(1) | df$right_cluster_condition %in% c(1)
-  # df <- df %>% filter(degree_condition != 1) #remove them
+  model_dat <- create_dataset(df, type = "choice")
 
-  model_dat <- df %>%
-    exlusions() %>%
-    group_by(subject_id) %>% # what if we do variable wise standardization?
-    mutate(
-      nd = scale(left_net - right_net),
-      vd = scale(left_rating - right_rating),
-      cd = scale(left_correlation - right_correlation),
-      sds = scale(left_sd - right_sd),
-      ov = scale(left_rating + right_rating),
-      on = scale(left_net + right_net)
-    )
-  # without normalization
-  # model_dat <- df %>%
-  #   exlusions() %>%
-  #   group_by(subject_id) %>% #what if we do variable wise standardization?
-  #   mutate(
-  #     nd = (left_net - right_net),
-  #     vd = (left_rating - right_rating),
-  #     cd = (left_correlation - right_correlation),
-  #     sds = (left_sd - right_sd),
-  #     ov = (left_rating + right_rating),
-  #     on = (left_net + right_net)
-  #   )
-
-  # pca_res <- prcomp(model_dat[,c("nd","vd", "cd","sds","ov","on")],center = F, scale. = FALSE)
-  # summary(pca_res)
-  # plot(pca_res)
-  # biplot(pca_res, scale = 0,choices = c(1,3))
-  # model_dat$PC1 <- pca_res$x[,1]
-  # model_dat$PC2 <- pca_res$x[,3]
-
-  # check correlations
-  # model_dat %>%
-  #   ungroup() %>%
-  #   select(vd, nd, cd,sds,ov,on) %>%
-  #   correlation::correlation() %>%
-  #   print()
-
-  # mlm2 <- glmer(choice ~ vd*nd*cd + (vd*nd*cd | subject_id), data = model_dat,
-  #               family=binomial(link="logit"),
-  #               control=glmerControl(optimizer="bobyqa",
-  #                                    optCtrl=list(maxfun=2e5)))
   #### choice
-  # mlm2 <- glmer(choice ~ vd*nd + ov + (vd*nd + ov| subject_id), data = model_dat,
-  #               family=binomial(link="logit"),
-  #               control=glmerControl(optimizer="bobyqa",
-  #                                    optCtrl=list(maxfun=2e5)))
 
   # mlm2_0 <- glmer(choice ~ vd + ov + (vd + ov | subject_id), data = model_dat,
   #               family=binomial(link="logit"),
@@ -902,8 +467,17 @@ for (net_idx in 1:length(net_stats)) {
   #                 family=binomial(link="logit"),
   #                 control=glmerControl(optimizer="bobyqa",
   #                                      optCtrl=list(maxfun=2e5)))
+  #TODO just make it so that we has a list of model strings 
+  #     then make the code in the utils use the strings, but remove the sd for exp 1 models
+ #somthing like the example below ()it has bugso
+   # formula <- "choice ~  vd + ov + nd + sd + (vd + ov + nd + sd | subject_id)"
+  # 
+  # stringr::str_remove(formula, "sd")
+  
+  formula <- "choice ~ vd * nd + ov * on + (vd * nd + ov * on | subject_id)"
 
-  mlm2_3 <- glmer(choice ~ vd * nd + ov * on + (vd * nd + ov * on | subject_id),
+
+  mlm2_3 <- glmer(formula,
     data = model_dat,
     family = binomial(link = "logit"),
     control = glmerControl(
@@ -960,11 +534,6 @@ for (net_idx in 1:length(net_stats)) {
     ),
     file = file_name
   ))
-  # get_prior(choice ~ vd * nd + ov * on + (vd * nd + ov * on | subject_id), data = model_dat, family = "bernoulli", cores = 10, iter = 10000)
-  fit1 <- brm(choice ~ vd * nd + ov * on + (vd * nd + ov * on | subject_id), data = model_dat, family = "bernoulli", cores = 10, iter = 10000)
-  # summary(fit1)
-  print(bayestestR::sexit(fit1, significant = "default", large = "default", ci = 0.95))
-
 
   # report::report(mlm2_3)
   # print(tab_model(mlm2_0,mlm2_1,mlm2_2,mlm2_3,mlm2_4,
@@ -986,29 +555,9 @@ for (net_idx in 1:length(net_stats)) {
   # print(knitr::kable(temp_res[temp_res$effect == "fixed",3:7],digits = 3,
   #                    caption = paste0("Choice ",net_stats[[net_idx]])))
   #### RT
-  model_dat <- df %>%
-    exlusions() %>%
-    group_by(subject_id) %>%
-    mutate(
-      nd = scale(abs(left_net - right_net)),
-      vd = scale(abs(left_rating - right_rating)),
-      cd = scale(abs(left_correlation - right_correlation)),
-      sds = scale(abs(left_sd - right_sd)),
-      ov = scale(left_rating + right_rating),
-      on = scale(left_net + right_net)
-    )
-  # without normalizations
-  # model_dat <- df %>%
-  #   exlusions() %>%
-  #   mutate(
-  #     nd = (abs(left_net - right_net)),
-  #     vd = (abs(left_rating - right_rating)),
-  #     cd = (abs(left_correlation - right_correlation)),
-  #     sds = (abs(left_sd - right_sd)),
-  #     ov = (left_rating + right_rating),
-  #     on = (left_net + right_net)
-  #   )
 
+  model_dat <- create_dataset(df, type = "correct/rt")
+  
   # mlm1_0 <- lmer(log(rt) ~ vd + ov + (vd + ov | subject_id), data = model_dat,
   #                 control=lmerControl(optimizer="bobyqa",
   #                                      optCtrl=list(maxfun=2e5)))
@@ -1071,34 +620,6 @@ for (net_idx in 1:length(net_stats)) {
   #                           "vd:nd","ov:on"),
   #           file = file_name))
 
-
-  model_dat <- df %>%
-    exlusions() %>%
-    mutate(eq = left_cluster_condition == right_cluster_condition) %>%
-    group_by(subject_id) %>%
-    mutate(
-      nd = scale(abs(left_net - right_net)),
-      vd = scale(abs(left_rating - right_rating)),
-      cd = scale(abs(left_correlation - right_correlation)),
-      sds = scale(abs(left_sd - right_sd)),
-      ov = scale(left_rating + right_rating),
-      on = scale(left_net + right_net)
-    ) %>%
-    select(choice, correct, left_rating, right_rating, vd, nd, cd, sds, ov, on, rt, subject_id, eq)
-
-  # model_dat <- df %>%
-  #   exlusions() %>%
-  #   # group_by(subject_id) %>%
-  #   mutate(
-  #     nd = (abs(left_net - right_net)),
-  #     vd = (abs(left_rating - right_rating)),
-  #     cd = (abs(left_correlation - right_correlation)),
-  #     sds = (abs(left_sd - right_sd)),
-  #     ov = (left_rating + right_rating),
-  #     on = (left_net + right_net)
-  #   ) %>%
-  #   select(choice,correct,left_rating,right_rating,vd,nd,cd,sds,ov,on,rt,subject_id)
-
   # mlm2_0 <- glmer(correct ~ vd + ov + (vd + ov | subject_id), data = model_dat,
   #                 family=binomial(link="logit"),
   #                 control=glmerControl(optimizer="bobyqa",
@@ -1152,11 +673,7 @@ for (net_idx in 1:length(net_stats)) {
     ),
     file = file_name
   ))
-
-  fit3 <- brm(correct ~ vd * nd + ov * on + (vd * nd + ov * on | subject_id), data = model_dat, family = "bernoulli", cores = 10, iter = 10000)
-  # summary(fit3)
-  print(bayestestR::sexit(fit3, significant = "default", large = "default", ci = 0.95))
-
+  
   # print(tab_model(mlm2_0,mlm2_1,mlm2_2,mlm2_3,mlm2_4,
   #                 show.intercept = F,
   #                 show.aic = T,
@@ -1170,14 +687,6 @@ for (net_idx in 1:length(net_stats)) {
   #                 ),
   #                 file = file_name))
 
-
-  # summary(mlm2_3)
-  # temp_res <- broom.mixed::tidy(mlm1_6)
-  # temp_res$p.value <-  round(temp_res$p.value, 4)
-  # print(knitr::kable(temp_res[temp_res$effect == "fixed",3:8],digits = 3,
-  #                    caption = paste0("RT ",net_stats[[net_idx]])))
-  file_name <- here::here("tables", paste0("bayes_", net_stats[[net_idx]], ".html"))
-  tab_model(fit1, fit3, fit2, dv.labels = c("choice", "correct", "RT"), show.re.var = F, show.icc = FALSE, file = file_name)
 }
 
 # try bayes
