@@ -20,6 +20,7 @@
 # ====         ================                       ======================
 # 2022/12/22      Kianté  Fernandez                   coded up version one
 # 2022/12/25      Kianté  Fernandez                   moved many functions to utils
+# 2022/12/27      Kianté  Fernandez                   created table functions
 
 # Libraries
 library(purrr) # Functional Programming Tools
@@ -40,7 +41,6 @@ library(sjlabelled)
 library(brms)
 
 source(here::here("src", "utils.R"))
-
 
 # get correlations between items
 lee_2021_rating1 <- readr::read_csv(here::here("data", "lee_2021_rating1.csv"), col_names = FALSE)
@@ -72,7 +72,7 @@ for (subject_idx in 1:75) {
     summarise(pct_excluded = (100 - n()) / 100)
 
 
-  if (temp_df$pct_excluded > 0.50) {
+  if (temp_df$pct_excluded > 0.70) {
     print(paste0("######## subject: ", subject_idx, " #######"))
     # print(paste0("######## percent trials excluded: ", temp_df$pct_excluded, " #######"))
   }
@@ -82,7 +82,6 @@ for (subject_idx in 1:75) {
 p_values <- vector(mode = "numeric", length = 75)
 
 for (subject_idx in 1:75) {
-
   temp_df <- df %>%
     filter(subject_id == subject_idx) %>%
     mutate(trial = 1:100) %>%
@@ -109,20 +108,13 @@ for (subject_idx in 1:75) {
   #         geom_hline(yintercept = 9000, linetype = "dashed")+
   #         labs(title = paste0("subject: ",subject_idx)))
 
-  # print(paste0("######## subject: ", subject_idx, " #######"))
-  # print(summary(glm(correct ~ vd*nd, family = binomial, data = temp_df)))
-  # print(broom::tidy(glm(correct ~ vd*nd, family = binomial, data = temp_df)))
   temp_res <- broom::tidy(glm(choice ~ vd, family = binomial, data = temp_df))
 
-  # temp_res <- broom::tidy(glm(correct ~ vd, family = binomial, data = temp_df))
-  # temp_res <- broom::tidy(lm(rt ~ eq, data = temp_df))
   temp_res$p.value <- round(temp_res$p.value, 7)
-  if (temp_res[2, 5][[1]] > 0.05) { # check p-value (prereg -- 0.05. check robustness across values)
-    # print(paste0("######## subject: ", unique(temp_df$subject_id), " #######"))
-    # print(unique(temp_df$subject_id))
-    # print(paste0("######## percent trials excluded: ", temp_df$pct_excluded, " #######"))
-    p_values[[subject_idx]] <- unique(temp_df$subject_id)
+  if (temp_res[2, 5][[1]] > 0.10) { # check p-value (prereg -- 0.05. check robustness across values)
     
+    p_values[[subject_idx]] <- unique(temp_df$subject_id)
+
     plt <- df %>%
       filter(subject_id == subject_idx) %>%
       mutate(trial = 1:100) %>%
@@ -135,7 +127,6 @@ for (subject_idx in 1:75) {
       filter(!rt <= 300) %>% # response times cutoffs
       filter(!rt >= 9000) %>%
       mutate(vd = left_rating - right_rating) %>%
-      # mutate(nd = left_net - right_net) %>%
       mutate(binned_value_diff = as.numeric(cut_number(vd, 9)) - 5) %>%
       group_by(binned_value_diff) %>%
       mutate(
@@ -158,7 +149,6 @@ for (subject_idx in 1:75) {
       )
     print(plt)
     print(temp_res)
-    
   } else {
     (p_values[[subject_idx]] <- NA)
   }
@@ -166,6 +156,8 @@ for (subject_idx in 1:75) {
 
 print(p_values)
 # so far we have a 34% exclusion rate
+# so if we relax the exclusion criterion to p = 0.1 we get 26%
+
 length(as.numeric(na.omit(p_values))) / 75
 
 as.numeric(na.omit(p_values))
@@ -189,44 +181,49 @@ exlusions <- function(df) {
 }
 
 net_stats <- c("strength", "eigen", "edge_density", "modularity")
-net_idx <- 4
+
 res_netstats <- vector(mode = "list", length = length(net_stats))
 
 for (net_idx in 1:length(net_stats)) {
-  #for each network statistic...
+  # for each network statistic...
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
-  
-  #generate the dataset with the network statistic of interest
-  df <- organize_group_data(net_stat = net_stats[[net_idx]])
+
+  # generate the dataset with the network statistic of interest
+  df <- organize_group_data(experiment = 2, net_stat = net_stats[[net_idx]])
+
   #### data analysis (regressions)
   #### coded for choice
   choice_res <- estimate_mlms(create_dataset(df, type = "choice"), outcome = "choice")
   ### coded for correct
   correct_res <- estimate_mlms(create_dataset(df, type = "correct/rt"), outcome = "correct")
-  ###response times
+  ### response times
   rt_res <- estimate_mlms(create_dataset(df, type = "correct/rt"), outcome = "rt")
-  #store the results from each set of models
-  res_netstats[[net_idx]] <- list(choice_res,correct_res, rt_res)
   
+  # store the results from each set of models
+  res_netstats[[net_idx]] <- list(choice_res, correct_res, rt_res)
   # map(rt_res, summary)
   # map(correct_res, summary)
   # map(choice_res, summary)
-  
-  # map(choice_res, BIC)
 
   # Bayes analysis
-  
+
   # choice_res <- estimate_brms(create_dataset(df, type = "choice"), outcome = "choice")
   # correct_res <- estimate_brms(create_dataset(df, type = "correct/rt"), outcome = "correct")
   # rt_res <- estimate_brms(create_dataset(df, type = "correct/rt"), outcome = "rt")
-  
+
   # model metrics
   # model_compare_res <- map(choice_res, loo)
   # names(model_compare_res) <- c(1:9)
   # loo_compare(model_compare_res)
   # map(choice_res, bayestestR::sexit)
-
 }
+#generate tables
+for (foo in 1:4){
+  print(generate_table(res_netstats[[foo]][[1]], type = "choice", net_stat = net_stats[[foo]], save = T))
+  print(generate_table(res_netstats[[foo]][[2]], type = "correct", net_stat = net_stats[[foo]], save = T))
+  print(generate_table(res_netstats[[foo]][[3]], type = "rt", net_stat = net_stats[[foo]], save = T))
+}
+
 
 # prepare datasets
 # check correlations
@@ -241,7 +238,7 @@ for (net_idx in 1:length(net_stats)) {
 # https://rpubs.com/mvuorre/brms-parallel
 # this will let you fun the choice and correct model at the same time
 # library(future)
-# 
+#
 # plan(
 #   list(
 #     tweak(multisession, workers = 4),
@@ -252,5 +249,4 @@ for (net_idx in 1:length(net_stats)) {
 # #need to change the number of cores used in the function as well I think.
 # fits1 %<-% estimate_brms(df=create_dataset(df, type = "choice"), outcome ="choice")
 # fits2 %<-% estimate_brms(df=create_dataset(df, type = "correct/rt"), outcome = "correct")
-# 
-
+#

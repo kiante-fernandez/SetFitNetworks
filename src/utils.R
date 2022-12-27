@@ -450,4 +450,47 @@ estimate_mlms <- function(df, outcome = "choice") {
   list(model1, model2, model3, model4, model5, model6, model7, model8, model9)
 }
 
+generate_table <- function(ms, type, net_stat, save = F) {
+  #function for generating the regression tables
+  # create proper file name with the filename
+  file_name <- here::here("tables", paste0(type,"_", net_stat, ".html"))
+  
+  title = paste0("mixed model for ",type)
+  dv_labels <- c("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9")
+  pred_labels <- c(
+    "Value Difference (vd)", "Overall Value (ov)",
+    "Nework Difference (nd)", "Similarity Difference (sd)",
+    "Overall Network (on)","Overall Similarity (os)",
+    "vd:nd","vd:sd", "ov:on","ov:os"
+  )
+  
+  if (save == TRUE){
+    table_temp <- tab_model(ms,
+                            show.intercept = F,
+                            show.aic = T,
+                            show.re.var = F,
+                            show.ci = FALSE,
+                            show.r2 = FALSE,
+                            show.icc = FALSE,
+                            dv.labels = dv_labels,
+                            pred.labels = pred_labels,
+                            title = title,
+                            file = file_name
+    )
+  } else{
+    table_temp <- tab_model(ms,
+                            show.intercept = F,
+                            show.aic = T,
+                            show.re.var = F,
+                            show.ci = FALSE,
+                            show.r2 = FALSE,
+                            show.icc = FALSE,
+                            dv.labels = dv_labels,
+                            pred.labels = pred_labels,
+                            title = title
+    )
+  }
+  
+  return(table_temp)
+}
 

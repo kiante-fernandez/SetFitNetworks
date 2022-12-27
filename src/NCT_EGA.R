@@ -76,3 +76,4 @@ plot(NCT_res, what="centrality")
 #save the results (they are on the M1)
 save(NCT_res, file = here("data", "lee_NCT.RData"))
 
+

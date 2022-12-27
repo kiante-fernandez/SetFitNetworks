@@ -467,6 +467,7 @@ for (net_idx in 1:length(net_stats)) {
   #                 family=binomial(link="logit"),
   #                 control=glmerControl(optimizer="bobyqa",
   #                                      optCtrl=list(maxfun=2e5)))
+  
   #TODO just make it so that we has a list of model strings 
   #     then make the code in the utils use the strings, but remove the sd for exp 1 models
  #somthing like the example below ()it has bugso
@@ -475,7 +476,6 @@ for (net_idx in 1:length(net_stats)) {
   # stringr::str_remove(formula, "sd")
   
   formula <- "choice ~ vd * nd + ov * on + (vd * nd + ov * on | subject_id)"
-
 
   mlm2_3 <- glmer(formula,
     data = model_dat,
@@ -503,57 +503,6 @@ for (net_idx in 1:length(net_stats)) {
   #                 control=glmerControl(optimizer="bobyqa",
   #                                      optCtrl=list(maxfun=2e5)))
 
-  file_name <- here::here("tables", paste0("choice_", net_stats[[net_idx]], ".html"))
-
-  print(tab_model(mlm2_0, mlm2_1, mlm2_2, mlm2_3, mlm2_4, mlm2_5, mlm2_6, mlm2_7,
-    show.intercept = F,
-    show.aic = T,
-    show.re.var = F,
-    show.ci = FALSE,
-    dv.labels = c("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8"),
-    pred.labels = c(
-      "Value Difference (vd)", "Overall Value (ov)",
-      "Nework Difference (nd)", "Overall Network (on)",
-      "vd:nd", "ov:on", "Correlation Difference",
-      "Standard-Deviation Difference"
-    ),
-    file = file_name
-  ))
-
-  print(tab_model(mlm2_3,
-    show.intercept = T,
-    show.aic = T,
-    show.re.var = F,
-    show.ci = F,
-    digits = 4,
-    dv.labels = paste0(net_stats[[net_idx]]),
-    pred.labels = c(
-      "Intercept", "Value Difference (vd)", "Overall Value (ov)",
-      "Nework Difference (nd)", "Overall Network (on)",
-      "vd:nd"
-    ),
-    file = file_name
-  ))
-
-  # report::report(mlm2_3)
-  # print(tab_model(mlm2_0,mlm2_1,mlm2_2,mlm2_3,mlm2_4,
-  #           show.intercept = F,
-  #           show.aic = T,
-  #           show.re.var = F,
-  #           show.ci = FALSE,
-  #           digits = 4,
-  #           dv.labels = c("M1", "M2", "M3", "M4", "M5"),
-  #           pred.labels = c("Value Difference (vd)", "Overall Value (ov)",
-  #                           "Nework Difference (nd)", "Overall Network (on)",
-  #                           "vd:nd","ov:on"
-  #                           ),
-  #           file = file_name))
-
-  # summary(mlm2_3)
-  # temp_res <- broom.mixed::tidy(mlm2_4)
-  # temp_res$p.value <-  round(temp_res$p.value, 4)
-  # print(knitr::kable(temp_res[temp_res$effect == "fixed",3:7],digits = 3,
-  #                    caption = paste0("Choice ",net_stats[[net_idx]])))
   #### RT
 
   model_dat <- create_dataset(df, type = "correct/rt")
@@ -587,23 +536,6 @@ for (net_idx in 1:length(net_stats)) {
   # mlm1_7 <- lmer(log(rt)  ~ vd*nd + ov*on + sds + cd + ( vd*nd + ov*on + sds + cd| subject_id), data = model_dat,
   #                 control=lmerControl(optimizer="bobyqa",
   #                                      optCtrl=list(maxfun=2e5)))
-
-  file_name <- here::here("tables", paste0("rt_", net_stats[[net_idx]], ".html"))
-
-  print(tab_model(mlm1_2,
-    show.intercept = T,
-    show.aic = T,
-    show.re.var = F,
-    show.ci = FALSE,
-    show.icc = FALSE,
-    digits = 4,
-    dv.labels = paste0(net_stats[[net_idx]]),
-    pred.labels = c(
-      "Intercept", "Value Difference (vd)", "Overall Value (ov)",
-      "Nework Difference (nd)", "Overall Network (on)"
-    ),
-    file = file_name
-  ))
 
   fit2 <- brm(log(rt) ~ vd * nd + ov * on + (vd * nd + ov * on | subject_id), data = model_dat, cores = 10, iter = 10000)
   # summary(fit2)
@@ -657,35 +589,6 @@ for (net_idx in 1:length(net_stats)) {
   #                 family=binomial(link="logit"),
   #                 control=glmerControl(optimizer="bobyqa",
   #                                      optCtrl=list(maxfun=2e5)))
-  # create table for the correct incorrect model
-  file_name <- here::here("tables", paste0("correct_", net_stats[[net_idx]], ".html"))
-  print(tab_model(mlm2_3,
-    show.intercept = T,
-    show.aic = T,
-    show.re.var = F,
-    show.ci = FALSE,
-    digits = 4,
-    dv.labels = paste0(net_stats[[net_idx]]),
-    pred.labels = c(
-      "Intercept", "Value Difference (vd)", "Overall Value (ov)",
-      "Nework Difference (nd)", "Overall Network (on)",
-      "vd:nd"
-    ),
-    file = file_name
-  ))
-  
-  # print(tab_model(mlm2_0,mlm2_1,mlm2_2,mlm2_3,mlm2_4,
-  #                 show.intercept = F,
-  #                 show.aic = T,
-  #                 show.re.var = F,
-  #                 show.ci = FALSE,
-  #                 digits = 4,
-  #                 dv.labels = c("M1", "M2", "M3", "M4", "M5"),
-  #                 pred.labels = c("Value Difference (vd)", "Overall Value (ov)",
-  #                                 "Nework Difference (nd)", "Overall Network (on)",
-  #                                 "vd:nd","ov:on"
-  #                 ),
-  #                 file = file_name))
 
 }
 
