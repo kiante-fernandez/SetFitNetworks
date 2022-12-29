@@ -83,9 +83,9 @@ differenceNet <- function(dat, subject = 1, cut.off = T){
 #   drive_download(temp, here::here("data", "pilot_5", temp), overwrite = TRUE)
 # }
 
-# temp_files <- list.files(path = here::here("data", "pilot_30"), pattern = ".json", full.names = T)
+temp_files <- list.files(path = here::here("data", "pilot_30"), pattern = ".json", full.names = T)
 
-temp_files <- list.files(path = here::here("data", "exp_2"), pattern = ".json", full.names = T)
+# temp_files <- list.files(path = here::here("data", "exp_2"), pattern = ".json", full.names = T)
 
 # load all the images to calculate the value for a group of foods
 food_folder <- here::here("data", "snackitemnames_nicholas", "Lee_Holyoak_2021_images")
@@ -165,7 +165,9 @@ net_degree %>%
 #   colors = c("darkred", "white", "steelblue") # change default colors
 # )
 
-file_idx <- 75
+file_idx <- 30
+# file_idx <- 75
+
 subject_df <- vector(mode = "list", length = file_idx)
 #we want the ratings with the condition indicator to test for rating bias
 # subject_ratings <- vector(mode = "list", length = file_idx)
@@ -276,9 +278,9 @@ for (pp in seq_len(file_idx)) {
   #   }
   # }
     #LOAD THE generated subgraphs
-    # load(file = here::here("data", paste0(network_stats[[4]], ".RData")))
+    load(file = here::here("data", paste0(network_stats[[4]], ".RData")))
     
-    load(file = here::here("data", "modularity_100_6.RData"))
+    # load(file = here::here("data", "modularity_100_6.RData"))
     
     #get individual network (the differenceNet function)
     # foo = 1
@@ -1306,6 +1308,11 @@ TEST <- subject_individual_ratings %>%
   unnest(everything())
 #make the order of the names the same
 TEST<-TEST[names(lee_2021_rating1)]
+
+#save data for use in other files 
+# write.csv(TEST, here::here("data", "fernandez_2022_rating_exp1.csv"), row.names = F)
+# write.csv(TEST, here::here("data", "fernandez_2022_rating_exp2.csv"), row.names = F)
+
 # TEST <- TEST[1,]
 #make sure the matrix is near positive definite
 # cor_x1 <- SemNeT::similarity(TEST, method = "cor")

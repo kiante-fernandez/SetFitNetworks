@@ -34,7 +34,14 @@ library(SemNeT)
 FoodNames <- readxl::read_excel(here("data", "snackitemnames_nicholas", "item_image_numbers_exp2_5_nicholas.xlsx"))
 # load the data
 lee_2021_rating1 <- readr::read_csv(here("data", "lee_2021_rating1.csv"), col_names =  FoodNames$Name, show_col_types = F)
-lee_2021_rating2 <- readr::read_csv(here("data", "lee_2021_rating2.csv"), col_names = FoodNames$Name, show_col_types = F)
+# lee_2021_rating2 <- readr::read_csv(here("data", "lee_2021_rating2.csv"), col_names = FoodNames$Name, show_col_types = F)
+
+# load the data
+fernandez_2022_rating1 <- readr::read_csv(here("data","fernandez_2022_rating_exp1.csv"), col_names = T, show_col_types = F)
+fernandez_2022_rating2 <- readr::read_csv(here("data","fernandez_2022_rating_exp2.csv"), col_names = T, show_col_types = F)
+#take both sets of rating data from study one and two and combine them
+fernandez_2022_rating_combineded <- rbind(fernandez_2022_rating1,fernandez_2022_rating2)
+
 
 # define the EGA as the estimator of choice
 ega_estimator <- function(data, iter = 100, ...) {
@@ -57,7 +64,8 @@ ega_estimator <- function(data, iter = 100, ...) {
   return(ega_res$typicalGraph$graph)
 }
 
-NCT_res <- NCT(lee_2021_rating1, lee_2021_rating2, it = 1000, weighted = T, estimator = ega_estimator,paired = TRUE,
+NCT_res <- NCT(lee_2021_rating1, fernandez_2022_rating_combineded, it = 100, weighted = T, estimator = ega_estimator,
+               paired = FALSE,
                test.edges = TRUE,
                test.centrality = TRUE,
                centrality = "strength",
@@ -70,10 +78,12 @@ plot(NCT_res, what="network")
 plot(NCT_res, what="strength")
 # Plot results of the edge invariance test (not reliable with only 10 permutations!):
 # Note that two distributions are plotted
-plot(NCT_res, what="edge")
+# plot(NCT_res, what="edge")
 
 plot(NCT_res, what="centrality")
 #save the results (they are on the M1)
-save(NCT_res, file = here("data", "lee_NCT.RData"))
+
+# save(NCT_res, file = here("data", "lee_NCT.RData"))
+save(NCT_res, file = here("data", "fernandez_lee_NCT.RData"))
 
 

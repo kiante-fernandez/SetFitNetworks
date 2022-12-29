@@ -34,22 +34,20 @@ if (!file.exists(here("data", "fernandez_rating_network_graph.RData"))) {
   FoodNames <- readxl::read_excel(here("data", "snackitemnames_nicholas", "item_image_numbers_exp2_5_nicholas.xlsx"))
   
   # load the data
-  fernandez_2022_rating1 <- readr::read_csv(here("data","fernandez_2022_rating_exp1.csv"), col_names = FALSE, show_col_types = F)
-  fernandez_2022_rating2 <- readr::read_csv(here("data","fernandez_2022_rating_exp2.csv"), col_names = FALSE, show_col_types = F)
+  fernandez_2022_rating1 <- readr::read_csv(here("data","fernandez_2022_rating_exp1.csv"), col_names = T, show_col_types = F)
+  fernandez_2022_rating2 <- readr::read_csv(here("data","fernandez_2022_rating_exp2.csv"), col_names = T, show_col_types = F)
   
-  # fernandez_2022_rating_combineded <- rbind(fernandez_2022_rating1,fernandez_2022_rating2)
-  
-  # create cleaned names
-  names(fernandez_2022_rating1) <- FoodNames$Name
+  #take both sets of rating data from study one and two and combine them
+  fernandez_2022_rating_combineded <- rbind(fernandez_2022_rating1,fernandez_2022_rating2)
   
   # number of observations
-  n <- nrow(fernandez_2022_rating1)
+  n <- nrow(fernandez_2022_rating_combineded)
   
   # Set random seed
   set.seed(2022)
   
   # run community detection procedure
-  ega_res <- EGAnet::bootEGA(fernandez_2022_rating1,
+  ega_res <- EGAnet::bootEGA(fernandez_2022_rating_combineded,
                              iter = 1000,
                              n = n,
                              model = "glasso",
@@ -69,10 +67,13 @@ if (!file.exists(here("data", "fernandez_rating_network_graph.RData"))) {
   # add decorate attributes
   V(g)$snack_type <- dimattributes
   
-  save(ega_res, g, file = here("data", "rating_network_graph.RData"))
+  save(ega_res, g, file = here("data", "fernandez_rating_network_graph.RData"))
   
 }else {
   load(here::here("data", "fernandez_rating_network_graph.RData"))
 }
 
-
+#####stability analysis 
+#computes the stability of dimensions
+#he proportion of times the original dimension is exactly replicated in across bootstrap samples
+# EGAnet::dimensionStability(ega_res)
