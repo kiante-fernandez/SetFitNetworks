@@ -86,4 +86,9 @@ plot(NCT_res, what="centrality")
 # save(NCT_res, file = here("data", "lee_NCT.RData"))
 save(NCT_res, file = here("data", "fernandez_lee_NCT.RData"))
 
+#we found that the networks are similar to one another...
+
+#TODO compare the first rating dataset to the second in our study.
+
+
 

@@ -51,13 +51,21 @@ names(cor_snack_food) <- load_food_names()$FoodNames$Name
 ######
 # calculate a bunch of network measures to look at relationship to stuff
 source("exploratory_graph_analysis.R")
+
+# source('fernandez_rating_network.R')
+
 net_degree <- calculate_net_stats(g)
 
 ##### loading the data#####
 df <- organize_group_data(experiment = 2)
 
+describe_exlusions <- function(){
+  
+}
+
 ### check for response time exclusions (before or after choice?)
-for (subject_idx in 1:75) {
+
+for (subject_idx in 1:length(unique(df$subject_id)) ) {
   temp_df <- df %>%
     filter(subject_id == subject_idx) %>%
     mutate(trial = 1:100) %>%
@@ -74,7 +82,7 @@ for (subject_idx in 1:75) {
 
   if (temp_df$pct_excluded > 0.70) {
     print(paste0("######## subject: ", subject_idx, " #######"))
-    # print(paste0("######## percent trials excluded: ", temp_df$pct_excluded, " #######"))
+    print(paste0("######## percent trials excluded: ", temp_df$pct_excluded, " #######"))
   }
 }
 
@@ -184,6 +192,7 @@ net_stats <- c("strength", "eigen", "edge_density", "modularity")
 
 res_netstats <- vector(mode = "list", length = length(net_stats))
 
+net_idx <- 4
 for (net_idx in 1:length(net_stats)) {
   # for each network statistic...
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
@@ -207,15 +216,17 @@ for (net_idx in 1:length(net_stats)) {
 
   # Bayes analysis
 
-  # choice_res <- estimate_brms(create_dataset(df, type = "choice"), outcome = "choice")
-  # correct_res <- estimate_brms(create_dataset(df, type = "correct/rt"), outcome = "correct")
-  # rt_res <- estimate_brms(create_dataset(df, type = "correct/rt"), outcome = "rt")
+  choice_res <- estimate_brms(create_dataset(df, type = "choice"), outcome = "choice")
+  correct_res <- estimate_brms(create_dataset(df, type = "correct/rt"), outcome = "correct")
+  rt_res <- estimate_brms(create_dataset(df, type = "correct/rt"), outcome = "rt")
 
   # model metrics
   # model_compare_res <- map(choice_res, loo)
   # names(model_compare_res) <- c(1:9)
   # loo_compare(model_compare_res)
-  # map(choice_res, bayestestR::sexit)
+  map(correct_res, bayestestR::sexit)
+  map(rt_res, bayestestR::sexit)
+  
 }
 #generate tables
 for (foo in 1:4){

@@ -52,7 +52,7 @@ if (!file.exists(here("data", "fernandez_rating_network_graph.RData"))) {
                              n = n,
                              model = "glasso",
                              algorithm = "walktrap",
-                             ncores = 8, typicalStructure = T
+                             ncores = 10, typicalStructure = T
   )
   
   ega_res[["plot.typical.ega"]][["layers"]][[6]] <- NULL
@@ -77,3 +77,8 @@ if (!file.exists(here("data", "fernandez_rating_network_graph.RData"))) {
 #computes the stability of dimensions
 #he proportion of times the original dimension is exactly replicated in across bootstrap samples
 # EGAnet::dimensionStability(ega_res)
+# 
+# methods.section(
+#   ega_res,
+#   stats = "dimensionStability"
+# )
