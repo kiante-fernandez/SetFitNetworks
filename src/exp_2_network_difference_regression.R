@@ -52,16 +52,22 @@ names(cor_snack_food) <- load_food_names()$FoodNames$Name
 # calculate a bunch of network measures to look at relationship to stuff
 source("exploratory_graph_analysis.R")
 
-# source('fernandez_rating_network.R')
+# source('fernandez_rating_network.R') #load the EGA from the new rating data
 
 net_degree <- calculate_net_stats(g)
 
 ##### loading the data#####
 df <- organize_group_data(experiment = 2)
 
-describe_exlusions <- function(){
-  
-}
+# describe_exlusions <- function(){
+#   ###this function will take the RT exclusion below and print the subject were
+    ###70% of the trails were removed. Thus we will not run the exclusion 
+    ###regressions because we don't have enough trials to preform them. 
+
+    ##then it will take the remaining data and run individual level logistic 
+    ##regressions with value difference regressed onto choice. It will print the 
+    ## not significant subjects and add there names to a list for the exclusion function
+# }
 
 ### check for response time exclusions (before or after choice?)
 
@@ -171,7 +177,7 @@ length(as.numeric(na.omit(p_values))) / 75
 as.numeric(na.omit(p_values))
 
 exlusions <- function(df) {
-  # function for data exclusions
+  # function for data exclusions following the preregistration specs
   temp <- df %>%
     filter(subject_id != 35) %>% # rt exclusions
     filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
@@ -221,9 +227,16 @@ for (net_idx in 1:length(net_stats)) {
   rt_res <- estimate_brms(create_dataset(df, type = "correct/rt"), outcome = "rt")
 
   # model metrics
-  # model_compare_res <- map(choice_res, loo)
+  #does the correct and choice model map to one another
+  model_compare_choice_res <- map(choice_res, loo)
+  model_compare_correct_res <- map(correct_res, loo)
+  names(model_compare_choice_res) <- c(1,2,3,4)
+  names(model_compare_correct_res) <- c(1,2,3,4)
+  
   # names(model_compare_res) <- c(1:9)
-  # loo_compare(model_compare_res)
+  loo_compare(model_compare_choice_res)
+  loo_compare(model_compare_correct_res)
+  
   map(correct_res, bayestestR::sexit)
   map(rt_res, bayestestR::sexit)
   

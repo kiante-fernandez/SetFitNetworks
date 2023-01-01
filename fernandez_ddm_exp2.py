@@ -30,6 +30,7 @@ import hddm
 import pickle
 
 #load the data in hddm format
+# create the proper dataset structure for the HDDM functions
 # data = hddm.load_csv("~/Documents/ddm_fatigue/data/HDDM_data.csv")
 
 #write our model specification that are the same as a regression model \
