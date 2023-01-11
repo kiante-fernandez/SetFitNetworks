@@ -1,5 +1,5 @@
 # exp2_network_difference_regression_analysis.R - analysis of experiment two
-# Copyright (C) 2022 Kianté Fernandez, <kiantefernan@gmail.com>
+# Copyright (C) 2023 Kianté Fernandez, <kiantefernan@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -125,8 +125,9 @@ for (subject_idx in 1:75) {
   temp_res <- broom::tidy(glm(choice ~ vd, family = binomial, data = temp_df))
 
   temp_res$p.value <- round(temp_res$p.value, 7)
-  if (temp_res[2, 5][[1]] > 0.10) { # check p-value (prereg -- 0.05. check robustness across values)
-    
+#  if (temp_res[2, 5][[1]] > 0.10) { # check p-value (prereg -- 0.05. check robustness across values)
+  if (temp_res[2, 5][[1]] > 0.05) { # check p-value (prereg -- 0.05. check robustness across values)
+      
     p_values[[subject_idx]] <- unique(temp_df$subject_id)
 
     plt <- df %>%
@@ -232,13 +233,15 @@ for (net_idx in 1:length(net_stats)) {
   model_compare_correct_res <- map(correct_res, loo)
   names(model_compare_choice_res) <- c(1,2,3,4)
   names(model_compare_correct_res) <- c(1,2,3,4)
-  
+   
   # names(model_compare_res) <- c(1:9)
   loo_compare(model_compare_choice_res)
   loo_compare(model_compare_correct_res)
   
   map(correct_res, bayestestR::sexit)
-  map(rt_res, bayestestR::sexit)
+  map(choice_res, bayestestR::sexit)
+  
+  knitr::kable(bayestestR::sexit(correct_res[[4]]), digits = 2) 
   
 }
 #generate tables
@@ -247,7 +250,6 @@ for (foo in 1:4){
   print(generate_table(res_netstats[[foo]][[2]], type = "correct", net_stat = net_stats[[foo]], save = T))
   print(generate_table(res_netstats[[foo]][[3]], type = "rt", net_stat = net_stats[[foo]], save = T))
 }
-
 
 # prepare datasets
 # check correlations

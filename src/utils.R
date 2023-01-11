@@ -456,7 +456,9 @@ estimate_mlms <- function(df, outcome = "choice") {
 }
 
 generate_table <- function(ms, type, net_stat, save = F) {
-  #function for generating the regression tables
+  #function for generating the regression tables for experiment two
+  # the names for the labels will NOT work for both exp one and two
+  #TODO fix the labeling issue between the two
   # create proper file name with the filename
   file_name <- here::here("tables", paste0(type,"_", net_stat, ".html"))
   
@@ -495,7 +497,7 @@ generate_table <- function(ms, type, net_stat, save = F) {
                             title = title
     )
   }
-  
+  print("did you fix the labeling issue?")
   return(table_temp)
 }
 

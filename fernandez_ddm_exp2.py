@@ -29,6 +29,8 @@ import numpy as np
 import hddm
 import pickle
 
+print(hddm.__version__)
+
 #load the data in hddm format
 # create the proper dataset structure for the HDDM functions
 # data = hddm.load_csv("~/Documents/ddm_fatigue/data/HDDM_data.csv")
