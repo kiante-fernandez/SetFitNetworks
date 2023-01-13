@@ -199,7 +199,8 @@ net_stats <- c("strength", "eigen", "edge_density", "modularity")
 
 res_netstats <- vector(mode = "list", length = length(net_stats))
 
-net_idx <- 4
+# net_idx <- 4
+
 for (net_idx in 1:length(net_stats)) {
   # for each network statistic...
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
@@ -226,22 +227,25 @@ for (net_idx in 1:length(net_stats)) {
   choice_res <- estimate_brms(create_dataset(df, type = "choice"), outcome = "choice")
   correct_res <- estimate_brms(create_dataset(df, type = "correct/rt"), outcome = "correct")
   rt_res <- estimate_brms(create_dataset(df, type = "correct/rt"), outcome = "rt")
-
-  # model metrics
-  #does the correct and choice model map to one another
-  model_compare_choice_res <- map(choice_res, loo)
-  model_compare_correct_res <- map(correct_res, loo)
-  names(model_compare_choice_res) <- c(1,2,3,4)
-  names(model_compare_correct_res) <- c(1,2,3,4)
-   
-  # names(model_compare_res) <- c(1:9)
-  loo_compare(model_compare_choice_res)
-  loo_compare(model_compare_correct_res)
-  
+  # 
+  # # model metrics
+  # #does the correct and choice model map to one another
+  # model_compare_choice_res <- map(choice_res, loo)
+  # model_compare_correct_res <- map(correct_res, loo)
+  # names(model_compare_choice_res) <- c(1,2,3,4)
+  # names(model_compare_correct_res) <- c(1,2,3,4)
+  #  
+  # # names(model_compare_res) <- c(1:9)
+  # loo_compare(model_compare_choice_res)
+  # loo_compare(model_compare_correct_res)
+  # 
   map(correct_res, bayestestR::sexit)
   map(choice_res, bayestestR::sexit)
   
-  knitr::kable(bayestestR::sexit(correct_res[[4]]), digits = 2) 
+  # 
+  knitr::kable(bayestestR::sexit(correct_res[[4]]), digits = 2)
+  knitr::kable(bayestestR::sexit(choice_res[[4]]), digits = 2)
+  knitr::kable(bayestestR::sexit(rt_res[[4]]), digits = 2)
   
 }
 #generate tables
@@ -250,6 +254,9 @@ for (foo in 1:4){
   print(generate_table(res_netstats[[foo]][[2]], type = "correct", net_stat = net_stats[[foo]], save = T))
   print(generate_table(res_netstats[[foo]][[3]], type = "rt", net_stat = net_stats[[foo]], save = T))
 }
+
+save(res_netstats, file = here("data", "res_mixed_model.RData"))
+
 
 # prepare datasets
 # check correlations

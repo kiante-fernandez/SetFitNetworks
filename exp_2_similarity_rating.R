@@ -58,13 +58,26 @@ res <- do.call(rbind, res_list)
 # 
 
 res
-ggplot(res, aes(response))+geom_histogram()
+ggplot(res, aes(response)) +
+  geom_histogram(color = "black", fill = "dodgerblue1", alpha = .8, bins = 50) + 
+  geom_vline(xintercept = mean(res$response), linetype = "dashed", size = .7)+
+  theme_classic() +
+  labs(x = "Similarity Judgment", y = "Count") +
+  theme(axis.text = element_text(face="bold"),
+        text = element_text(size = 15),
+        axis.title = element_text(face="bold")
+  )
 
-m0 <- lmer(response ~  poly(modularity, 2) + (poly(modularity, 2) | subject_id), data = res)
-m0 <- brm(response ~  poly(modularity, 2) + (poly(modularity, 2) | subject_id), data = res)
-bayestestR::sexit(m0)
-summary(m0)
-plot(ggpredict(m0, terms="modularity [all]"))
+ggplot(res, aes(modularity)) +
+  geom_histogram(color = "black", fill = "dodgerblue1", alpha = .8, bins = 11) +
+  # geom_density(color = "black", fill = "dodgerblue1", alpha = .8) + 
+  geom_vline(xintercept = mean(res$modularity), linetype = "dashed", size = .7)+
+  theme_classic() +
+  labs(x = "Q", y = "Count") +
+  theme(axis.text = element_text(face="bold"),
+        text = element_text(size = 15),
+        axis.title = element_text(face="bold")
+  )
 
 compares <- res %>%
   group_by(stimulus) %>%
@@ -99,8 +112,47 @@ ggplot(compares, aes(mod, mean)) +
         axis.title = element_text(face="bold")
   )
 
-plot(subgraphs[[32]]) # highests score, lowest variance
+par(mfrow = c(1, 3)) # set the plotting area into a 1*3 array
 
-plot(subgraphs[[73]]) # highests variance
+plot(subgraphs[[32]],
+     layout = layout.circle(subgraphs[[32]]),
+     margin = .0,
+     vertex.label.color = "black",
+     vertex.label.font = 2,
+     vertex.label.cex = 1.5,
+     vertex.label.dist = 2,
+     vertex.size = 20,
+     vertex.label.family = "Times",
+     main = "Most Similar",
+     edge.width = abs(E(subgraphs[[32]])$weight) * 10,
+)
+plot(subgraphs[[2]],
+     layout = layout.circle(subgraphs[[32]]),
+     margin = .0,
+     vertex.label.color = "black",
+     vertex.label.font = 2,
+     vertex.label.cex = 1.5,
+     vertex.label.dist = 2,
+     vertex.size = 20,
+     vertex.label.family = "Times",
+     main = "Least Similar",
+     edge.width = abs(E(subgraphs[[32]])$weight) * 10,
+)
+plot(subgraphs[[73]],
+     layout = layout.circle(subgraphs[[32]]),
+     margin = .0,
+     vertex.label.color = "black",
+     vertex.label.font = 2,
+     vertex.label.cex = 1.5,
+     vertex.label.dist = 2,
+     vertex.size = 20,
+     vertex.label.family = "Times",
+     main = "Hightest Variance",
+     edge.width = abs(E(subgraphs[[32]])$weight) * 10,
+)
 
-plot(subgraphs[[2]]) # lowest score
+# plot(subgraphs[[32]], ) # highest score, lowest variance
+# 
+# plot(subgraphs[[73]]) # highest variance
+# 
+# plot(subgraphs[[2]]) # lowest score
