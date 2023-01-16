@@ -92,9 +92,10 @@ for (subject_idx in 1:length(unique(df$subject_id)) ) {
   }
 }
 
+
 ## value difference exclusion
 p_values <- vector(mode = "numeric", length = 75)
-
+# subject_idx = 1
 for (subject_idx in 1:75) {
   temp_df <- df %>%
     filter(subject_id == subject_idx) %>%
@@ -109,8 +110,13 @@ for (subject_idx in 1:75) {
     filter(!rt >= 9000) %>%
     mutate(vd = left_rating - right_rating) %>%
     mutate(nd = left_net - right_net) %>%
-    mutate(sd = left_sim - right_sim)
-
+    mutate(sd = left_sim - right_sim) 
+  
+    df$choose_max <- factor(as.numeric((df$left_MAX > df$right_MAX & df$choice == 1) | (df$left_MAX < df$right_MAX & df$choice == 0)))
+    
+    df$choose_min <- factor(as.numeric((df$left_MIN < df$right_MIN & df$choice == 0) | (df$left_MIN > df$right_MIN & df$choice == 1)))
+    
+    # df %>% select(choice,left_MAX,right_MAX,left_MIN,right_MIN,choose_max,choose_min) %>% View
   if (subject_idx %in% c(35)) { # remove the one subject that removes all the trials
     p_values[[subject_idx]] <- NA
     next
@@ -123,10 +129,15 @@ for (subject_idx in 1:75) {
   #         labs(title = paste0("subject: ",subject_idx)))
 
   temp_res <- broom::tidy(glm(choice ~ vd, family = binomial, data = temp_df))
-
+  # temp_res <- broom::tidy(glm(choice ~ vd + choose_max + choose_min, family = binomial, data = temp_df))
+  
   temp_res$p.value <- round(temp_res$p.value, 7)
+  
+  # print(temp_res)
+  
 #  if (temp_res[2, 5][[1]] > 0.10) { # check p-value (prereg -- 0.05. check robustness across values)
   if (temp_res[2, 5][[1]] > 0.05) { # check p-value (prereg -- 0.05. check robustness across values)
+  # if (temp_res[4, 5][[1]] < 0.05) { # check p-value (prereg -- 0.05. check robustness across values)
       
     p_values[[subject_idx]] <- unique(temp_df$subject_id)
 
@@ -181,7 +192,8 @@ exlusions <- function(df) {
   # function for data exclusions following the preregistration specs
   temp <- df %>%
     filter(subject_id != 35) %>% # rt exclusions
-    filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
+    filter(subject_id != 37) %>% # rt exclusions
+    # filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
     group_by(subject_id) %>% # response times (IQR exclusion)
     mutate(
       Q1 = quantile(rt, .25),
@@ -198,8 +210,10 @@ exlusions <- function(df) {
 net_stats <- c("strength", "eigen", "edge_density", "modularity")
 
 res_netstats <- vector(mode = "list", length = length(net_stats))
+res_model_comparisons <- vector(mode = "list", length = length(net_stats))
 
-# net_idx <- 4
+net_idx <- 4
+net_idx <- 2
 
 for (net_idx in 1:length(net_stats)) {
   # for each network statistic...
@@ -210,14 +224,14 @@ for (net_idx in 1:length(net_stats)) {
 
   #### data analysis (regressions)
   #### coded for choice
-  choice_res <- estimate_mlms(create_dataset(df, type = "choice"), outcome = "choice")
-  ### coded for correct
-  correct_res <- estimate_mlms(create_dataset(df, type = "correct/rt"), outcome = "correct")
-  ### response times
-  rt_res <- estimate_mlms(create_dataset(df, type = "correct/rt"), outcome = "rt")
+  # choice_res <- estimate_mlms(create_dataset(df, type = "choice"), outcome = "choice")
+  # ### coded for correct
+  # correct_res <- estimate_mlms(create_dataset(df, type = "correct/rt"), outcome = "correct")
+  # ### response times
+  # rt_res <- estimate_mlms(create_dataset(df, type = "correct/rt"), outcome = "rt")
   
   # store the results from each set of models
-  res_netstats[[net_idx]] <- list(choice_res, correct_res, rt_res)
+  # res_netstats[[net_idx]] <- list(choice_res, correct_res, rt_res)
   # map(rt_res, summary)
   # map(correct_res, summary)
   # map(choice_res, summary)
@@ -227,35 +241,71 @@ for (net_idx in 1:length(net_stats)) {
   choice_res <- estimate_brms(create_dataset(df, type = "choice"), outcome = "choice")
   correct_res <- estimate_brms(create_dataset(df, type = "correct/rt"), outcome = "correct")
   rt_res <- estimate_brms(create_dataset(df, type = "correct/rt"), outcome = "rt")
-  # 
+  
+  res_netstats[[net_idx]] <- list(choice_res, correct_res, rt_res)
+  
   # # model metrics
   # #does the correct and choice model map to one another
-  # model_compare_choice_res <- map(choice_res, loo)
-  # model_compare_correct_res <- map(correct_res, loo)
-  # names(model_compare_choice_res) <- c(1,2,3,4)
-  # names(model_compare_correct_res) <- c(1,2,3,4)
-  #  
-  # # names(model_compare_res) <- c(1:9)
-  # loo_compare(model_compare_choice_res)
-  # loo_compare(model_compare_correct_res)
+  
+  model_compare_choice_res <- map(choice_res, loo)
+  model_compare_correct_res <- map(correct_res, loo)
+  model_compare_rt_res <- map(rt_res, loo)
+  
+  names(model_compare_choice_res) <- c(1,2,3,4,5,6,7,8,9,10)
+  names(model_compare_correct_res) <- c(1,2,3,4,5,6,7,8,9,10)
+  names(model_compare_rt_res) <- c(1,2,3,4,5,6,7,8,9,10)
+  
+  res_model_comparisons[[net_idx]] <- list(model_compare_choice_res, model_compare_correct_res, model_compare_rt_res)
+  
+  loo_compare(model_compare_choice_res)
+  loo_compare(model_compare_correct_res)
+  loo_compare(model_compare_rt_res)
+  
   # 
   map(correct_res, bayestestR::sexit)
   map(choice_res, bayestestR::sexit)
   
   # 
-  knitr::kable(bayestestR::sexit(correct_res[[4]]), digits = 2)
-  knitr::kable(bayestestR::sexit(choice_res[[4]]), digits = 2)
-  knitr::kable(bayestestR::sexit(rt_res[[4]]), digits = 2)
+  # knitr::kable(bayestestR::sexit(correct_res[[4]]), digits = 2)
+  # knitr::kable(bayestestR::sexit(choice_res[[4]]), digits = 2)
+  # knitr::kable(bayestestR::sexit(rt_res[[4]]), digits = 2)
   
 }
 #generate tables
-for (foo in 1:4){
-  print(generate_table(res_netstats[[foo]][[1]], type = "choice", net_stat = net_stats[[foo]], save = T))
-  print(generate_table(res_netstats[[foo]][[2]], type = "correct", net_stat = net_stats[[foo]], save = T))
-  print(generate_table(res_netstats[[foo]][[3]], type = "rt", net_stat = net_stats[[foo]], save = T))
-}
+# for (foo in 1:4){
+#   print(generate_table(res_netstats[[foo]][[1]], type = "choice", net_stat = net_stats[[foo]], save = T))
+#   print(generate_table(res_netstats[[foo]][[2]], type = "correct", net_stat = net_stats[[foo]], save = T))
+#   print(generate_table(res_netstats[[foo]][[3]], type = "rt", net_stat = net_stats[[foo]], save = T))
+# }
 
-save(res_netstats, file = here("data", "res_mixed_model.RData"))
+# save(res_netstats, file = here("data", "res_mixed_model.RData"))
+
+knitr::kable(bayestestR::sexit(fit_choice09), digits = 2)
+tab_model(fit_choice09,
+          show.intercept = F,
+          show.aic = F,
+          show.re.var = F,
+          show.ci = T,
+          show.r2 = FALSE,
+          show.icc = FALSE
+)
+#Compute the Probability of Direction (pd, also known as the Maximum Probability of Effect - MPE). 
+#It varies between ⁠50%⁠ and ⁠100%⁠ (i.e., 0.5 and 1) and can be interpreted as the probability
+#(expressed in percentage) that a parameter (described by its posterior distribution) is
+#strictly positive or negative (whichever is the most probable). 
+#It is mathematically defined as the proportion of the posterior distribution that is of the median's sign. 
+#Although differently expressed, this index is fairly similar (i.e., is strongly correlated) to the frequentist p-value. 
+
+library(bayestestR)
+library(insight)
+
+posteriors <- insight::get_parameters(fit_choice09)
+ggplot(posteriors, aes(x = b_nd)) +
+  geom_density(fill = "orange")+
+  geom_vline(xintercept = 0)+
+  theme_classic()
+
+bayestestR::describe_posterior(fit_choice09, test = c("p_direction"))
 
 
 # prepare datasets
@@ -270,8 +320,11 @@ save(res_netstats, file = here("data", "res_mixed_model.RData"))
 # Run many brms models in parallel using futures
 # https://rpubs.com/mvuorre/brms-parallel
 # this will let you fun the choice and correct model at the same time
+
 # library(future)
-#
+
+# df <- organize_group_data(experiment = 2, net_stat = net_stats[[2]])
+# 
 # plan(
 #   list(
 #     tweak(multisession, workers = 4),

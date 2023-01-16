@@ -128,6 +128,10 @@ organize_group_data <- function(experiment, net_stat = "modularity") {
     ns <- which.max(map_dbl(map(network_stats, grepl, x = subject_temp$options[subject_temp$screen_id == "task"]), sum))
 
     set_values_temp <- vector(mode = "numeric", length = 100)
+    
+    set_values_MAX_temp <- vector(mode = "numeric", length = 100)
+    set_values_MIN_temp <- vector(mode = "numeric", length = 100)
+    
     set_network_temp <- vector(mode = "numeric", length = 100)
     set_cluster_temp <- vector(mode = "numeric", length = 100)
     set_correlations_temp <- vector(mode = "numeric", length = 100)
@@ -225,6 +229,10 @@ organize_group_data <- function(experiment, net_stat = "modularity") {
       # set_network_temp <- abs(min(set_network_temp)) + set_network_temp
 
       set_values_temp[[foo]] <- sum(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
+      
+      set_values_MAX_temp[[foo]] <- max(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
+      set_values_MIN_temp[[foo]] <- min(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
+      
       # set_values_temp[[foo]] <- mean(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
 
       set_correlations_temp[[foo]] <- sum(apply(cor_snack_food[colnames(cor_snack_food) %in% res[[foo]], ], 2, mean, na.rm = T)[res[[foo]]])
@@ -257,6 +265,11 @@ organize_group_data <- function(experiment, net_stat = "modularity") {
     xxxx$right_correlation <- NULL
     xxxx$left_sd <- NULL
     xxxx$right_sd <- NULL
+    xxxx$left_MAX <- NULL
+    xxxx$right_MAX <- NULL
+    xxxx$left_MIN <- NULL
+    xxxx$right_MIN <- NULL
+    
     # foo <- 1
     for (foo in seq_len(nrow(xxxx))) {
       xxxx$left_rating[[foo]] <- as.numeric(set_values_temp[xxxx$left[[foo]]])
@@ -269,6 +282,10 @@ organize_group_data <- function(experiment, net_stat = "modularity") {
       xxxx$right_correlation[[foo]] <- as.numeric(set_correlations_temp[xxxx$right[[foo]]])
       xxxx$left_sd[[foo]] <- as.numeric(set_sd_temp[xxxx$left[[foo]]])
       xxxx$right_sd[[foo]] <- as.numeric(set_sd_temp[xxxx$right[[foo]]])
+      xxxx$left_MAX[[foo]] <- as.numeric(set_values_MAX_temp[xxxx$left[[foo]]])
+      xxxx$right_MAX[[foo]] <- as.numeric(set_values_MAX_temp[xxxx$right[[foo]]])
+      xxxx$left_MIN[[foo]] <- as.numeric(set_values_MIN_temp[xxxx$left[[foo]]])
+      xxxx$right_MIN[[foo]] <- as.numeric(set_values_MIN_temp[xxxx$right[[foo]]])
     }
     xxxx$value_network_corr <- cor(set_values_temp, set_network_temp)
     xxxx$value_network_corr_p <- cor.test(set_values_temp, set_network_temp)$p.value
@@ -279,7 +296,8 @@ organize_group_data <- function(experiment, net_stat = "modularity") {
   df <- as.data.frame(do.call(rbind, subject_df)) %>%
     unnest(cols = c(
       left_rating, right_rating, left_net, right_net, left_sim, right_sim,
-      left_correlation, right_correlation, left_sd, right_sd
+      left_correlation, right_correlation, left_sd, right_sd, 
+      left_MAX,right_MAX,left_MIN, right_MIN
     ))
   # add the correct response col
   df$correct <- as.numeric((df$left_rating > df$right_rating & df$choice == 1) | (df$left_rating < df$right_rating & df$choice == 0))
@@ -325,68 +343,74 @@ estimate_brms <- function(df, outcome = "choice") {
   # TODO add a saving feature to avoid redundant model estimation
   # note you could just write out the formula for each and not repeat so much here
   # but this seems okay so long as we aim to be explicit
+  #
+  # TODO just create a folder for each network statistic, then add an argument that places each model in what ever name you write
+  #     create a error too. if the folder name does not exist in the directory then throw an error and don't run the models 'could not find folder to save models'
   if (outcome == "choice") {
     # base model
-    model1 <- brm(choice ~ vd + ov + (vd + ov | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model1 <- brm(choice ~ vd + ov + (vd + ov | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice01"))
     # add network difference
-    model2 <- brm(choice ~ vd + ov + nd + (vd + ov + nd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model2A <- brm(choice ~ vd + ov + nd + (vd + ov + nd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice02A"))
+    model2B <- brm(choice ~ vd + ov + sd + (vd + ov + sd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice02B"))
     # add similarity difference
-    model3 <- brm(choice ~ vd + ov + nd + sd + (vd + ov + nd + sd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model3 <- brm(choice ~ vd + ov + nd + sd + (vd + ov + nd + sd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice03"))
     # add overall network
-    model4 <- brm(choice ~ vd + ov + nd + sd + on + (vd + ov + nd + sd + on | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model4 <- brm(choice ~ vd + ov + nd + sd + on + (vd + ov + nd + sd + on | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice04"))
     # add overall similarity
-    model5 <- brm(choice ~ vd + ov + nd + sd + on + os + (vd + ov + nd + sd + on + os | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model5 <- brm(choice ~ vd + ov + nd + sd + on + os + (vd + ov + nd + sd + on + os | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice05"))
     # add interaction vd:nd (write out to be explicit)
-    model6 <- brm(choice ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model6 <- brm(choice ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice06"))
     # add interaction vd:sd
-    model7 <- brm(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model7 <- brm(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice07"))
     # add interaction ov:on
-    model8 <- brm(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model8 <- brm(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice08"))
     # add interaction ov:os
-    model9 <- brm(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model9 <- brm(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice09"))
   } else if (outcome == "correct"){
     # the coded as correct models (which take the absolute value for the regressors)
-    model1 <- brm(correct ~ vd + ov + (vd + ov | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model1 <- brm(correct ~ vd + ov + (vd + ov | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct01"))
     # add network difference
-    model2 <- brm(correct ~ vd + ov + nd + (vd + ov + nd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model2A <- brm(correct ~ vd + ov + nd + (vd + ov + nd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct02A"))
+    model2B <- brm(correct ~ vd + ov + sd + (vd + ov + sd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct02B"))
     # add similarity difference
-    model3 <- brm(correct ~ vd + ov + nd + sd + (vd + ov + nd + sd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model3 <- brm(correct ~ vd + ov + nd + sd + (vd + ov + nd + sd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct03"))
     # add overall network
-    model4 <- brm(correct ~ vd + ov + nd + sd + on + (vd + ov + nd + sd + on | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model4 <- brm(correct ~ vd + ov + nd + sd + on + (vd + ov + nd + sd + on | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct04"))
     # add overall similarity
-    model5 <- brm(correct ~ vd + ov + nd + sd + on + os + (vd + ov + nd + sd + on + os | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model5 <- brm(correct ~ vd + ov + nd + sd + on + os + (vd + ov + nd + sd + on + os | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct05"))
     # add interaction vd:nd
-    model6 <- brm(correct ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model6 <- brm(correct ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct06"))
     # add interaction vd:sd
-    model7 <- brm(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model7 <- brm(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct07"))
     # add interaction ov:on
-    model8 <- brm(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model8 <- brm(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct08"))
     # add interaction ov:os
-    model9 <- brm(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000)
+    model9 <- brm(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct09"))
   } else if (outcome == "rt"){
     # the coded as response time models (which take the absolute value for the regressors)
-    model1 <- brm(log(rt) ~ vd + ov + (vd + ov | subject_id), data = df, cores = 4, iter = 10000)
+    model1 <- brm(log(rt) ~ vd + ov + (vd + ov | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt01"))
     # add network difference
-    model2 <- brm(log(rt) ~ vd + ov + nd + (vd + ov + nd | subject_id), data = df, cores = 4, iter = 10000)
+    model2A <- brm(log(rt) ~ vd + ov + nd + (vd + ov + nd | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt02A"))
+    model2B <- brm(log(rt) ~ vd + ov + sd + (vd + ov + sd | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt02B"))
     # add similarity difference
-    model3 <- brm(log(rt) ~ vd + ov + nd + sd + (vd + ov + nd + sd | subject_id), data = df, cores = 4, iter = 10000)
+    model3 <- brm(log(rt) ~ vd + ov + nd + sd + (vd + ov + nd + sd | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt03"))
     # add overall network
-    model4 <- brm(log(rt) ~ vd + ov + nd + sd + on + (vd + ov + nd + sd + on | subject_id), data = df, cores = 4, iter = 10000)
+    model4 <- brm(log(rt) ~ vd + ov + nd + sd + on + (vd + ov + nd + sd + on | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt04"))
     # add overall similarity
-    model5 <- brm(log(rt) ~ vd + ov + nd + sd + on + os + (vd + ov + nd + sd + on + os | subject_id), data = df, cores = 4, iter = 10000)
+    model5 <- brm(log(rt) ~ vd + ov + nd + sd + on + os + (vd + ov + nd + sd + on + os | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt05"))
     # add interaction vd:nd
-    model6 <- brm(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id), data = df, cores = 4, iter = 10000)
+    model6 <- brm(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt06"))
     # add interaction vd:sd
-    model7 <- brm(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id), data = df, cores = 4, iter = 10000)
+    model7 <- brm(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt07"))
     # add interaction ov:on
-    model8 <- brm(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), data = df, cores = 4, iter = 10000)
+    model8 <- brm(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt08"))
     # add interaction ov:os
-    model9 <- brm(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), data = df, cores = 4, iter = 10000)
+    model9 <- brm(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt09"))
   }
-  list(model1, model2, model3, model9)
+  # list(model1, model2, model3, model9)
   
   # create a list of the model outputs for further analysis
-  # list(model1, model2, model3, model4, model5, model6, model7, model8, model9)
+  list(model1, model2A,model2B, model3, model4, model5, model6, model7, model8, model9)
 }
 
 estimate_mlms <- function(df, outcome = "choice") {

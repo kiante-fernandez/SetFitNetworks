@@ -41,3 +41,5 @@ vignettes/*.pdf
 #other files we do not want to push yet
 data
 img
+fits
+tables
