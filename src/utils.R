@@ -108,6 +108,7 @@ organize_group_data <- function(experiment, net_stat = "modularity") {
   ## organize the data and calculate value of group of items and net stats for each subject
   ##
   subject_df <- vector(mode = "list", length = file_idx)
+  # pp =1
   for (pp in seq_len(file_idx)) {
     # load the  subjects data
     subject_temp <- jsonlite::parse_json(jsonlite::read_json(temp_files[[pp]]), simplifyVector = T)
@@ -152,7 +153,7 @@ organize_group_data <- function(experiment, net_stat = "modularity") {
 
     # TODO try also the sum SD of the ratings
 
-    # foo = 1
+    # foo = 50
     for (foo in 1:100) {
       # select which stat to calculate
 
@@ -170,10 +171,8 @@ organize_group_data <- function(experiment, net_stat = "modularity") {
       } else if (net_stat == "strength") {
         set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$strength)
       } else if (net_stat == "weighted_transitivity") {
-        # pull out a candidate sub graph
         size <- net_degree[net_degree$Name %in% res[[foo]], ]$Item
         gt <- igraph::induced_subgraph(g, size)
-        # calculate stat
         clust_temp <- transitivity(gt, "global")
         set_network_temp[[foo]] <- clust_temp
       } else if (net_stat == "eigen") {
@@ -187,7 +186,6 @@ organize_group_data <- function(experiment, net_stat = "modularity") {
       } else if (net_stat == "participation") {
         set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$participation)
       } else if (net_stat == "assortment") {
-        # assortnet
         # pull out a candidate sub graph
         size <- net_degree[net_degree$Name %in% res[[foo]], ]$Item
         gt <- igraph::induced_subgraph(g, size)
@@ -241,6 +239,7 @@ organize_group_data <- function(experiment, net_stat = "modularity") {
       if (experiment == 1){next}
       set_similarity_temp[[foo]] <- subject_similarity_temp$response[[foo]]
     }
+    
 
     task_temp <- subject_temp %>%
       filter(screen_id == "task") %>%

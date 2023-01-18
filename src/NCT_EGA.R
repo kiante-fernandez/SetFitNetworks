@@ -44,7 +44,7 @@ fernandez_2022_rating_combineded <- rbind(fernandez_2022_rating1,fernandez_2022_
 
 
 # define the EGA as the estimator of choice
-ega_estimator <- function(data, iter = 100, ...) {
+ega_estimator <- function(data, iter = 500, ...) {
   # number of observations
   n <- nrow(data)
   # ega_res <- EGAnet::EGA(data, n = n, corr =  "pearson", model = "glasso", algorithm = "walktrap", plot.EGA = FALSE)
@@ -79,8 +79,7 @@ plot(NCT_res, what="strength")
 # Plot results of the edge invariance test (not reliable with only 10 permutations!):
 # Note that two distributions are plotted
 # plot(NCT_res, what="edge")
-
-plot(NCT_res, what="centrality")
+# plot(NCT_res, what="centrality")
 #save the results (they are on the M1)
 
 # save(NCT_res, file = here("data", "lee_NCT.RData"))

@@ -1377,8 +1377,26 @@ save(boot_test, g_2, file = here("data", "pilot30_network_graph.RData"))
 #look at the relationship between the two (doug and my sample graphs)
 library(NetworkComparisonTest)
 
-g_1 <- g #name data from netork one above
-
+source("exploratory_graph_analysis.R")
+g_1 <- g
+graph_lee <- graph_from_adjacency_matrix(ega_res$typicalGraph$graph,
+                                         "undirected",
+                                         weighted = TRUE
+)
+value_lee_data <- tibble(items = V(graph_lee)$name) %>%
+  dplyr::left_join(ega_res$typicalGraph$typical.dim.variables,
+            by = "items"
+  )
+source('fernandez_rating_network.R') #load the EGA from the new rating data
+g_2 <- g
+graph_sample <- graph_from_adjacency_matrix(ega_res$typicalGraph$graph,
+                                            "undirected",
+                                            weighted = TRUE
+)
+value_sample_data <- tibble(items = V(graph_sample)$name) %>%
+  left_join(ega_res$typicalGraph$typical.dim.variables,
+            by = "items"
+  )
 #note that this might be the wrong data to feed the models,
 #you might need to feed the function the raw data for each
 nw1 <- igraph::as_adjacency_matrix(g_1, sparse = F, attr = "weight")
@@ -1401,23 +1419,6 @@ nw2 <- igraph::as_adjacency_matrix(g_2, sparse = F, attr = "weight")
 #>
 #>From NCT analyses, we observed that networks seem to be the same for the two groups M:  0.58037 , p-value 0.08, and S:  1.097621 with p = 0.72 
 
-graph_sample <- graph_from_adjacency_matrix(boot_test$typicalGraph$graph,
-                                             "undirected",
-                                             weighted = TRUE
-)
-graph_lee <- graph_from_adjacency_matrix(ega_res$typicalGraph$graph,
-                                               "undirected",
-                                               weighted = TRUE
-)
-
-value_sample_data <- tibble(items = V(graph_sample)$name) %>%
-  left_join(boot_test$typicalGraph$typical.dim.variables,
-            by = "items"
-  )
-value_lee_data <- tibble(items = V(graph_lee)$name) %>%
-  left_join(ega_res$typicalGraph$typical.dim.variables,
-            by = "items"
-  )
 L <-   qgraph::averageLayout(graph_sample, graph_lee)
 
 #how to get correspondence between the two ?
@@ -1455,7 +1456,7 @@ plot(graph_lee,
      vertex.label.family = "Times",
      main = "Lee & Coricelli: N = 267",
      edge.width = abs(E(graph_lee)$weight) * 5,
-     # mark.groups = value_lee_data$dimension
+     # mark.groups = value_lee_data %>% group_by(dimension) %>% as.list()
 )
 plot(graph_sample,
      layout = L,
@@ -1466,7 +1467,7 @@ plot(graph_sample,
      vertex.label.dist = .5,
      vertex.size = 6,
      vertex.label.family = "Times",
-     main = "sample: N = 30",
+     main = "sample: N = 105",
      edge.width = abs(E(graph_sample)$weight) * 5,
      # mark.groups = value_sample_data$dimension
 )
