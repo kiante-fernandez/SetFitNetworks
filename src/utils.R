@@ -81,29 +81,27 @@ calculate_net_stats <- function(g) {
   return(net_degree)
 }
 
-network_stats <- c(
-  "assortment", "edge_density", "weighted_clustering_coefficient",
-  "LowHighWithinBetween", "modularity"
-)
+# network_stats <- c(
+#   "assortment", "edge_density", "weighted_clustering_coefficient",
+#   "LowHighWithinBetween", "modularity"
+# )
 
 organize_group_data <- function(experiment, net_stat = "modularity") {
-  
-  #which data set are we working with?
-  if (experiment == 1){
+
+  # which data set are we working with?
+  if (experiment == 1) {
     temp_files <- list.files(path = here::here("data", "pilot_30"), pattern = ".json", full.names = T)
     network_stats <- "LowHighWithinBetween"
-    #load subgraphs
+    # load subgraphs
     load(file = here::here("data", "LowHighWithinBetween.RData"))
-    
-  } else if (experiment == 2){
+  } else if (experiment == 2) {
     temp_files <- list.files(path = here::here("data", "exp_2"), pattern = ".json", full.names = T)
     network_stats <- "modularity"
-    #load subgraphs
+    # load subgraphs
     load(file = here::here("data", "modularity_100_6.RData"))
-    
   }
 
-  file_idx <- length(temp_files) #how many subjects data to preprocess
+  file_idx <- length(temp_files) # how many subjects data to preprocess
   ############################
   ## organize the data and calculate value of group of items and net stats for each subject
   ##
@@ -122,22 +120,15 @@ organize_group_data <- function(experiment, net_stat = "modularity") {
       ) %>%
       dplyr::left_join(load_food_names()$foods_in_image, by = "Image")
 
-    # normalize the ratings?
-    # subject_rating_temp$responsenormalized <- (unlist(subject_rating_temp$response)  - min(unlist(subject_rating_temp$response) )) / range(unlist(subject_rating_temp$response)) # xnormalized = (x - min(x)) / range(x)
-    # for(trial in 1:60){subject_rating_temp$response[[trial]][[1]] <- subject_rating_temp$responsenormalized[trial]}
-
     ns <- which.max(map_dbl(map(network_stats, grepl, x = subject_temp$options[subject_temp$screen_id == "task"]), sum))
 
     set_values_temp <- vector(mode = "numeric", length = 100)
-    
     set_values_MAX_temp <- vector(mode = "numeric", length = 100)
     set_values_MIN_temp <- vector(mode = "numeric", length = 100)
-    
     set_network_temp <- vector(mode = "numeric", length = 100)
     set_cluster_temp <- vector(mode = "numeric", length = 100)
     set_correlations_temp <- vector(mode = "numeric", length = 100)
     set_sd_temp <- vector(mode = "numeric", length = 100)
-
     set_similarity_temp <- vector(mode = "numeric", length = 100)
 
     # similarity ratings
@@ -150,10 +141,8 @@ organize_group_data <- function(experiment, net_stat = "modularity") {
       ) %>%
       unnest(response)
 
-
     # TODO try also the sum SD of the ratings
 
-    # foo = 50
     for (foo in 1:100) {
       # select which stat to calculate
 
@@ -171,10 +160,7 @@ organize_group_data <- function(experiment, net_stat = "modularity") {
       } else if (net_stat == "strength") {
         set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$strength)
       } else if (net_stat == "weighted_transitivity") {
-        size <- net_degree[net_degree$Name %in% res[[foo]], ]$Item
-        gt <- igraph::induced_subgraph(g, size)
-        clust_temp <- transitivity(gt, "global")
-        set_network_temp[[foo]] <- clust_temp
+        set_network_temp[[foo]] <- transitivity(subgraph, "global")
       } else if (net_stat == "eigen") {
         set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$eigen)
       } else if (net_stat == "closeness") {
@@ -186,60 +172,39 @@ organize_group_data <- function(experiment, net_stat = "modularity") {
       } else if (net_stat == "participation") {
         set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$participation)
       } else if (net_stat == "assortment") {
-        # pull out a candidate sub graph
-        size <- net_degree[net_degree$Name %in% res[[foo]], ]$Item
-        gt <- igraph::induced_subgraph(g, size)
-        adj_temp <- igraph::as_adjacency_matrix(gt, sparse = F, attr = "weight")
-        # calculate stat
-        assort_temp <- assortnet::assortment.discrete(adj_temp, V(gt)$snack_type, weighted = TRUE, SE = F)$r
+        adj_temp <- igraph::as_adjacency_matrix(subgraph, sparse = F, attr = "weight")
+        assort_temp <- assortnet::assortment.discrete(adj_temp, V(subgraph)$snack_type, weighted = TRUE, SE = F)$r
         set_network_temp[[foo]] <- assort_temp
       } else if (net_stat == "edge_density") {
-        # calculate stat
-        ed_temp <- as.numeric(edge_density(subgraph))
-        set_network_temp[[foo]] <- ed_temp
+        set_network_temp[[foo]] <- as.numeric(edge_density(subgraph))
       } else if (net_stat == "diversity") {
-        # pull out a candidate sub graph
-        size <- net_degree[net_degree$Name %in% res[[foo]], ]$Item
-        gt <- igraph::induced_subgraph(g, size)
-        adj_temp <- igraph::as_adjacency_matrix(gt, sparse = F, attr = "weight")
-
-        # calculate stat
-        diverse_temp <- NetworkToolbox::diversity(adj_temp, V(gt)$snack_type)$overall
+        adj_temp <- igraph::as_adjacency_matrix(subgraph, sparse = F, attr = "weight")
+        diverse_temp <- NetworkToolbox::diversity(adj_temp, V(subgraph)$snack_type)$overall
         diverse_temp[!is.finite(diverse_temp)] <- NA
-
         set_network_temp[[foo]] <- sum(diverse_temp, na.rm = T)
       } else if (net_stat == "efficiency") {
-        # pull out a candidate sub graph
-
         E(subgraph)$weight <- 2**((E(subgraph)$weight - min(E(subgraph)$weight)) / diff(range(E(subgraph)$weight)))
-        # calculate stat
         leverage_temp <- as.numeric(igraph::global_efficiency(subgraph, directed = F))
         set_network_temp[[foo]] <- as.numeric(leverage_temp)
       } else if (net_stat == "modularity") {
         # pull out a candidate sub graph
-        impact_temp <- as.numeric(modularity(subgraph, V(subgraph)$snack_type))
-
-        set_network_temp[[foo]] <- impact_temp
-
-        # print(impact_temp)
+        set_network_temp[[foo]] <- as.numeric(modularity(subgraph, V(subgraph)$snack_type))
       }
-      # for modularity you want to add a constant so the scale is all positive
-      # set_network_temp <- abs(min(set_network_temp)) + set_network_temp
 
       set_values_temp[[foo]] <- sum(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
-      
+
       set_values_MAX_temp[[foo]] <- max(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
       set_values_MIN_temp[[foo]] <- min(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
-      
-      # set_values_temp[[foo]] <- mean(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
+
 
       set_correlations_temp[[foo]] <- sum(apply(cor_snack_food[colnames(cor_snack_food) %in% res[[foo]], ], 2, mean, na.rm = T)[res[[foo]]])
       set_sd_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$sds)
 
-      if (experiment == 1){next}
+      if (experiment == 1) {
+        next
+      }
       set_similarity_temp[[foo]] <- subject_similarity_temp$response[[foo]]
     }
-    
 
     task_temp <- subject_temp %>%
       filter(screen_id == "task") %>%
@@ -268,7 +233,7 @@ organize_group_data <- function(experiment, net_stat = "modularity") {
     xxxx$right_MAX <- NULL
     xxxx$left_MIN <- NULL
     xxxx$right_MIN <- NULL
-    
+
     # foo <- 1
     for (foo in seq_len(nrow(xxxx))) {
       xxxx$left_rating[[foo]] <- as.numeric(set_values_temp[xxxx$left[[foo]]])
@@ -295,8 +260,8 @@ organize_group_data <- function(experiment, net_stat = "modularity") {
   df <- as.data.frame(do.call(rbind, subject_df)) %>%
     unnest(cols = c(
       left_rating, right_rating, left_net, right_net, left_sim, right_sim,
-      left_correlation, right_correlation, left_sd, right_sd, 
-      left_MAX,right_MAX,left_MIN, right_MIN
+      left_correlation, right_correlation, left_sd, right_sd,
+      left_MAX, right_MAX, left_MIN, right_MIN
     ))
   # add the correct response col
   df$correct <- as.numeric((df$left_rating > df$right_rating & df$choice == 1) | (df$left_rating < df$right_rating & df$choice == 0))
@@ -365,7 +330,7 @@ estimate_brms <- function(df, outcome = "choice") {
     model8 <- brm(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice08"))
     # add interaction ov:os
     model9 <- brm(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice09"))
-  } else if (outcome == "correct"){
+  } else if (outcome == "correct") {
     # the coded as correct models (which take the absolute value for the regressors)
     model1 <- brm(correct ~ vd + ov + (vd + ov | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct01"))
     # add network difference
@@ -385,7 +350,7 @@ estimate_brms <- function(df, outcome = "choice") {
     model8 <- brm(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct08"))
     # add interaction ov:os
     model9 <- brm(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct09"))
-  } else if (outcome == "rt"){
+  } else if (outcome == "rt") {
     # the coded as response time models (which take the absolute value for the regressors)
     model1 <- brm(log(rt) ~ vd + ov + (vd + ov | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt01"))
     # add network difference
@@ -407,14 +372,14 @@ estimate_brms <- function(df, outcome = "choice") {
     model9 <- brm(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt09"))
   }
   # list(model1, model2, model3, model9)
-  
+
   # create a list of the model outputs for further analysis
-  list(model1, model2A,model2B, model3, model4, model5, model6, model7, model8, model9)
+  list(model1, model2A, model2B, model3, model4, model5, model6, model7, model8, model9)
 }
 
 estimate_mlms <- function(df, outcome = "choice") {
-  #estimate the mixed effect regressions using lme4 package
-  if (outcome ==  "choice"){
+  # estimate the mixed effect regressions using lme4 package
+  if (outcome == "choice") {
     # base model
     model1 <- glmer(choice ~ vd + ov + (vd + ov | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add network difference
@@ -426,14 +391,14 @@ estimate_mlms <- function(df, outcome = "choice") {
     # add overall similarity
     model5 <- glmer(choice ~ vd + ov + nd + sd + on + os + (vd + ov + nd + sd + on + os | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction vd:nd (write out to be explicit)
-    model6 <- glmer(choice ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id),data = df,  family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model6 <- glmer(choice ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction vd:sd
     model7 <- glmer(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction ov:on
     model8 <- glmer(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction ov:os
-    model9 <- glmer(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id),data = df,  family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-  } else if (outcome == "correct"){
+    model9 <- glmer(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+  } else if (outcome == "correct") {
     # base model
     model1 <- glmer(correct ~ vd + ov + (vd + ov | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add network difference
@@ -445,14 +410,14 @@ estimate_mlms <- function(df, outcome = "choice") {
     # add overall similarity
     model5 <- glmer(correct ~ vd + ov + nd + sd + on + os + (vd + ov + nd + sd + on + os | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction vd:nd (write out to be explicit)
-    model6 <- glmer(correct ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id),data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model6 <- glmer(correct ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction vd:sd
-    model7 <- glmer(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id),data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model7 <- glmer(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction ov:on
-    model8 <- glmer(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id),data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model8 <- glmer(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction ov:os
-    model9 <- glmer(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id),data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-  } else if (outcome == "rt"){
+    model9 <- glmer(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+  } else if (outcome == "rt") {
     # base model
     model1 <- lmer(log(rt) ~ vd + ov + (vd + ov | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add network difference
@@ -466,61 +431,60 @@ estimate_mlms <- function(df, outcome = "choice") {
     # add interaction vd:nd (write out to be explicit)
     model6 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + (vd + ov + nd + sd + on + os + vd:nd | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction vd:sd
-    model7 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id),data = df,  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model7 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + (vd + ov + nd + sd + on + os + vd:nd + vd:sd | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction ov:on
-    model8 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id),data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model8 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add interaction ov:os
-    model9 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id),data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model9 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
   }
   # create a list of the model outputs for further analysis
   # list(model1, model2, model3, model9)
-  
+
   list(model1, model2, model3, model4, model5, model6, model7, model8, model9)
 }
 
 generate_table <- function(ms, type, net_stat, save = F) {
-  #function for generating the regression tables for experiment two
+  # function for generating the regression tables for experiment two
   # the names for the labels will NOT work for both exp one and two
-  #TODO fix the labeling issue between the two
+  # TODO fix the labeling issue between the two
   # create proper file name with the filename
-  file_name <- here::here("tables", paste0(type,"_", net_stat, ".html"))
-  
-  title = paste0("mixed model for ",type)
+  file_name <- here::here("tables", paste0(type, "_", net_stat, ".html"))
+
+  title <- paste0("mixed model for ", type)
   dv_labels <- c("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9")
   pred_labels <- c(
     "Value Difference (vd)", "Overall Value (ov)",
     "Nework Difference (nd)", "Similarity Difference (sd)",
-    "Overall Network (on)","Overall Similarity (os)",
-    "vd:nd","vd:sd", "ov:on","ov:os"
+    "Overall Network (on)", "Overall Similarity (os)",
+    "vd:nd", "vd:sd", "ov:on", "ov:os"
   )
-  
-  if (save == TRUE){
+
+  if (save == TRUE) {
     table_temp <- tab_model(ms,
-                            show.intercept = F,
-                            show.aic = T,
-                            show.re.var = F,
-                            show.ci = FALSE,
-                            show.r2 = FALSE,
-                            show.icc = FALSE,
-                            dv.labels = dv_labels,
-                            pred.labels = pred_labels,
-                            title = title,
-                            file = file_name
+      show.intercept = F,
+      show.aic = T,
+      show.re.var = F,
+      show.ci = FALSE,
+      show.r2 = FALSE,
+      show.icc = FALSE,
+      dv.labels = dv_labels,
+      pred.labels = pred_labels,
+      title = title,
+      file = file_name
     )
-  } else{
+  } else {
     table_temp <- tab_model(ms,
-                            show.intercept = F,
-                            show.aic = T,
-                            show.re.var = F,
-                            show.ci = FALSE,
-                            show.r2 = FALSE,
-                            show.icc = FALSE,
-                            dv.labels = dv_labels,
-                            pred.labels = pred_labels,
-                            title = title
+      show.intercept = F,
+      show.aic = T,
+      show.re.var = F,
+      show.ci = FALSE,
+      show.r2 = FALSE,
+      show.icc = FALSE,
+      dv.labels = dv_labels,
+      pred.labels = pred_labels,
+      title = title
     )
   }
   print("did you fix the labeling issue?")
   return(table_temp)
 }
-

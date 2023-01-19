@@ -6,10 +6,14 @@ library(tidyverse)
 source(here::here("src", "utils.R"))
 
 temp_files <- list.files(path = here::here("data", "exp_2"), pattern = ".json", full.names = T)
+
 load(file = here::here("data", "modularity_100_6.RData"))
+
+# load(file = here::here("data", "LowHighWithinBetween.RData"))
 
 # get mod scores
 mod_res <- map(subgraphs, function(x) unique(V(x)$mod))
+mod_res <- map(subgraphs, function(x) {as.numeric(modularity(x, V(x)$snack_type))})
 mod_res <- do.call(rbind, mod_res)
 
 edge_dens <- map(subgraphs, function(x) edge_density(x))
@@ -88,6 +92,7 @@ individual_food_ratings <- function(data){
 }
 
 res_list <- map(temp_files, similarity_ratings)
+res <- do.call(rbind, map(temp_files, similarity_ratings))
 
 ggplot(res, aes(ratings)) +
   geom_histogram(color = "black", fill = "dodgerblue1", alpha = .8, bins = 50) +
@@ -121,6 +126,7 @@ ggplot(res, aes(modularity)) +
     text = element_text(size = 15),
     axis.title = element_text(face = "bold")
   )
+
 
 ggplot(res, aes(edge_densi)) +
   geom_histogram(color = "black", fill = "dodgerblue1", alpha = .8, bins = 9) +

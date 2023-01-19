@@ -35,10 +35,10 @@ library(ggforce) # Accelerating 'ggplot2'
 library(ggdist) # Visualizations of Distributions and Uncertainty
 library(patchwork) # The Composer of Plots
 
-library(sjPlot)
-library(sjmisc)
-library(sjlabelled)
-library(brms)
+library(sjPlot) # Data Visualization for Statistics in Social Science
+library(sjmisc) # Data and Variable Transformation Functions
+library(sjlabelled) # Labelled Data Utility Functions
+library(brms) # Bayesian Regression Models using 'Stan'
 
 source(here::here("src", "utils.R"))
 
@@ -59,7 +59,7 @@ net_degree <- calculate_net_stats(g)
 ##### loading the data#####
 df <- organize_group_data(experiment = 2)
 
-# describe_exlusions <- function(){
+# describe_exclusions <- function(){
 #   ###this function will take the RT exclusion below and print the subject were
     ###70% of the trails were removed. Thus we will not run the exclusion 
     ###regressions because we don't have enough trials to preform them. 
@@ -97,7 +97,7 @@ mean(rt_exclude_pct)
 
 ## value difference exclusion
 p_values <- vector(mode = "numeric", length = 75)
-# subject_idx = 1
+subject_idx = 1
 for (subject_idx in 1:75) {
   temp_df <- df %>%
     filter(subject_id == subject_idx) %>%
@@ -130,56 +130,60 @@ for (subject_idx in 1:75) {
   #         geom_hline(yintercept = 9000, linetype = "dashed")+
   #         labs(title = paste0("subject: ",subject_idx)))
 
-  temp_res <- broom::tidy(glm(choice ~ vd, family = binomial, data = temp_df))
-  # temp_res <- broom::tidy(glm(choice ~ vd + choose_max + choose_min, family = binomial, data = temp_df))
+  # temp_res <- broom::tidy(glm(choice ~ vd, family = binomial, data = temp_df))
+  # temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating + choose_max + choose_min, family = binomial, data = temp_df))
+  
+  temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating + left_net + right_net + left_sim + right_sim, family = binomial, data = temp_df))
   
   temp_res$p.value <- round(temp_res$p.value, 7)
   
   # print(temp_res)
   
- if (temp_res[2, 5][[1]] > 0.05) { # check p-value (prereg -- 0.05. check robustness across values)
+ if ((temp_res[2, 5][[1]] > 0.1) & (temp_res[3, 5][[1]] > 0.1)) { # check p-value (prereg -- 0.05. check robustness across values)
   # if (temp_res[2, 5][[1]] > 0.05) { # check p-value (prereg -- 0.05. check robustness across values)
   # if (temp_res[4, 5][[1]] < 0.05) { # check p-value (prereg -- 0.05. check robustness across values)
       
     p_values[[subject_idx]] <- unique(temp_df$subject_id)
 
-    plt <- df %>%
-      filter(subject_id == subject_idx) %>%
-      mutate(trial = 1:100) %>%
-      mutate(
-        Q1 = quantile(rt, .25),
-        Q3 = quantile(rt, .75),
-        IQR = IQR(rt)
-      ) %>%
-      filter(rt > (Q1 - 2 * IQR) & rt < (Q3 + 2 * IQR)) %>%
-      filter(!rt <= 300) %>% # response times cutoffs
-      filter(!rt >= 9000) %>%
-      mutate(vd = left_rating - right_rating) %>%
-      mutate(binned_value_diff = as.numeric(cut_number(vd, 9)) - 5) %>%
-      group_by(binned_value_diff) %>%
-      mutate(
-        n = n(),
-        m_left = mean(choice),
-        se = sqrt(var(choice) / length(choice))
-      ) %>%
-      ungroup() %>%
-      ggplot(aes(x = binned_value_diff, y = m_left)) +
-      geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se)) +
-      theme_classic() +
-      geom_line(size = 1) +
-      geom_hline(yintercept = .5, linetype = "dashed") +
-      scale_color_brewer(palette = "Set1") +
-      scale_y_continuous(limits = c(0, 1.01)) +
-      labs(
-        title = paste0("subject: ", subject_idx),
-        y = "Probability of Choosing Left",
-        x = "Value Difference (L-R)"
-      )
+    # plt <- df %>%
+    #   filter(subject_id == subject_idx) %>%
+    #   mutate(trial = 1:100) %>%
+    #   mutate(
+    #     Q1 = quantile(rt, .25),
+    #     Q3 = quantile(rt, .75),
+    #     IQR = IQR(rt)
+    #   ) %>%
+    #   filter(rt > (Q1 - 2 * IQR) & rt < (Q3 + 2 * IQR)) %>%
+    #   filter(!rt <= 300) %>% # response times cutoffs
+    #   filter(!rt >= 9000) %>%
+    #   mutate(vd = left_rating - right_rating) %>%
+    #   mutate(binned_value_diff = as.numeric(cut_number(vd, 9)) - 5) %>%
+    #   group_by(binned_value_diff) %>%
+    #   mutate(
+    #     n = n(),
+    #     m_left = mean(choice),
+    #     se = sqrt(var(choice) / length(choice))
+    #   ) %>%
+    #   ungroup() %>%
+    #   ggplot(aes(x = binned_value_diff, y = m_left)) +
+    #   geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se)) +
+    #   theme_classic() +
+    #   geom_line(size = 1) +
+    #   geom_hline(yintercept = .5, linetype = "dashed") +
+    #   scale_color_brewer(palette = "Set1") +
+    #   scale_y_continuous(limits = c(0, 1.01)) +
+    #   labs(
+    #     title = paste0("subject: ", subject_idx),
+    #     y = "Probability of Choosing Left",
+    #     x = "Value Difference (L-R)"
+    #   )
     # print(plt)
     print(temp_res)
   } else {
     (p_values[[subject_idx]] <- NA)
   }
+  # print(temp_res)
+  
 }
 
 # print(p_values)
@@ -194,7 +198,7 @@ exlusions <- function(df) {
   temp <- df %>%
     filter(subject_id != 35) %>% # rt exclusions
     filter(subject_id != 37) %>% # rt exclusions
-    filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
+    # filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
     group_by(subject_id) %>% # response times (IQR exclusion)
     mutate(
       Q1 = quantile(rt, .25),
@@ -215,7 +219,7 @@ res_model_comparisons <- vector(mode = "list", length = length(net_stats))
 
 net_idx <- 4
 
-net_idx <- 2
+net_idx <- 3
 net_idx <- 1
 
 for (net_idx in 1:length(net_stats)) {
@@ -225,23 +229,37 @@ for (net_idx in 1:length(net_stats)) {
   # generate the dataset with the network statistic of interest
   df <- organize_group_data(experiment = 2, net_stat = net_stats[[net_idx]])
 
-  # m1 <- glmer(choice ~ vd + nd + ov + on + vd:nd + ov:on + sd + (1 + vd + nd | subject_id),data = create_dataset(df, type = "choice"),  family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-  # summary(m1)
-  # m2 <- glmer(correct ~ vd + nd + ov + on + vd:nd + ov:on + sd + (1 | subject_id),data = create_dataset(df, type = "correct/rt"),  family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-  # summary(m2)
-  # m3 <- lmer(log(rt) ~ vd + nd + ov + on + vd:nd + ov:on + sd +(1 + on + ov+ ov:on | subject_id),data = create_dataset(df, type = "correct/rt"), control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-  # summary(m3)
-  # 
-  # tab_model(m1,m2,m3,
-  #           show.intercept = T,
-  #           show.aic = F,
-  #           show.re.var = F,
-  #           show.ci = FALSE,
-  #           show.r2 = FALSE,
-  #           show.icc = FALSE,
-  #           dv.labels = net_stats[[net_idx]]
-  # )
+  model_dat <- df %>%
+    exlusions() %>%
+    group_by(subject_id) %>%
+    select(subject_id, choice, left_rating, right_rating, left_net, right_net, left_sim, right_sim) %>%
+    mutate(zleft_rating = scale(left_rating),
+           zright_rating = scale(right_rating),
+           zleft_net = scale(left_net),
+           zright_net = scale(right_net),
+           zleft_sim = scale(left_sim),
+           zright_sim = scale(right_sim)
+           ) %>% ungroup()
+
+  m1 <- glmer(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 | subject_id),data = model_dat,  family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+  summary(m1)
   
+  m2 <- glmer(correct ~ vd + nd + ov + on + vd:nd + ov:on + sd + (1 + vd+ nd | subject_id),data = create_dataset(df, type = "correct/rt"),  family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+  # summary(m2)
+  m3 <- lmer(log(rt) ~ vd + nd + ov + on + vd:nd + ov:on + sd +(1| subject_id),data = create_dataset(df, type = "correct/rt"), control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+  # summary(m3)
+  
+  
+  tab_model(m1,m2,m3,
+            show.intercept = T,
+            show.aic = F,
+            show.re.var = F,
+            show.ci = FALSE,
+            show.r2 = FALSE,
+            show.icc = FALSE,
+            dv.labels = net_stats[[net_idx]]
+  )
+
   #### data analysis (regressions)
   #### coded for choice
   # choice_res <- estimate_mlms(create_dataset(df, type = "choice"), outcome = "choice")
@@ -322,8 +340,9 @@ tab_model(fit_choice09,
 # pd > 99%: probably existing
 # pd > 99.9%: certainly existing
 
-library(bayestestR)
-library(insight)
+library(bayestestR) # Understand and Describe Bayesian Models and Posterior
+Distributions
+library(insight) # Easy Access to Model Information for Various Model Objects
 
 posteriors <- insight::get_parameters(fit_choice02A)
 ggplot(posteriors, aes(x = b_nd)) +
@@ -344,7 +363,7 @@ ggplot(posteriors, aes(x = b_nd)) +
 # https://rpubs.com/mvuorre/brms-parallel
 # this will let you fun the choice and correct model at the same time
 
-library(future)
+library(future) # Unified Parallel and Distributed Processing in R for Everyone
 
 df <- organize_group_data(experiment = 2, net_stat = net_stats[[3]])
 # 
@@ -358,3 +377,4 @@ plan(
 # #need to change the number of cores used in the function as well I think.
 fits1 %<-% estimate_brms(df=create_dataset(df, type = "choice"), outcome ="choice")
 fits2 %<-% estimate_brms(df=create_dataset(df, type = "correct/rt"), outcome = "correct")
+

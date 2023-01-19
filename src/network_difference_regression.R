@@ -88,45 +88,59 @@ exlusions <- function(df) {
 net_stats <- c("strength", "eigen", "edge_density", "modularity")
 
 plts <- vector("list", length = length(net_stats))
-net_idx <- 4
+# net_idx <- 2
 
 for (net_idx in 1:length(net_stats)) {
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
   df <- organize_group_data(experiment = 1, net_stat = net_stats[[net_idx]])
 
-  #### data analysis
-
-  fit1 <- brm(choice ~ vd + ov + nd + on + vd:nd + ov:on + (vd + ov + nd + on + vd:nd + ov:on | subject_id), 
-              data = create_dataset(df, type = "choice"), family = "bernoulli", cores = 4, iter = 10000)
-  fit2 <- brm(log(rt) ~ vd * nd + ov * on + (vd * nd + ov * on | subject_id), data = create_dataset(df, type = "correct/rt"), cores = 10, iter = 10000)
-  fit3 <- brm(correct ~ vd + ov + nd + on + vd:nd + ov:on + (vd + ov + nd + on + vd:nd + ov:on | subject_id), 
-              data = create_dataset(df, type = "correct/rt"), family = "bernoulli", cores = 4, iter = 10000)
+  # #### data analysis
+  # 
+  # fit1 <- brm(choice ~ vd + ov + nd + on + vd:nd + ov:on + (vd + ov + nd + on + vd:nd + ov:on | subject_id), 
+  #             data = create_dataset(df, type = "choice"), family = "bernoulli", cores = 4, iter = 10000)
+  # fit2 <- brm(log(rt) ~ vd * nd + ov * on + (vd * nd + ov * on | subject_id), data = create_dataset(df, type = "correct/rt"), cores = 10, iter = 10000)
+  # fit3 <- brm(correct ~ vd + ov + nd + on + vd:nd + ov:on + (vd + ov + nd + on + vd:nd + ov:on | subject_id), 
+  #             data = create_dataset(df, type = "correct/rt"), family = "bernoulli", cores = 4, iter = 10000)
+  # 
+  # bayestestR::sexit(fit1)
+  # bayestestR::sexit(fit3)
+  # 
+  # knitr::kable(bayestestR::sexit(fit3), digits = 3) 
+  # 
+  # 
+  # knitr::kable(bayestestR::sexit(fit2), digits = 3) 
+  # 
+  # #### choice
+  # 
+  # formulas <- c(
+  #   "choice ~ vd + ov + (vd + ov | subject_id)",
+  #   "choice ~ vd + ov + nd + (vd + ov + nd | subject_id)",
+  #   "choice ~ vd + ov + nd + on  +  (vd + ov + nd + on | subject_id)",
+  #   "choice ~ vd + ov + nd + on  + vd:nd + ov:on + (vd + ov + nd + on + vd:nd + ov:on | subject_id)"
+  # )
+  # 
+  # estimate_mlm <- function (formula){glmer(formula,
+  #                                    data = create_dataset(df, type = "choice"),
+  #                                    family = binomial(link = "logit"),
+  #                                    control = glmerControl(
+  #                                              optimizer = "bobyqa",
+  #                                              optCtrl = list(maxfun = 2e5)))
+  # }
+  # map(formulas, estimate_mlm)
   
-  bayestestR::sexit(fit1)
-  bayestestR::sexit(fit3)
+  model_dat <- df %>%
+    exlusions() %>%
+    group_by(subject_id) %>%
+    select(subject_id, choice, left_rating, right_rating, left_net, right_net) %>%
+    mutate(zleft_rating = scale(left_rating),
+           zright_rating = scale(right_rating),
+           zleft_net = scale(left_net),
+           zright_net = scale(right_net)
+    ) %>% ungroup()
   
-  knitr::kable(bayestestR::sexit(fit3), digits = 3) 
+  m1 <- glmer(choice ~ (zleft_rating +zright_rating + zleft_net +  zright_net) + (0 + zleft_rating + zright_rating | subject_id),data = model_dat,  family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+  print(summary(m1))
   
-  
-  knitr::kable(bayestestR::sexit(fit2), digits = 3) 
-  
-  #### choice
-
-  formulas <- c(
-    "choice ~ vd + ov + (vd + ov | subject_id)",
-    "choice ~ vd + ov + nd + (vd + ov + nd | subject_id)",
-    "choice ~ vd + ov + nd + on  +  (vd + ov + nd + on | subject_id)",
-    "choice ~ vd + ov + nd + on  + vd:nd + ov:on + (vd + ov + nd + on + vd:nd + ov:on | subject_id)"
-  )
-
-  estimate_mlm <- function (formula){glmer(formula,
-                                     data = create_dataset(df, type = "choice"),
-                                     family = binomial(link = "logit"),
-                                     control = glmerControl(
-                                               optimizer = "bobyqa",
-                                               optCtrl = list(maxfun = 2e5)))
-  }
-  map(formulas, estimate_mlm)
   
 }
 
