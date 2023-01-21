@@ -167,7 +167,7 @@ for (subject_idx in 1:75) {
     #     x = "Value Difference (L-R)"
     #   )
     # print(plt)
-    print(temp_res)
+    # print(temp_res)
   } else {
     (p_values[[subject_idx]] <- NA)
   }
@@ -213,16 +213,48 @@ for (net_idx in 1:length(net_stats)) {
 
   # generate the dataset with the network statistic of interest
   df <- organize_group_data(experiment = 2, net_stat = net_stats[[net_idx]])
-
-  #### data analysis (regressions)
-  models_choice <- estimate_mlms(df, outcome = "choice")
-  models_correct<- estimate_mlms(df, outcome = "correct")
-  models_rt <- estimate_mlms(df, outcome = "rt")
   
-
+  #### data analysis (regressions)
+  print(paste0("############### CHOICE ###############"))
+  
+  models_choice <- estimate_mlms(df, outcome = "choice")
+  
   print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC", "R2", "RMSE", "LOGLOSS")))
+  print(parameters::compare_models(models_choice))
+  mp <- modelplot(models_choice, coef_omit = "Interc") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    labs(x = "Coefficients",y = "Terms",
+         title = net_stats[[net_idx]]
+    ) +
+    theme_classic() +
+    scale_color_brewer(palette = "Set1")
+  print(mp)
+  
+  print(paste0("############### CORRECT ###############"))
+  models_correct<- estimate_mlms(df, outcome = "correct")
   print(performance::compare_performance(models_correct, rank = TRUE, metrics = c("AIC", "BIC", "R2", "RMSE", "LOGLOSS")))
+  print(parameters::compare_models(models_correct))
+  mp <- modelplot(models_correct, coef_omit = "Interc") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    labs(x = "Coefficients",y = "Terms",
+         title = net_stats[[net_idx]]
+    ) +
+    theme_classic() +
+    scale_color_brewer(palette = "Set1")
+  print(mp)
+  
+  print(paste0("############### RT ###############"))
+  models_rt <- estimate_mlms(df, outcome = "rt")
   print(performance::compare_performance(models_rt, rank = TRUE))
+  print(parameters::compare_models(models_rt))
+  mp <- modelplot(models_rt, coef_omit = "Interc") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    labs(x = "Coefficients",y = "Terms",
+         title = net_stats[[net_idx]]
+    ) +
+    theme_classic() +
+    scale_color_brewer(palette = "Set1")
+  print(mp)
   
   # generate tables
   generate_table(models_choice, type = "exp_2_choice", net_stat = net_stats[[net_idx]], save = T)
@@ -231,17 +263,17 @@ for (net_idx in 1:length(net_stats)) {
   
   #nice way to make those regression coef tables you like
   #TODO make one with factor for each
-  mp <- modelplot(models_choice, coef_omit = "Interc") +
-    geom_vline(xintercept = 0, linetype = "dashed") +
-    labs(
-      x = "Coefficients",
-      y = "Terms",
-      title = net_stats[[net_idx]]
-    ) +
-    theme_classic() +
-    scale_color_brewer(palette = "Set1")
+  # mp <- modelplot(models_choice, coef_omit = "Interc") +
+  #   geom_vline(xintercept = 0, linetype = "dashed") +
+  #   labs(
+  #     x = "Coefficients",
+  #     y = "Terms",
+  #     title = net_stats[[net_idx]]
+  #   ) +
+  #   theme_classic() +
+  #   scale_color_brewer(palette = "Set1")
   # print(mp)
-  res_netstats[[net_idx]] <- mp
+  # res_netstats[[net_idx]] <- mp
   
   # Bayes analysis
   # choice_res <- estimate_brms(create_dataset(df, type = "choice"), outcome = "choice")

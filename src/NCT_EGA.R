@@ -64,7 +64,7 @@ ega_estimator <- function(data, iter = 500, ...) {
   return(ega_res$typicalGraph$graph)
 }
 
-NCT_res <- NCT(lee_2021_rating1, fernandez_2022_rating_combineded, it = 100, weighted = T, estimator = ega_estimator,
+NCT_res <- NCT(lee_2021_rating1, fernandez_2022_rating_combineded, it = 200, weighted = T, estimator = ega_estimator,
                paired = FALSE,
                test.edges = TRUE,
                test.centrality = TRUE,
@@ -79,11 +79,11 @@ plot(NCT_res, what="strength")
 # Plot results of the edge invariance test (not reliable with only 10 permutations!):
 # Note that two distributions are plotted
 # plot(NCT_res, what="edge")
-# plot(NCT_res, what="centrality")
+plot(NCT_res, what="centrality")
 #save the results (they are on the M1)
 
 # save(NCT_res, file = here("data", "lee_NCT.RData"))
-save(NCT_res, file = here("data", "fernandez_lee_NCT.RData"))
+save(NCT_res, file = here("data", "fernandez_lee_NCT_2.RData"))
 
 #we found that the networks are similar to one another...
 
