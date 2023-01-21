@@ -21,6 +21,7 @@
 # 2022/12/22      Kianté  Fernandez                   coded up version one
 # 2022/12/25      Kianté  Fernandez                   moved many functions to utils
 # 2022/12/27      Kianté  Fernandez                   created table functions
+# 2023/01/20      Kianté  Fernandez                   change the regression output
 
 # Libraries
 library(purrr) # Functional Programming Tools
@@ -35,18 +36,13 @@ library(ggforce) # Accelerating 'ggplot2'
 library(ggdist) # Visualizations of Distributions and Uncertainty
 library(patchwork) # The Composer of Plots
 
-library(sjPlot) # Data Visualization for Statistics in Social Science
-library(sjmisc) # Data and Variable Transformation Functions
-library(sjlabelled) # Labelled Data Utility Functions
 library(brms) # Bayesian Regression Models using 'Stan'
 
-source(here::here("src", "utils.R"))
+library(modelsummary)
+library(kableExtra)
+library(gt)
 
-# get correlations between items
-lee_2021_rating1 <- readr::read_csv(here::here("data", "lee_2021_rating1.csv"), col_names = FALSE)
-cor.snack_food <- SemNeT::similarity(lee_2021_rating1, method = "cor")
-cor_snack_food <- data.frame(matrix(cor.snack_food[cor.snack_food != 1], 59, 60))
-names(cor_snack_food) <- load_food_names()$FoodNames$Name
+source(here::here("src", "utils.R"))
 
 ######
 # calculate a bunch of network measures to look at relationship to stuff
@@ -61,18 +57,18 @@ df <- organize_group_data(experiment = 2)
 
 # describe_exclusions <- function(){
 #   ###this function will take the RT exclusion below and print the subject were
-    ###70% of the trails were removed. Thus we will not run the exclusion 
-    ###regressions because we don't have enough trials to preform them. 
+### 70% of the trails were removed. Thus we will not run the exclusion
+### regressions because we don't have enough trials to preform them.
 
-    ##then it will take the remaining data and run individual level logistic 
-    ##regressions with value difference regressed onto choice. It will print the 
-    ## not significant subjects and add there names to a list for the exclusion function
+## then it will take the remaining data and run individual level logistic
+## regressions with value difference regressed onto choice. It will print the
+## not significant subjects and add there names to a list for the exclusion function
 # }
 
 ### check for response time exclusions (before or after choice?)
 rt_exclude_pct <- vector(mode = "numeric", length = 75)
 
-for (subject_idx in 1:length(unique(df$subject_id)) ) {
+for (subject_idx in 1:length(unique(df$subject_id))) {
   temp_df <- df %>%
     filter(subject_id == subject_idx) %>%
     mutate(trial = 1:100) %>%
@@ -87,7 +83,7 @@ for (subject_idx in 1:length(unique(df$subject_id)) ) {
     summarise(pct_excluded = (100 - n()) / 100)
 
   rt_exclude_pct[[subject_idx]] <- temp_df$pct_excluded
-    
+
   if (temp_df$pct_excluded > 0.70) {
     print(paste0("######## subject: ", subject_idx, " #######"))
     print(paste0("######## percent trials excluded: ", temp_df$pct_excluded, " #######"))
@@ -97,8 +93,9 @@ mean(rt_exclude_pct)
 
 ## value difference exclusion
 p_values <- vector(mode = "numeric", length = 75)
-subject_idx = 1
+# subject_idx = 1
 for (subject_idx in 1:75) {
+  
   temp_df <- df %>%
     filter(subject_id == subject_idx) %>%
     mutate(trial = 1:100) %>%
@@ -112,14 +109,10 @@ for (subject_idx in 1:75) {
     filter(!rt >= 9000) %>%
     mutate(vd = left_rating - right_rating) %>%
     mutate(nd = left_net - right_net) %>%
-    mutate(sd = left_sim - right_sim) 
+    mutate(sd = left_sim - right_sim)
   
-    df$choose_max <- factor(as.numeric((df$left_MAX > df$right_MAX & df$choice == 1) | (df$left_MAX < df$right_MAX & df$choice == 0)))
-    
-    df$choose_min <- factor(as.numeric((df$left_MIN < df$right_MIN & df$choice == 0) | (df$left_MIN > df$right_MIN & df$choice == 1)))
-    
-    # df %>% select(choice,left_MAX,right_MAX,left_MIN,right_MIN,choose_max,choose_min) %>% View
-  if (subject_idx %in% c(35, 37)) { # remove the one subject that removes all the trials
+  # df %>% select(choice,left_MAX,right_MAX,left_MIN,right_MIN,choose_max,choose_min) %>% View
+  if (subject_idx %in% c(12, 35, 37)) { # remove the one subject that removes all the trials
     p_values[[subject_idx]] <- NA
     next
   }
@@ -129,20 +122,16 @@ for (subject_idx in 1:75) {
   #         geom_hline(yintercept = 300, linetype = "dashed")+
   #         geom_hline(yintercept = 9000, linetype = "dashed")+
   #         labs(title = paste0("subject: ",subject_idx)))
-
-  # temp_res <- broom::tidy(glm(choice ~ vd, family = binomial, data = temp_df))
+  
   # temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating + choose_max + choose_min, family = binomial, data = temp_df))
-  
-  temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating + left_net + right_net + left_sim + right_sim, family = binomial, data = temp_df))
-  
-  temp_res$p.value <- round(temp_res$p.value, 7)
-  
+  temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating + left_net + right_net + left_sim + right_sim + choose_max + choose_min, family = binomial, data = temp_df))
+
+  temp_res$p.value <- round(temp_res$p.value, 2)
+
   # print(temp_res)
-  
- if ((temp_res[2, 5][[1]] > 0.1) & (temp_res[3, 5][[1]] > 0.1)) { # check p-value (prereg -- 0.05. check robustness across values)
-  # if (temp_res[2, 5][[1]] > 0.05) { # check p-value (prereg -- 0.05. check robustness across values)
-  # if (temp_res[4, 5][[1]] < 0.05) { # check p-value (prereg -- 0.05. check robustness across values)
-      
+
+  if ((temp_res[2, 5][[1]] > 0.05) & (temp_res[3, 5][[1]] > 0.05) & (temp_res[8, 5][[1]] > 0.05) & (temp_res[9, 5][[1]] > 0.05)) { # check p-value (prereg -- 0.05. check robustness across values)
+
     p_values[[subject_idx]] <- unique(temp_df$subject_id)
 
     # plt <- df %>%
@@ -183,13 +172,12 @@ for (subject_idx in 1:75) {
     (p_values[[subject_idx]] <- NA)
   }
   # print(temp_res)
-  
 }
 
 # print(p_values)
 # so far we have a 25% exclusion rate
 # so if we relax the exclusion criterion to p = 0.0 we get 19%
-(length(as.numeric(na.omit(p_values))) + 2 )/ 75
+(length(as.numeric(na.omit(p_values))) + 2) / 75
 
 as.numeric(na.omit(p_values))
 
@@ -198,7 +186,7 @@ exlusions <- function(df) {
   temp <- df %>%
     filter(subject_id != 35) %>% # rt exclusions
     filter(subject_id != 37) %>% # rt exclusions
-    # filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
+    filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
     group_by(subject_id) %>% # response times (IQR exclusion)
     mutate(
       Q1 = quantile(rt, .25),
@@ -215,12 +203,9 @@ exlusions <- function(df) {
 net_stats <- c("strength", "eigen", "edge_density", "modularity")
 
 res_netstats <- vector(mode = "list", length = length(net_stats))
-res_model_comparisons <- vector(mode = "list", length = length(net_stats))
+# res_model_comparisons <- vector(mode = "list", length = length(net_stats))
 
-net_idx <- 4
-
-net_idx <- 3
-net_idx <- 1
+# net_idx <- 4
 
 for (net_idx in 1:length(net_stats)) {
   # for each network statistic...
@@ -229,152 +214,110 @@ for (net_idx in 1:length(net_stats)) {
   # generate the dataset with the network statistic of interest
   df <- organize_group_data(experiment = 2, net_stat = net_stats[[net_idx]])
 
-  model_dat <- df %>%
-    exlusions() %>%
-    group_by(subject_id) %>%
-    select(subject_id, choice, left_rating, right_rating, left_net, right_net, left_sim, right_sim) %>%
-    mutate(zleft_rating = scale(left_rating),
-           zright_rating = scale(right_rating),
-           zleft_net = scale(left_net),
-           zright_net = scale(right_net),
-           zleft_sim = scale(left_sim),
-           zright_sim = scale(right_sim)
-           ) %>% ungroup()
-
-  m1 <- glmer(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 | subject_id),data = model_dat,  family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-  summary(m1)
-  
-  m2 <- glmer(correct ~ vd + nd + ov + on + vd:nd + ov:on + sd + (1 + vd+ nd | subject_id),data = create_dataset(df, type = "correct/rt"),  family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-  # summary(m2)
-  m3 <- lmer(log(rt) ~ vd + nd + ov + on + vd:nd + ov:on + sd +(1| subject_id),data = create_dataset(df, type = "correct/rt"), control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-  # summary(m3)
-  
-  
-  tab_model(m1,m2,m3,
-            show.intercept = T,
-            show.aic = F,
-            show.re.var = F,
-            show.ci = FALSE,
-            show.r2 = FALSE,
-            show.icc = FALSE,
-            dv.labels = net_stats[[net_idx]]
-  )
-
   #### data analysis (regressions)
-  #### coded for choice
-  # choice_res <- estimate_mlms(create_dataset(df, type = "choice"), outcome = "choice")
-  # ### coded for correct
-  # correct_res <- estimate_mlms(create_dataset(df, type = "correct/rt"), outcome = "correct")
-  # ### response times
-  # rt_res <- estimate_mlms(create_dataset(df, type = "correct/rt"), outcome = "rt")
+  models_choice <- estimate_mlms(df, outcome = "choice")
+  models_correct<- estimate_mlms(df, outcome = "correct")
+  models_rt <- estimate_mlms(df, outcome = "rt")
   
-  # store the results from each set of models
-  # res_netstats[[net_idx]] <- list(choice_res, correct_res, rt_res)
-  # map(rt_res, summary)
-  # map(correct_res, summary)
-  # map(choice_res, summary)
 
+  print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC", "R2", "RMSE", "LOGLOSS")))
+  print(performance::compare_performance(models_correct, rank = TRUE, metrics = c("AIC", "BIC", "R2", "RMSE", "LOGLOSS")))
+  print(performance::compare_performance(models_rt, rank = TRUE))
+  
+  # generate tables
+  generate_table(models_choice, type = "exp_2_choice", net_stat = net_stats[[net_idx]], save = T)
+  generate_table(models_correct, type = "exp_2_correct", net_stat = net_stats[[net_idx]], save = T)
+  generate_table(models_rt, type = "exp_2_rt", net_stat = net_stats[[net_idx]], save = T)
+  
+  #nice way to make those regression coef tables you like
+  #TODO make one with factor for each
+  mp <- modelplot(models_choice, coef_omit = "Interc") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    labs(
+      x = "Coefficients",
+      y = "Terms",
+      title = net_stats[[net_idx]]
+    ) +
+    theme_classic() +
+    scale_color_brewer(palette = "Set1")
+  # print(mp)
+  res_netstats[[net_idx]] <- mp
+  
   # Bayes analysis
-
   # choice_res <- estimate_brms(create_dataset(df, type = "choice"), outcome = "choice")
   # correct_res <- estimate_brms(create_dataset(df, type = "correct/rt"), outcome = "correct")
   # rt_res <- estimate_brms(create_dataset(df, type = "correct/rt"), outcome = "rt")
-  # 
+  #
   # res_netstats[[net_idx]] <- list(choice_res, correct_res, rt_res)
-  
+
   # # model metrics
   # #does the correct and choice model map to one another
-  
+
   # model_compare_choice_res <- map(choice_res, loo)
   # model_compare_correct_res <- map(correct_res, loo)
   # model_compare_rt_res <- map(rt_res, loo)
-  # 
+  #
   # names(model_compare_choice_res) <- c(1,2,3,4,5,6,7,8,9,10)
   # names(model_compare_correct_res) <- c(1,2,3,4,5,6,7,8,9,10)
   # names(model_compare_rt_res) <- c(1,2,3,4,5,6,7,8,9,10)
-  # 
+  #
   # res_model_comparisons[[net_idx]] <- list(model_compare_choice_res, model_compare_correct_res, model_compare_rt_res)
-  # 
+  #
   # loo_compare(model_compare_choice_res)
   # loo_compare(model_compare_correct_res)
   # loo_compare(model_compare_rt_res)
-  
-  # 
+
+  #
   # map(correct_res, bayestestR::sexit)
   # map(choice_res, bayestestR::sexit)
-  
-  # 
+
+  #
   # knitr::kable(bayestestR::sexit(correct_res[[4]]), digits = 2)
   # knitr::kable(bayestestR::sexit(choice_res[[4]]), digits = 2)
   # knitr::kable(bayestestR::sexit(rt_res[[4]]), digits = 2)
-  
 }
-#generate tables
-# for (foo in 1:4){
-#   print(generate_table(res_netstats[[foo]][[1]], type = "choice", net_stat = net_stats[[foo]], save = T))
-#   print(generate_table(res_netstats[[foo]][[2]], type = "correct", net_stat = net_stats[[foo]], save = T))
-#   print(generate_table(res_netstats[[foo]][[3]], type = "rt", net_stat = net_stats[[foo]], save = T))
-# }
-
+(res_netstats[[1]] + res_netstats[[2]])/(res_netstats[[3]] + res_netstats[[4]])
 # save(res_netstats, file = here("data", "res_mixed_model.RData"))
 
-knitr::kable(bayestestR::sexit(fit_choice09), digits = 2)
-tab_model(fit_choice09,
-          show.intercept = F,
-          show.aic = F,
-          show.re.var = F,
-          show.ci = T,
-          show.r2 = FALSE,
-          show.icc = FALSE
-)
-#Compute the Probability of Direction (pd, also known as the Maximum Probability of Effect - MPE). 
-#It varies between ⁠50%⁠ and ⁠100%⁠ (i.e., 0.5 and 1) and can be interpreted as the probability
-#(expressed in percentage) that a parameter (described by its posterior distribution) is
-#strictly positive or negative (whichever is the most probable). 
-#It is mathematically defined as the proportion of the posterior distribution that is of the median's sign. 
-#Although differently expressed, this index is fairly similar (i.e., is strongly correlated) to the frequentist p-value. 
+
+# Compute the Probability of Direction (pd, also known as the Maximum Probability of Effect - MPE).
+# It varies between ⁠50%⁠ and ⁠100%⁠ (i.e., 0.5 and 1) and can be interpreted as the probability
+# (expressed in percentage) that a parameter (described by its posterior distribution) is
+# strictly positive or negative (whichever is the most probable).
+# It is mathematically defined as the proportion of the posterior distribution that is of the median's sign.
+# Although differently expressed, this index is fairly similar (i.e., is strongly correlated) to the frequentist p-value.
 
 # pd <= 95% ~ p > .1: uncertain
 # pd > 95% ~ p < .1: possibly existing
 # pd > 97%: likely existing
 # pd > 99%: probably existing
 # pd > 99.9%: certainly existing
-
-library(bayestestR) # Understand and Describe Bayesian Models and Posterior
-Distributions
-library(insight) # Easy Access to Model Information for Various Model Objects
-
-posteriors <- insight::get_parameters(fit_choice02A)
-ggplot(posteriors, aes(x = b_nd)) +
-  geom_density(fill = "orange")+
-  geom_vline(xintercept = 0)+
-  theme_classic()
-
-# prepare datasets
-# check correlations
-# model_dat %>%
-#   ungroup() %>%
-#   select(vd,nd,sd,ov,on,os) %>%
-#   correlation::correlation() %>%
-#   print()
-
+# 
+# library(bayestestR) # Understand and Describe Bayesian Models and Posterior
+# # Distributions
+# library(insight) # Easy Access to Model Information for Various Model Objects
+# 
+# posteriors <- insight::get_parameters(fit_choice02A)
+# ggplot(posteriors, aes(x = b_nd)) +
+#   geom_density(fill = "orange") +
+#   geom_vline(xintercept = 0) +
+#   theme_classic()
 
 # Run many brms models in parallel using futures
 # https://rpubs.com/mvuorre/brms-parallel
 # this will let you fun the choice and correct model at the same time
 
-library(future) # Unified Parallel and Distributed Processing in R for Everyone
-
-df <- organize_group_data(experiment = 2, net_stat = net_stats[[3]])
+# library(future) # Unified Parallel and Distributed Processing in R for Everyone
 # 
-plan(
-  list(
-    tweak(multisession, workers = 4),
-    tweak(multisession, workers = 4)
-  )
-)
-# #you need to make sure you feed the correct data. But this should work otherwise?
-# #need to change the number of cores used in the function as well I think.
-fits1 %<-% estimate_brms(df=create_dataset(df, type = "choice"), outcome ="choice")
-fits2 %<-% estimate_brms(df=create_dataset(df, type = "correct/rt"), outcome = "correct")
-
+# df <- organize_group_data(experiment = 2, net_stat = net_stats[[3]])
+# #
+# plan(
+#   list(
+#     tweak(multisession, workers = 4),
+#     tweak(multisession, workers = 4)
+#   )
+# )
+# # #you need to make sure you feed the correct data. But this should work otherwise?
+# # #need to change the number of cores used in the function as well I think.
+# fits1 %<-% estimate_brms(df = create_dataset(df, type = "correct/rt"), outcome = "correct")
+# fits2 %<-% estimate_brms(df = create_dataset(df, type = "correct/rt"), outcome = "rt")
