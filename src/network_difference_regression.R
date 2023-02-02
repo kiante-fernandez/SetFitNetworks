@@ -52,7 +52,10 @@ estimate_mlms <- function(df, outcome = "choice") {
     model1  = glmer(choice ~ zleft_rating + zright_rating + (1 | subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
     # add network difference
     model2 <- glmer(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 | subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
-    return(list(model1, model2)) 
+    
+    model3 <- glmer(choice ~ (zleft_rating*zleft_net) + (zright_rating*zright_net) + (1 | subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    
+    return(list(model1, model2, model3)) 
     
   } else if (outcome == "correct") {
     # base model
@@ -60,8 +63,7 @@ estimate_mlms <- function(df, outcome = "choice") {
     model1 <- glmer(correct ~ vd + ov + (1| subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add network difference
     model2 <- glmer(correct ~ vd + ov + nd + (1 | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-    model3 <- glmer(correct ~ vd + ov + nd + on + (1 | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-    return(list(model1, model2, model3)) 
+    return(list(model1, model2)) 
     
   } else if (outcome == "rt") {
     df = create_dataset(df, type = "correct/rt")
@@ -70,11 +72,49 @@ estimate_mlms <- function(df, outcome = "choice") {
     model1 <- lmer(log(rt) ~ vd + ov + (1 | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add network difference
     model2 <- lmer(log(rt) ~ vd + ov + nd + (1 | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))    # add overall network
-    model3 <- lmer(log(rt) ~ vd + ov + nd + on  + (1 | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-    return(list(model1, model2, model3)) 
+    
+    return(list(model1, model2)) 
   }
 }
+
+estimate_brms <- function(df, outcome = "choice") {
+  # TODO add a saving feature to avoid redundant model estimation
+  # note you could just write out the formula for each and not repeat so much here
+  # but this seems okay so long as we aim to be explicit
+  #
+  # TODO just create a folder for each network statistic, then add an argument that places each model in what ever name you write
+  #     create a error too. if the folder name does not exist in the directory then throw an error and don't run the models 'could not find folder to save models'
+  if (outcome == "choice") {
+    # base model
+    model1 <- brm(choice ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating | subject_id), data = create_dataset(df, type = "choice"), family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_choice01"))
+    # add network difference
+    model2 <- brm(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating + zleft_net + zright_net | subject_id), data = create_dataset(df, type = "choice"), family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_choice02"))
+    #interactions
+    model3 <- brm(choice ~ (zleft_rating*zleft_net) + (zright_rating*zright_net) + (1 + zleft_rating + zright_rating + zleft_net + zright_net | subject_id), data = create_dataset(df, type = "choice"), family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_choice03"))
+    
+    return(list(model1, model2, model3)) 
+    
+  } else if (outcome == "correct") {
+    # the coded as correct models (which take the absolute value for the regressors)
+    model1 <- brm(correct ~ vd + ov + (vd + ov | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_correct01"))
+    # add network difference
+    model2 <- brm(correct ~ vd + ov + nd + (vd + ov + nd| subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_correct02A"))
+
+    return(list(model1, model2)) 
+    
+  } else if (outcome == "rt") {
+    # the coded as response time models (which take the absolute value for the regressors)
+    model1 <- brm(log(rt) ~ vd + ov + (vd + ov| subject_id), data = create_dataset(df, type = "correct/rt"), cores = 4, iter = 10000, file = here::here("fits", "fit_rt01"))
+    # add network difference
+    model2 <- brm(log(rt) ~ vd + ov + nd + (vd + ov + nd | subject_id), data = create_dataset(df, type = "correct/rt"), cores = 4, iter = 10000, file = here::here("fits", "fit_rt02A"))
+
+    return(list(model1, model2)) 
+    
+  }
+  # list(model1, model2, model3, model9)
   
+}
+
 ######
 # calculate a bunch of network measures to look at relationship to stuff
 source("exploratory_graph_analysis.R")
@@ -82,6 +122,31 @@ net_degree <- calculate_net_stats(g)
 
 ##### loading the data#####
 df <- organize_group_data(experiment = 1, net_stat = "modularity")
+
+rt_exclude_pct <- vector(mode = "numeric", length = 75)
+
+for (subject_idx in 1:length(unique(df$subject_id))) {
+  temp_df <- df %>%
+    filter(subject_id == subject_idx) %>%
+    mutate(trial = 1:99) %>%
+    mutate(
+      Q1 = quantile(rt, .25),
+      Q3 = quantile(rt, .75),
+      IQR = IQR(rt)
+    ) %>%
+    filter(rt > (Q1 - 2 * IQR) & rt < (Q3 + 2 * IQR)) %>%
+    filter(!rt <= 300) %>% # response times cutoffs
+    filter(!rt >= 9000) %>%
+    summarise(pct_excluded = (99 - n()) / 99)
+  
+  rt_exclude_pct[[subject_idx]] <- temp_df$pct_excluded
+  
+  if (temp_df$pct_excluded > 0.70) {
+    print(paste0("######## subject: ", subject_idx, " #######"))
+    print(paste0("######## percent trials excluded: ", temp_df$pct_excluded, " #######"))
+  }
+}
+mean(rt_exclude_pct)
 
 ## value difference exclusion
 p_values <- vector(mode = "numeric", length = 30)
@@ -117,20 +182,22 @@ for (subject_idx in 1:30) {
     # if ((temp_res[2, 5][[1]] > 0.05) & (temp_res[3, 5][[1]] > 0.05)) { # check p-value (prereg -- 0.05. check robustness across values)
       
     p_values[[subject_idx]] <- unique(temp_df$subject_id)
-    print(temp_res)
+    # print(temp_res)
   } else {
     (p_values[[subject_idx]] <- NA)
   }
   # print(temp_res)
 }
 
-(length(as.numeric(na.omit(p_values)))) / 30
+print(paste0("############### Subject data exlclusions:", ((length(as.numeric(na.omit(p_values)))) / 30)*100,"%  ###############"))
+
 
 as.numeric(na.omit(p_values))
 
 exlusions <- function(df) {
   # function for data exclusions
   temp <- df %>%
+    filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
     group_by(subject_id) %>% # response times
     mutate(
       Q1 = quantile(rt, .25),
@@ -138,50 +205,74 @@ exlusions <- function(df) {
       IQR = IQR(rt)
     ) %>%
     filter(rt > (Q1 - 2 * IQR) & rt < (Q3 + 2 * IQR)) %>%
-    filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
     ungroup() %>%
     filter(!rt <= 300) %>% # response times cutoffs
     filter(!rt >= 9000)
   return(temp)
 }
 
-net_stats <- c("strength", "eigen", "edge_density", "modularity")
+# net_stats <- c("strength", "eigen", "edge_density", "modularity")
+# net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eigen","efficiency", "edge_density", "modularity")
+# net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity")
 
-plts <- vector("list", length = length(net_stats))
-
+net_stats <- c("efficiency", "edge_density", "modularity", "conductance")
+# net_idx <- 4
 for (net_idx in 1:length(net_stats)) {
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
   df <- organize_group_data(experiment = 1, net_stat = net_stats[[net_idx]])
 
   # #### data analysis
-  
-  #### data analysis (regressions)
+  print(paste0("############### CHOICE ###############"))
   models_choice <- estimate_mlms(df, outcome = "choice")
-  models_correct<- estimate_mlms(df, outcome = "correct")
-  models_rt <- estimate_mlms(df, outcome = "rt")
+  # models_choice <- estimate_brms(df, outcome = "choice") #bayes
   
   print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC", "R2", "RMSE", "LOGLOSS")))
-  print(performance::compare_performance(models_correct, rank = TRUE, metrics = c("AIC", "BIC", "R2", "RMSE", "LOGLOSS")))
-  print(performance::compare_performance(models_rt, rank = TRUE))
+  # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("WAIC","LOOIC"))) #bayes
   
-  # generate tables
-  generate_table(models_choice, type = "exp_1_choice", net_stat = net_stats[[net_idx]], save = F)
-  generate_table(models_correct, type = "exp_1_correct", net_stat = net_stats[[net_idx]], save = F)
-  generate_table(models_rt, type = "exp_1_rt", net_stat = net_stats[[net_idx]], save = F)
-  
+  print(parameters::compare_models(models_choice, style = "ci_p"))
   mp <- modelplot(models_choice, coef_omit = "Interc") +
     geom_vline(xintercept = 0, linetype = "dashed") +
-    labs(
-      x = "Coefficients",
-      y = "Terms",
-      title = net_stats[[net_idx]]
+    labs(x = "Coefficients",y = "Terms",
+         title = paste0("Choice: ",net_stats[[net_idx]])
     ) +
     theme_classic() +
     scale_color_brewer(palette = "Set1")
+  print(mp)
   
-  plts[[net_idx]] <- mp
+  # print(paste0("############### CORRECT ###############"))
+  # models_correct<- estimate_mlms(df, outcome = "correct")
+  # print(performance::compare_performance(models_correct, rank = TRUE, metrics = c("AIC", "BIC", "R2", "RMSE", "LOGLOSS")))
+  # print(parameters::compare_models(models_correct,  style = "ci_p"))
+  # mp <- modelplot(models_correct, coef_omit = "Interc") +
+  #   geom_vline(xintercept = 0, linetype = "dashed") +
+  #   labs(x = "Coefficients",y = "Terms",
+  #        title = net_stats[[net_idx]]
+  #   ) +
+  #   theme_classic() +
+  #   scale_color_brewer(palette = "Set1")
+  # print(mp)
+  
+  print(paste0("############### RT ###############"))
+  models_rt <- estimate_mlms(df, outcome = "rt")
+  # models_rt <- estimate_brms(df, outcome = "rt") #bayes versions
+  
+  print(performance::compare_performance(models_rt, rank = TRUE))
+  print(parameters::compare_models(models_rt,  style = "ci_p"))
+  mp <- modelplot(models_rt, coef_omit = "Interc") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    labs(x = "Coefficients",y = "Terms",
+         title = paste0("RT: ",net_stats[[net_idx]])
+    ) +
+    theme_classic() +
+    scale_color_brewer(palette = "Set1")
+  print(mp)
+  
+  # generate tables
+  generate_table(models_choice, type = "exp_1_choice", net_stat = net_stats[[net_idx]], save = T)
+  # generate_table(models_correct, type = "exp_1_correct", net_stat = net_stats[[net_idx]], save = T)
+  generate_table(models_rt, type = "exp_1_rt", net_stat = net_stats[[net_idx]], save = T)
   
 }
-(plts[[1]] + plts[[2]])/(plts[[3]] + plts[[4]])
+# (plts[[1]] + plts[[2]])/(plts[[3]] + plts[[4]])
 
 

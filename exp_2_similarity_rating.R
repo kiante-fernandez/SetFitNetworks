@@ -16,6 +16,7 @@ mod_res <- map(subgraphs, function(x) unique(V(x)$mod))
 mod_res <- map(subgraphs, function(x) {as.numeric(modularity(x, V(x)$snack_type))})
 mod_res <- do.call(rbind, mod_res)
 
+
 edge_dens <- map(subgraphs, function(x) edge_density(x))
 edge_dens <- do.call(rbind, edge_dens)
 
@@ -30,6 +31,19 @@ eigen_cen <- do.call(rbind, eigen_cen)
 strength_res <- map(subgraphs, function(x) sum(strength(x)))
 strength_res <- do.call(rbind, strength_res)
 
+# conductance
+source("exploratory_graph_analysis.R")
+G <- g
+E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
+mem <- membership(cluster_leading_eigen(G))
+
+con_res <- map(subgraphs, function(x) {
+  mem[names(mem)] = 1
+  mem[names(mem) %in% V(x)$name] = 2  
+  conductance_temp <- clustAnalytics::conductance(g, mem)[2]
+  as.numeric(conductance_temp)
+  return(unlist(conductance_temp))
+  })
 # data <- temp_files[[1]]
 similarity_ratings <- function(data) {
   set_values_temp <- vector(mode = "numeric", length = 100)
@@ -65,7 +79,8 @@ similarity_ratings <- function(data) {
   subject_rating_temp$edge_densi <- as.vector(edge_dens)
   subject_rating_temp$strength_res <- as.vector(strength_res)
   subject_rating_temp$eigen_cen <- as.vector(eigen_cen)
-
+  subject_rating_temp$con_cen <- as.vector(unlist(con_res))
+  
   subject_rating_temp$ratings <- set_values_temp
 
   subject_rating_temp$subject_id <- unique(subject_temp$subject_id)
@@ -139,6 +154,17 @@ ggplot(res, aes(edge_densi)) +
     axis.title = element_text(face = "bold")
   )
 
+ggplot(res, aes(con_cen)) +
+  geom_histogram(color = "black", fill = "dodgerblue1", alpha = .8, bins = 8) +
+  geom_vline(xintercept = mean(res$con_cen), linetype = "dashed", size = .7) +
+  theme_classic() +
+  labs(x = "Conductance", y = "Count") +
+  theme(
+    axis.text = element_text(face = "bold"),
+    text = element_text(size = 15),
+    axis.title = element_text(face = "bold")
+  )
+
 compares <- res %>%
   group_by(stimulus) %>%
   summarise(
@@ -150,6 +176,7 @@ compares$mod <- mod_res
 compares$ed <- edge_dens
 compares$st <- strength_res
 compares$ec <- eigen_cen
+compares$c <- unlist(con_res)
 
 library(BayesFactor)
 library(bayestestR)
@@ -170,8 +197,13 @@ describe_posterior(result, test = "p_direction")
 bayesfactor_models(result)
 plot(bayesfactor_models(result)) +
   scale_fill_pizza()
+result <- correlationBF(compares$subgraph_mean, compares$c)
+describe_posterior(result, test = "p_direction")
+bayesfactor_models(result)
+plot(bayesfactor_models(result)) +
+  scale_fill_pizza()
 
-# piecewise analysis on modularity
+ # piecewise analysis on modularity
 library(segmented)
 # fit simple linear regression model
 fit <- lm(subgraph_mean ~ mod, data = compares)
@@ -233,6 +265,19 @@ ggplot(compares, aes(st, subgraph_mean)) +
     axis.title = element_text(face = "bold")
   )
 
+ggplot(compares, aes(c, subgraph_mean)) +
+  geom_point() +
+  theme_classic() +
+  geom_pointrange(aes(ymin = subgraph_mean - se, ymax = subgraph_mean + se), size = .7, color = "red") +
+  geom_smooth(method = "lm", se = T, size = 1.8, color = "black") +
+  labs(x = "Conductance", y = "Similarity") +
+  theme(
+    axis.text = element_text(face = "bold"),
+    text = element_text(size = 15),
+    axis.title = element_text(face = "bold")
+  )
+
+
 par(mfrow = c(1, 3)) # set the plotting area into a 1*3 array
 
 plot(subgraphs[[32]],
@@ -244,12 +289,12 @@ plot(subgraphs[[32]],
   vertex.label.dist = 2,
   vertex.size = 20,
   vertex.label.family = "Times",
-  main = paste0("Most Similar. Q = ", round(compares$mod[[32]], 3), " D = ", round(compares$ed[[32]], 3), " s = ", round(compares$st[[32]], 3)),
+  main = paste0("Most Similar. Q = ", round(compares$mod[[32]], 3), " D = ", round(compares$ed[[32]], 3), " s = ", round(compares$st[[32]], 3), " c = ", round(compares$c[[32]], 3)),
   edge.width = abs(E(subgraphs[[32]])$weight) * 10,
 )
 
 plot(subgraphs[[2]],
-  layout = layout.circle(subgraphs[[32]]),
+  layout = layout.circle(subgraphs[[2]]),
   margin = .0,
   vertex.label.color = "black",
   vertex.label.font = 2,
@@ -257,11 +302,11 @@ plot(subgraphs[[2]],
   vertex.label.dist = 2,
   vertex.size = 20,
   vertex.label.family = "Times",
-  main = paste0("Least Similar. Q = ", round(compares$mod[[2]], 3), " D = ", round(compares$ed[[2]], 3), " s = ", round(compares$st[[2]], 3)),
-  edge.width = abs(E(subgraphs[[32]])$weight) * 10,
+  main = paste0("Least Similar. Q = ", round(compares$mod[[2]], 3), " D = ", round(compares$ed[[2]], 3), " s = ", round(compares$st[[2]], 3), " c = ", round(compares$c[[2]], 3)),
+  edge.width = abs(E(subgraphs[[2]])$weight) * 10,
 )
 plot(subgraphs[[73]],
-  layout = layout.circle(subgraphs[[32]]),
+  layout = layout.circle(subgraphs[[73]]),
   margin = .0,
   vertex.label.color = "black",
   vertex.label.font = 2,
@@ -269,9 +314,25 @@ plot(subgraphs[[73]],
   vertex.label.dist = 2,
   vertex.size = 20,
   vertex.label.family = "Times",
-  main = paste0("Hightest Variance. Q = ", round(compares$mod[[73]], 3), " D = ", round(compares$ed[[73]], 3), " s = ", round(compares$st[[73]], 3)),
-  edge.width = abs(E(subgraphs[[32]])$weight) * 10,
+  main = paste0("Hightest Variance. Q = ", round(compares$mod[[73]], 3), " D = ", round(compares$ed[[73]], 3), " s = ", round(compares$st[[73]], 3), " c = ", round(compares$c[[73]], 3)),
+  edge.width = abs(E(subgraphs[[73]])$weight) * 10,
 )
+
+plot_subgraph <- function(n){
+  plot(subgraphs[[n]],
+       layout = layout.circle(subgraphs[[n]]),
+       margin = .0,
+       vertex.label.color = "black",
+       vertex.label.font = 2,
+       vertex.label.cex = 1.5,
+       vertex.label.dist = 2,
+       vertex.size = 20,
+       vertex.label.family = "Times",
+       main = paste0("Q = ", round(compares$mod[[n]], 3), " D = ", round(compares$ed[[n]], 3), " s = ", round(compares$st[[n]], 3), " c = ", round(compares$c[[n]], 3)),
+       edge.width = abs(E(subgraphs[[n]])$weight) * 10,
+  )
+}
+
 
 res %>%
   select(response, ratings, subject_id, stimulus) %>%
@@ -294,6 +355,18 @@ res %>%
     axis.title = element_text(face = "bold")
   )
 
+par(mfrow = c(2, 4)) # set the plotting area into a 1*3 array
+arrange(compares, c)$stimulus
+
+plot_subgraph(46)
+plot_subgraph(98)
+plot_subgraph(32)
+plot_subgraph(60)
+
+plot_subgraph(14)
+plot_subgraph(8)
+plot_subgraph(2)
+plot_subgraph(1)
 
 single_item_ratings <- do.call(rbind, map(temp_files, individual_food_ratings))
 
