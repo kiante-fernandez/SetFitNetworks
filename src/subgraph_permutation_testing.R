@@ -19,43 +19,99 @@
 #
 # Date            Programmers                         Descriptions of Change
 # ====         ================                       ======================
-# 2023/02/01      Kianté  Fernandez                   coded up version one
+# 2023/02/03      Kianté  Fernandez                   coded up version one
+# 2023/02/04      Kianté  Fernandez                   finished modularity test
+
+library(igraph)
+library(ggplot2)
+library(patchwork)
 
 # create simulation function
 
 simulate_network <- function(g) {
   # permute graph
-   g1 <- rewire(g, with = keeping_degseq(niter = vcount(g) * 100))
-   # check weighted add weights
-   if (!is.null(E(g1)$weight)) {
-     E(g1)$weight <- sample(E(g)$weight)
-   }
-   adj_temp <- as_adjacency_matrix(g1, sparse = F, attr = "weight")
-   assortment.discrete(adj_temp, V(g1)$snack_type, weighted = TRUE, SE = F)$r
- }
- # set number of permutations
- nPerm <- 500
- p <- vector(mode = "list", length = 50)
- Switch <- F
+  # g1 <-igraph::rewire(g, with = igraph::keeping_degseq(loops = FALSE, niter = vcount(g) * 100))
+  g1 <- rewire(g, each_edge(p = .5, loops = FALSE))
 
- for (graph_idk in 1:50) {
-   # run simulations
-   r0 <- replicate(nPerm, simulate_network(subgraphs[[graph_idk]]))
+  # check weighted add weights
+  if (!is.null(E(g1)$weight)) {
+    E(g1)$weight <- sample(E(g)$weight)
+  }
+  adj_temp <- igraph::as_adjacency_matrix(g1, sparse = F, attr = "weight")
+  # calculate stat
+  # assortment.discrete(adj_temp, V(g1)$snack_type, weighted = TRUE, SE = F)$r
+  as.numeric(modularity(g1, V(g1)$snack_type))
+  # detach(igraph)
+}
 
-   if (1 - mean(r0 < rS[[graph_idk]]) < 0.05) {
-     Switch <- F
-   } else {
-     Switch <- T
-   }
+# g <- subgraphs[[2]]
+# sample_degseq
+# rewire(g, keeping_degseq(loops = FALSE, niter = vcount(g) * 100))
+#
+# rewire(g, each_edge(p = .1, loops = FALSE))
 
-   # plot it
-   p[[graph_idk]] <- qplot(r0, bins = 100) +
-     geom_vline(xintercept = rS[[graph_idk]], color = "red") +
-     geom_vline(xintercept = rT[[graph_idk]], color = "blue") +
-     labs(title = paste0(round(rS[[graph_idk]], 3))) + theme_classic() + {
-       if (Switch) theme(panel.background = element_rect(fill = "red"))
-     }
- }
- wrap_plots(p) #plots all the plots at once
- 
- 
+# load the subgraphs
+# load(file = here::here("data", "LowHighWithinBetween.RData"))
+
+load(file = here::here("data", "modularity_100_6.RData"))
+
+# set number of permutations
+nPerm <- 2500
+p <- vector(mode = "list", length = 100)
+res_sig <- rep(NA, 100)
+Switch <- F
+# graph_idk <- 1
+for (graph_idk in 1:100) {
+  # run simulations
+  r0 <- replicate(nPerm, simulate_network(subgraphs[[graph_idk]]))
+  rS <- modularity(subgraphs[[graph_idk]], V(subgraphs[[graph_idk]])$snack_type)
+
+  if (sign(rS) == 1) {
+    if (mean(r0 > rS) < 0.05) {
+      Switch <- F
+      res_sig[[graph_idk]] <- 1
+    } else {
+      Switch <- T
+      res_sig[[graph_idk]] <- 0
+    }
+  } else if ((sign(rS) == -1)){
+    if (mean(r0 < rS) < 0.05) {
+      Switch <- F
+      res_sig[[graph_idk]] <- 1
+    } else {
+      Switch <- T
+      res_sig[[graph_idk]] <- 0
+    }
+  }
+  if (rS == 0){
+    Switch <- T
+    res_sig[[graph_idk]] <- 0
+  }
+
+  # plot it
+  p[[graph_idk]] <- qplot(r0, bins = 10) +
+    geom_vline(xintercept = rS, color = "blue", size = 2) +
+    labs(title = paste0(round(rS, 3))) + theme_classic() + {
+      if (Switch) theme(panel.background = element_rect(fill = "red"))
+    }
+  print(p[[graph_idk]])
+}
+
+wrap_plots(p) # plots all the plots at once
+dput(res_sig)
+
+# res for exp 1 for modularity (NA's were zeros too )
+
+# res_sig <- c(1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1,
+#   0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0,
+#   0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1,
+#   1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1,
+#   0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1,
+#   0, 1)
+
+# res for exp 2 for modularity
+# c(1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 
+#   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+#   0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 
+#   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
+#   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)

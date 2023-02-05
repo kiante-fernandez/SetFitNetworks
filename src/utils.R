@@ -82,8 +82,8 @@ cor_snack_food <- SemNeT::similarity(lee_2021_rating1, method = "cor")
 cor_snack_food <- data.frame(matrix(cor_snack_food[cor_snack_food != 1], 59, 60))
 names(cor_snack_food) <- load_food_names()$FoodNames$Name
 
-# experiment = 1
-# weight = "closeness"
+experiment = 2
+weight = "betweenness"
 organize_group_data <- function(experiment, net_stat = "modularity", weight = "degree") {
 
   # which data set are we working with?
@@ -146,7 +146,7 @@ organize_group_data <- function(experiment, net_stat = "modularity", weight = "d
       unnest(response)
 
     # TODO try also the sum SD of the ratings
-    # foo <- 1
+    # foo <- 5
     for (foo in 1:100) {
       # select which stat to calculate
 
@@ -181,6 +181,10 @@ organize_group_data <- function(experiment, net_stat = "modularity", weight = "d
         set_network_temp[[foo]] <- as.numeric(efficiency_temp)
       } else if (net_stat == "modularity") {
         set_network_temp[[foo]] <- as.numeric(modularity(subgraph, V(subgraph)$snack_type))
+        #for testing the permutation method
+        if (res_sig[[foo]] == 0){
+          set_network_temp[[foo]] <- 0
+          }
       } else if (net_stat == "conductance") {
         mem[names(mem)] = 1
         mem[names(mem) %in% V(subgraphs[[foo]])$name] = 2  
@@ -204,8 +208,7 @@ organize_group_data <- function(experiment, net_stat = "modularity", weight = "d
       } else if (weight == "betweenness") {
         wt <- graph_stats[graph_stats$Name %in% res[[foo]], ]$betweenness
       }
-      
-      wt <- (wt - min(wt)) / range(wt) #normalize
+      # wt <- (wt - min(wt)) / diff(range(wt)) #normalize (corrected the issue)
       
       #use weight to get weighted average
       set_weighted_values_temp[[foo]] <- weighted.mean(x, wt)

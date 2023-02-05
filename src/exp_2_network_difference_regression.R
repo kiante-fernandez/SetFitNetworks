@@ -50,11 +50,21 @@ source(here::here("src", "utils.R"))
 source("exploratory_graph_analysis.R")
 # source('fernandez_rating_network.R') #load the EGA from the new rating data
 
+#use the empirical network instead of the bootnet one
+# A <- ega_res[["EGA"]][["network"]]
+# # dimattributes <- ega_res[["EGA"]][["wc"]]
+# dimattributes <- ega_res[["typicalGraph"]][["wc"]]
+# g <- graph_from_adjacency_matrix(A, "undirected", weighted = TRUE)
+# V(g)$snack_type <- dimattributes
+
 net_degree <- calculate_net_stats(g)
 
 
 ##### loading the data#####
-df <- organize_group_data(experiment = 2, net_stat = "conductance")
+df <- organize_group_data(experiment = 2, net_stat = "modularity")
+
+#trying out the zero out method from the permutation tests?
+
 #View(df[df$correct == 1 & df$correctwt == 0,])
 # describe_exclusions <- function(){
 #   ###this function will take the RT exclusion below and print the subject were
@@ -92,93 +102,9 @@ for (subject_idx in 1:length(unique(df$subject_id))) {
 }
 mean(rt_exclude_pct)
 
-## model comparisons with weighted average models
-# p_res <- data.frame(matrix(NA, nrow = 1, ncol = 14))
-# names(p_res) <- c("Name", "Model", "R2_Tjur", "RMSE", "Sigma", "Log_loss", "Score_log", 
-#                   "Score_spherical", "PCP", "AIC_wt", "BIC_wt", "Performance_Score", 
-#                   "subject_id","bfm")
-# p_res <- data.frame(matrix(NA, nrow = 1, ncol = 9))
-# names(p_res) <- c("Name", "Model", "R2", "R2_adjusted", "RMSE", "Sigma", "Performance_Score", 
-#                   "subject_id", "bfm")
-# 
-# p_res <- data.frame(matrix(NA, nrow = 1, ncol = 7))
-# names(p_res) <- c("Name", "Model", "WAIC_wt", "LOOIC_wt", "Performance_Score",
-#                   "subject_id","bfm")
-# 
-# model_compare_res <-  vector(mode = "list", length = 75)
-# for (subject_idx in 1:75) {
-#   temp_df <- df %>%
-#     filter(subject_id == subject_idx) %>%
-#     mutate(trial = 1:100) %>%
-#     mutate(
-#       Q1 = quantile(rt, .25),
-#       Q3 = quantile(rt, .75),
-#       IQR = IQR(rt)
-#     ) %>%
-#     filter(rt > (Q1 - 2 * IQR) & rt < (Q3 + 2 * IQR)) %>%
-#     filter(!rt <= 300) %>% # response times cutoffs
-#     filter(!rt >= 9000) %>%
-#     mutate(vd = left_rating - right_rating) %>%
-#     mutate(wtvd = left_wtrating - left_wtrating)
-#   
-#   if (subject_idx %in% c(35, 37)) { # remove the one subject that removes all the trials
-#     next
-#   }
-#   # m1 <- glm(choice ~ left_rating+right_rating, family = binomial, data = temp_df)
-#   m1 <- brm(choice ~ left_rating + right_rating, data = temp_df, family = "bernoulli", cores = 4, iter = 10000)
-#   # m2 <- glm(choice ~ left_wtrating+right_wtrating , family = binomial, data = temp_df)
-#   m2 <- brm(choice ~ left_wtrating + right_wtrating, data = temp_df, family = "bernoulli", cores = 4, iter = 10000)
-#   m1_waic <- waic(m1)
-#   m2_waic <- waic(m2)
-#   # loo_compare(loo(m1),loo(m2))
-#   # loo_compare(loo(m1),loo(m2)) 
-#   # m1 <- lm(log(rt) ~ left_rating+right_rating, data = temp_df)
-#   # m2 <- lm(log(rt) ~ left_wtrating+right_wtrating , data = temp_df)
-#   
-#   
-#   # res_temp1 <- broom::glance(m1)
-#   # res_temp1$m <- 1
-#   # res_temp2 <- broom::glance(m2)
-#   # res_temp2$m <- 2
-#   # res_temp <- rbind(res_temp1, res_temp2)
-#   # res_temp$subject_id <- subject_idx
-# 
-#   p_res_temp <- performance::compare_performance(m1,m2, rank = TRUE, metrics = c("WAIC","LOOIC"))
-#   p_res_temp$subject_id <- subject_idx
-#   
-#   if (p_res_temp$Performance_Score[p_res_temp$Name == "m1"] > p_res_temp$Performance_Score[p_res_temp$Name == "m2"]){
-#     p_res_temp$bfm <- 1
-#   }else{
-#     p_res_temp$bfm <- 0
-#   }
-#   p_res <- rbind(p_res, p_res_temp)
-#   # model_compare_res[[subject_idx]] <- res_temp
-# }
-# 
-# test <- do.call(rbind,model_compare_res)
-# 
-# ggplot(test , aes(reorder(factor(subject_id),BIC), BIC, fill = factor(m), group  = factor(m)))+
-#   geom_col(position="dodge",width = .5)
-# 
-# p_res %>% 
-#   na.omit() %>% 
-#   # filter(!subject_id %in% as.numeric(na.omit(p_values))) %>% 
-#   ggplot(aes(reorder(factor(subject_id),bfm), factor(bfm)))+
-#   geom_point()+
-#   theme_classic()
-# 
-# p_res %>% 
-#   na.omit() %>% 
-#   # filter(!subject_id %in% as.numeric(na.omit(p_values))) %>% 
-#   ggplot(aes(x = factor(subject_id),y = LOOIC_wt, fill = Name))+
-#   geom_col()+
-#   geom_hline(yintercept = .5)+
-#   theme_classic()+coord_flip()
-
-
 ## value difference exclusion
 p_values <- vector(mode = "numeric", length = 75)
-# subject_idx = 1
+#subject_idx = 1
 for (subject_idx in 1:75) {
   
   temp_df <- df %>%
@@ -209,20 +135,26 @@ for (subject_idx in 1:75) {
   #         labs(title = paste0("subject: ",subject_idx)))
   
   # temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating + choose_max + choose_min, family = binomial, data = temp_df))
-  temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating + left_net + right_net + left_sim + right_sim + choose_max + choose_min, family = binomial, data = temp_df))
+  # temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating + left_net + right_net + left_sim + right_sim + choose_max + choose_min, family = binomial, data = temp_df))
   # temp_res <- broom::tidy(glm(choice ~ left_wtrating + right_wtrating + left_net + right_net + left_sim + right_sim + choose_max + choose_min, family = binomial, data = temp_df))
   
   # temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating + left_net + right_net + left_sim + right_sim, family = binomial, data = temp_df))
   # temp_res <- broom::tidy(glm(choice ~ left_wtrating + right_wtrating + left_sim + right_sim, family = binomial, data = temp_df))
   
+  temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating, family = binomial, data = temp_df))
+  
   temp_res$p.value <- round(temp_res$p.value, 2)
-
+  
   # print(temp_res)
 
-  if ((temp_res[2, 5][[1]] > 0.05) & (temp_res[3, 5][[1]] > 0.05) & (temp_res[8, 5][[1]] > 0.05) & (temp_res[9, 5][[1]] > 0.05)) { # check p-value (prereg -- 0.05. check robustness across values)
-    # if ((temp_res[2, 5][[1]] > 0.05) & (temp_res[3, 5][[1]] > 0.05)) { # check p-value (prereg -- 0.05. check robustness across values)
+  # if ((temp_res[2, 5][[1]] > 0.05) & (temp_res[3, 5][[1]] > 0.05) & (temp_res[8, 5][[1]] > 0.05) & (temp_res[9, 5][[1]] > 0.05)) { # check p-value (prereg -- 0.05. check robustness across values)
+    if ((temp_res[2, 5][[1]] > 0.05) & (temp_res[3, 5][[1]] > 0.05)) { # check p-value (prereg -- 0.05. check robustness across values)
       
-    p_values[[subject_idx]] <- unique(temp_df$subject_id)
+      #'two-stage residual inclusion to test if people are using the choose min stratedgy
+      test <- broom::augment(glm(choice ~ left_rating + right_rating, family = binomial, data = temp_df)) %>% left_join(temp_df)
+      print(broom::tidy(lm(`.resid` ~ choose_max + choose_min, data = test)))
+      
+      p_values[[subject_idx]] <- unique(temp_df$subject_id)
 
     # plt <- df %>%
     #   filter(subject_id == subject_idx) %>%

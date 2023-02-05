@@ -118,6 +118,16 @@ estimate_brms <- function(df, outcome = "choice") {
 ######
 # calculate a bunch of network measures to look at relationship to stuff
 source("exploratory_graph_analysis.R")
+# source('fernandez_rating_network.R') #load the EGA from the new rating data
+
+# #look at the emprical network res
+# A <- ega_res[["EGA"]][["network"]]
+# # dimattributes <- ega_res[["EGA"]][["wc"]]
+# dimattributes <- ega_res[["typicalGraph"]][["wc"]]
+# g <- graph_from_adjacency_matrix(A, "undirected", weighted = TRUE)
+# V(g)$snack_type <- dimattributes
+
+
 net_degree <- calculate_net_stats(g)
 
 ##### loading the data#####
@@ -197,7 +207,7 @@ as.numeric(na.omit(p_values))
 exlusions <- function(df) {
   # function for data exclusions
   temp <- df %>%
-    filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
+    # filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
     group_by(subject_id) %>% # response times
     mutate(
       Q1 = quantile(rt, .25),

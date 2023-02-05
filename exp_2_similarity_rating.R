@@ -15,7 +15,7 @@ load(file = here::here("data", "modularity_100_6.RData"))
 mod_res <- map(subgraphs, function(x) unique(V(x)$mod))
 mod_res <- map(subgraphs, function(x) {as.numeric(modularity(x, V(x)$snack_type))})
 mod_res <- do.call(rbind, mod_res)
-
+# mod_res[res_sig == 0] <- 0
 
 edge_dens <- map(subgraphs, function(x) edge_density(x))
 edge_dens <- do.call(rbind, edge_dens)
