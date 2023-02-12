@@ -27,7 +27,6 @@ library(ggplot2)
 library(patchwork)
 
 # create simulation function
-
 simulate_network <- function(g) {
   # permute graph
   # g1 <-igraph::rewire(g, with = igraph::keeping_degseq(loops = FALSE, niter = vcount(g) * 100))
@@ -39,35 +38,54 @@ simulate_network <- function(g) {
   }
   adj_temp <- igraph::as_adjacency_matrix(g1, sparse = F, attr = "weight")
   # calculate stat
-  # assortment.discrete(adj_temp, V(g1)$snack_type, weighted = TRUE, SE = F)$r
+  #modularity
   as.numeric(modularity(g1, V(g1)$snack_type))
-  # detach(igraph)
+  ## conductance (what is the proper null distribution here )
+  # mem[names(mem)] = 1
+  # mem[names(mem) %in% V(g1)$name] = 2
+  # conductance_temp <- clustAnalytics::conductance(G, mem)[2]
+  # as.numeric(conductance_temp)
+  
 }
 
-# g <- subgraphs[[2]]
-# sample_degseq
-# rewire(g, keeping_degseq(loops = FALSE, niter = vcount(g) * 100))
-#
-# rewire(g, each_edge(p = .1, loops = FALSE))
+# load the subgraphs & big graph
 
-# load the subgraphs
-# load(file = here::here("data", "LowHighWithinBetween.RData"))
 
-load(file = here::here("data", "modularity_100_6.RData"))
+load(file = here::here("data", "LowHighWithinBetween.RData"))
+# load(file = here::here("data", "modularity_100_6.RData"))
+
+source("exploratory_graph_analysis.R")
+# source('fernandez_rating_network.R') #load the EGA from the new rating data
+
+G <- g
+E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight))) #make the weights positive so the code below works
+mem <- membership(cluster_leading_eigen(G)) #this is just to give just the structure of the object, not use the results. Hacky, but fine.
+
+# simulate_network(subgraphs[[1]])
 
 # set number of permutations
-nPerm <- 2500
+nPerm <- 3000
 p <- vector(mode = "list", length = 100)
 res_sig <- rep(NA, 100)
 Switch <- F
 # graph_idk <- 1
+#conduct the conditional uniform test
 for (graph_idk in 1:100) {
-  # run simulations
+  # generate null scores
   r0 <- replicate(nPerm, simulate_network(subgraphs[[graph_idk]]))
+  #compute estimated score
   rS <- modularity(subgraphs[[graph_idk]], V(subgraphs[[graph_idk]])$snack_type)
-
+  
+  #conductance scores
+  # mem[names(mem)] = 1
+  # mem[names(mem) %in% V(subgraphs[[graph_idk]])$name] = 2
+  # conductance_temp <- clustAnalytics::conductance(G, mem)[2]
+  # rS <- as.numeric(conductance_temp)
+  
+  
+#equal to of less than is that we need not just less than 
   if (sign(rS) == 1) {
-    if (mean(r0 > rS) < 0.05) {
+    if (mean(r0 > rS) <= 0.05) {
       Switch <- F
       res_sig[[graph_idk]] <- 1
     } else {
@@ -75,7 +93,7 @@ for (graph_idk in 1:100) {
       res_sig[[graph_idk]] <- 0
     }
   } else if ((sign(rS) == -1)){
-    if (mean(r0 < rS) < 0.05) {
+    if (mean(r0 < rS) <= 0.05) {
       Switch <- F
       res_sig[[graph_idk]] <- 1
     } else {
@@ -89,7 +107,7 @@ for (graph_idk in 1:100) {
   }
 
   # plot it
-  p[[graph_idk]] <- qplot(r0, bins = 10) +
+  p[[graph_idk]] <- qplot(r0, bins = 8) +
     geom_vline(xintercept = rS, color = "blue", size = 2) +
     labs(title = paste0(round(rS, 3))) + theme_classic() + {
       if (Switch) theme(panel.background = element_rect(fill = "red"))
@@ -100,18 +118,18 @@ for (graph_idk in 1:100) {
 wrap_plots(p) # plots all the plots at once
 dput(res_sig)
 
-# res for exp 1 for modularity (NA's were zeros too )
+# res for exp 1 for modularity (NA's were zeros too)
 
-# res_sig <- c(1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1,
-#   0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0,
-#   0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1,
-#   1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1,
-#   0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1,
-#   0, 1)
+# res_sig <- c(1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 
+#   0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 
+#   1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 
+#   0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 
+#   0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1)
+
 
 # res for exp 2 for modularity
-# c(1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 
-#   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-#   0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 
-#   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
+# res_sig<- c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+#   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+#   0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1,
+#   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 #   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)

@@ -38,7 +38,6 @@ source(here::here("src", "utils.R"))
 
 options(scipen=999)
 
-
 ######
 # calculate a bunch of network measures to look at relationship to stuff
 
@@ -61,7 +60,7 @@ subj_weights_models <- subj_weights_models <- rep(list(vector(mode = "list", len
 counter_sub <- 1
 counter_weight <- 1
 
-weight_idx = 6
+# weight_idx = 6
 for (weight_idx in 1:length(weights)) {
   ##### loading the data#####
 df <- organize_group_data(experiment = 2, net_stat = "conductance", weight = weights[[weight_idx]])
@@ -351,4 +350,19 @@ p_res %>%
 # 5 Model 5     5
 # 6 Model 6     9
 # 7 Model 7     7
+
+#w/o within set normalization
+# 1 Model 1    19
+# 2 Model 2     9
+# 3 Model 3    21
+# 4 Model 4    19
+# 5 Model 5    14
+# 6 Model 6    11
+# 7 Model 7    10
+
+
+
+#weights are computed as w = exp(-0.5 * delta_ic) / sum(exp(-0.5 * delta_ic)), 
+#where delta_ic is the difference between the model's IC value and the smallest IC value in the model set (Burnham and Anderson, 2002)
+
 

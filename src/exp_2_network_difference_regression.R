@@ -44,6 +44,12 @@ library(gt)
 
 source(here::here("src", "utils.R"))
 
+res_sig<- c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+
 ######
 # calculate a bunch of network measures to look at relationship to stuff
 
@@ -58,7 +64,6 @@ source("exploratory_graph_analysis.R")
 # V(g)$snack_type <- dimattributes
 
 net_degree <- calculate_net_stats(g)
-
 
 ##### loading the data#####
 df <- organize_group_data(experiment = 2, net_stat = "modularity")
@@ -149,7 +154,8 @@ for (subject_idx in 1:75) {
 
   # if ((temp_res[2, 5][[1]] > 0.05) & (temp_res[3, 5][[1]] > 0.05) & (temp_res[8, 5][[1]] > 0.05) & (temp_res[9, 5][[1]] > 0.05)) { # check p-value (prereg -- 0.05. check robustness across values)
     if ((temp_res[2, 5][[1]] > 0.05) & (temp_res[3, 5][[1]] > 0.05)) { # check p-value (prereg -- 0.05. check robustness across values)
-      
+      # if ((temp_res[2, 5][[1]] > 0.1) & (temp_res[3, 5][[1]] > 0.1)) { # check p-value (prereg -- 0.05. check robustness across values)
+        
       #'two-stage residual inclusion to test if people are using the choose min stratedgy
       test <- broom::augment(glm(choice ~ left_rating + right_rating, family = binomial, data = temp_df)) %>% left_join(temp_df)
       print(broom::tidy(lm(`.resid` ~ choose_max + choose_min, data = test)))
@@ -225,17 +231,18 @@ exlusions <- function(df) {
 # net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity")
 # net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity", "conductance","weighted_clustering_coefficient")
 
-net_stats <- c("efficiency", "edge_density", "modularity", "conductance")
+net_stats <- c("weighted_transitivity", "edge_density", "modularity", "conductance")
 
 res_netstats <- vector(mode = "list", length = length(net_stats))
 # res_model_comparisons <- vector(mode = "list", length = length(net_stats))
-
+# net_idx  =3
 for (net_idx in 1:length(net_stats)) {
   # for each network statistic...
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
 
   # generate the dataset with the network statistic of interest
   df <- organize_group_data(experiment = 2, net_stat = net_stats[[net_idx]])
+  # test <- df[(df$left_net != 0) | (df$right_net != 0),] #eleminate trials where both are zero
   
   #### data analysis (regressions)
   print(paste0("############### CHOICE ###############"))
@@ -246,6 +253,8 @@ for (net_idx in 1:length(net_stats)) {
   # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("WAIC","LOOIC")))
   
   print(parameters::compare_models(models_choice,  style = "ci_p"))
+  # print(parameters::compare_models(models_choice))
+  
   mp <- modelplot(models_choice, coef_omit = "Interc") +
     geom_vline(xintercept = 0, linetype = "dashed") +
     labs(x = "Coefficients",y = "Terms",
@@ -274,6 +283,8 @@ for (net_idx in 1:length(net_stats)) {
   
   print(performance::compare_performance(models_rt, rank = TRUE))
   print(parameters::compare_models(models_rt,  style = "ci_p"))
+  # print(parameters::compare_models(models_choice))
+  
   mp <- modelplot(models_rt, coef_omit = "Interc") +
     geom_vline(xintercept = 0, linetype = "dashed") +
     labs(x = "Coefficients",y = "Terms",

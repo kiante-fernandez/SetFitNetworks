@@ -42,7 +42,7 @@ NetworkStat <- function(subgraph) {
     eigen = igraph::eigen_centrality(G)$vector,
     weighted_transitivity = transitivity(subgraph, type = "weighted"),
     closeness = igraph::closeness(G, normalized = TRUE, cutoff = -1),
-    betweenness = betweenness(G,  normalized = TRUE),
+    betweenness = betweenness(G, normalized = TRUE),
     participation = NetworkToolbox::participation(adj_temp, comm = V(subgraph)$snack_type)$overall
   ) %>%
     tibble::rownames_to_column("Name")
@@ -82,10 +82,9 @@ cor_snack_food <- SemNeT::similarity(lee_2021_rating1, method = "cor")
 cor_snack_food <- data.frame(matrix(cor_snack_food[cor_snack_food != 1], 59, 60))
 names(cor_snack_food) <- load_food_names()$FoodNames$Name
 
-experiment = 2
-weight = "betweenness"
+# experiment = 2
+# weight = "betweenness"
 organize_group_data <- function(experiment, net_stat = "modularity", weight = "degree") {
-
   # which data set are we working with?
   if (experiment == 1) {
     temp_files <- list.files(path = here::here("data", "pilot_30"), pattern = ".json", full.names = T)
@@ -98,11 +97,11 @@ organize_group_data <- function(experiment, net_stat = "modularity", weight = "d
     # load subgraphs
     load(file = here::here("data", "modularity_100_6.RData"))
   }
-  #will get used to calculate network meausres
+  # will get used to calculate network meausres
   G <- g
   E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
   mem <- membership(cluster_leading_eigen(G))
-  
+
   file_idx <- length(temp_files) # how many subjects data to preprocess
   ############################
   ## organize the data and calculate value of group of items and net stats for each subject
@@ -134,7 +133,7 @@ organize_group_data <- function(experiment, net_stat = "modularity", weight = "d
     set_similarity_temp <- vector(mode = "numeric", length = 100)
 
     set_weighted_values_temp <- vector(mode = "numeric", length = 100)
-    
+
     # similarity ratings
     subject_similarity_temp <- subject_temp %>%
       filter(screen_id == "similarity") %>%
@@ -158,15 +157,18 @@ organize_group_data <- function(experiment, net_stat = "modularity", weight = "d
       size <- net_degree[net_degree$Name %in% res[[foo]], ]$Item
       subgraph <- igraph::induced_subgraph(g, size)
       # graph_stats <- NetworkStat(subgraph)
-      #calculate centrality with respect to larger graph
+      # calculate centrality with respect to larger graph
       graph_stats <- net_degree[net_degree$Name %in% res[[foo]], ]
-      
+
       if (net_stat == "degree") {
         set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$degree)
       } else if (net_stat == "strength") {
         set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$strength)
       } else if (net_stat == "weighted_transitivity") {
-        set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$weighted_transitivity)
+        # set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$weighted_transitivity)
+        adj_temp <- igraph::as_adjacency_matrix(subgraph, sparse = F, attr = "weight")
+        set_network_temp[[foo]] <- NetworkToolbox::clustcoeff(adj_temp, weighted = T)$CC
+        ifelse(is.nan(set_network_temp[[foo]]), set_network_temp[[foo]] <- 0, set_network_temp[[foo]] <- set_network_temp[[foo]])
       } else if (net_stat == "eigen") {
         set_network_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$eigen)
       } else if (net_stat == "closeness") {
@@ -181,20 +183,20 @@ organize_group_data <- function(experiment, net_stat = "modularity", weight = "d
         set_network_temp[[foo]] <- as.numeric(efficiency_temp)
       } else if (net_stat == "modularity") {
         set_network_temp[[foo]] <- as.numeric(modularity(subgraph, V(subgraph)$snack_type))
-        #for testing the permutation method
-        if (res_sig[[foo]] == 0){
-          set_network_temp[[foo]] <- 0
-          }
+        # for testing the permutation method
+        # if (res_sig[[foo]] == 0){
+        #   set_network_temp[[foo]] <- 0
+        #   }
       } else if (net_stat == "conductance") {
-        mem[names(mem)] = 1
-        mem[names(mem) %in% V(subgraphs[[foo]])$name] = 2  
+        mem[names(mem)] <- 1
+        mem[names(mem) %in% V(subgraphs[[foo]])$name] <- 2
         conductance_temp <- clustAnalytics::conductance(g, mem)[2]
         set_network_temp[[foo]] <- as.numeric(conductance_temp)
       }
-      
-      #calculated the weighted value of the set
-      x  <- do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response)
-      
+
+      # calculated the weighted value of the set
+      x <- do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response)
+
       if (weight == "degree") {
         wt <- graph_stats[graph_stats$Name %in% res[[foo]], ]$degree
       } else if (weight == "strength") {
@@ -202,17 +204,17 @@ organize_group_data <- function(experiment, net_stat = "modularity", weight = "d
       } else if (weight == "weighted_transitivity") {
         wt <- graph_stats[graph_stats$Name %in% res[[foo]], ]$weighted_transitivity
       } else if (weight == "eigen") {
-        wt <- graph_stats[graph_stats$Name %in% res[[foo]], ]$eigen 
+        wt <- graph_stats[graph_stats$Name %in% res[[foo]], ]$eigen
       } else if (weight == "closeness") {
-        wt <- graph_stats[graph_stats$Name %in% res[[foo]], ]$closeness 
+        wt <- graph_stats[graph_stats$Name %in% res[[foo]], ]$closeness
       } else if (weight == "betweenness") {
         wt <- graph_stats[graph_stats$Name %in% res[[foo]], ]$betweenness
       }
       # wt <- (wt - min(wt)) / diff(range(wt)) #normalize (corrected the issue)
-      
-      #use weight to get weighted average
+
+      # use weight to get weighted average
       set_weighted_values_temp[[foo]] <- weighted.mean(x, wt)
-      
+
       set_values_temp[[foo]] <- sum(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
 
       set_values_MAX_temp[[foo]] <- max(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
@@ -289,12 +291,12 @@ organize_group_data <- function(experiment, net_stat = "modularity", weight = "d
     ))
   # add the correct response col and choose max and not choose min col
   df$correct <- as.numeric((df$left_rating > df$right_rating & df$choice == 1) | (df$left_rating < df$right_rating & df$choice == 0))
-  
+
   df$correctwt <- as.numeric((df$left_wtrating > df$right_wtrating & df$choice == 1) | (df$left_wtrating < df$right_wtrating & df$choice == 0))
-  
+
   df$choose_max <- factor(as.numeric((df$left_MAX > df$right_MAX & df$choice == 1) | (df$left_MAX < df$right_MAX & df$choice == 0)))
   df$choose_min <- factor(as.numeric((df$left_MIN < df$right_MIN & df$choice == 0) | (df$left_MIN > df$right_MIN & df$choice == 1)))
-  
+
   return(df)
 }
 
@@ -321,7 +323,6 @@ create_dataset <- function(df, type, standardized = TRUE) {
       ) %>%
       ungroup() %>%
       select(subject_id, choice, nd, vd, sd, ov, on, os, zleft_rating, zright_rating, zleft_net, zright_net, zleft_sim, zright_sim)
-    
   } else if (type == "correct/rt") {
     model_dat <- df %>%
       exlusions() %>%
@@ -353,11 +354,11 @@ estimate_brms <- function(df, outcome = "choice") {
     model2A <- brm(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating + zleft_net + zright_net | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice02A"))
     # add similarity difference
     model2B <- brm(choice ~ zleft_rating + zright_rating + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating + zleft_sim + zright_sim | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice02A"))
-    #both
-    model3 <- brm(choice ~ zleft_rating + zright_rating +  zleft_net + zright_net + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating + zleft_net + zright_net +  zleft_sim + zright_sim | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice03"))
-    #interactions
-    model4 <- brm(choice ~ (zleft_rating*zleft_net) + (zright_rating*zright_net) + zleft_sim +  zright_sim + (1 + zleft_rating + zright_rating + zleft_net + zright_net +  zleft_sim + zright_sim | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice03"))
-    
+    # both
+    model3 <- brm(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating + zleft_net + zright_net + zleft_sim + zright_sim | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice03"))
+    # interactions
+    model4 <- brm(choice ~ (zleft_rating * zleft_net) + (zright_rating * zright_net) + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating + zleft_net + zright_net + zleft_sim + zright_sim | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice03"))
+
     # # base model
     # model1 <- brm(choice ~ vd + ov + (vd + ov | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice01"))
     # # add network difference
@@ -377,14 +378,13 @@ estimate_brms <- function(df, outcome = "choice") {
     # model8 <- brm(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice08"))
     # # add interaction ov:os
     # model9 <- brm(choice ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_choice09"))
-    
-    return(list(model1, model2A, model2B, model3, model4)) 
-    
+
+    return(list(model1, model2A, model2B, model3, model4))
   } else if (outcome == "correct") {
     # the coded as correct models (which take the absolute value for the regressors)
     model1 <- brm(correct ~ vd + ov + (1 | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct01"))
     # add network difference
-    model2A <- brm(correct ~ vd + ov + nd + (1| subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct02A"))
+    model2A <- brm(correct ~ vd + ov + nd + (1 | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct02A"))
     model2B <- brm(correct ~ vd + ov + sd + (1 | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct02B"))
     # add similarity difference
     model3 <- brm(correct ~ vd + ov + nd + sd + (1 | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct03"))
@@ -400,17 +400,18 @@ estimate_brms <- function(df, outcome = "choice") {
     # model8 <- brm(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct08"))
     # add interaction ov:os
     # model9 <- brm(correct ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), data = df, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "fit_correct09"))
-    
-    return(list(model1, model2A, model2B, model3)) 
-    
+
+    return(list(model1, model2A, model2B, model3))
   } else if (outcome == "rt") {
+    df <- create_dataset(df, type = "correct/rt")
+
     # the coded as response time models (which take the absolute value for the regressors)
-    model1 <- brm(log(rt) ~ vd + ov + (vd + ov | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt01"))
+    model1 <- brm(log(rt) ~ vd + ov + (vd + ov | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_rt01"))
     # add network difference
-    model2A <- brm(log(rt) ~ vd + ov + nd + (vd + ov + nd | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt02A"))
-    model2B <- brm(log(rt) ~ vd + ov + sd + (vd + ov + sd | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt02B"))
+    model2A <- brm(log(rt) ~ vd + ov + nd + (vd + ov + nd | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_rt02A"))
+    model2B <- brm(log(rt) ~ vd + ov + sd + (vd + ov + sd | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_rt02B"))
     # add similarity difference
-    model3 <- brm(log(rt) ~ vd + ov + nd + sd + (vd + ov + nd + sd | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt03"))
+    model3 <- brm(log(rt) ~ vd + ov + nd + sd + (vd + ov + nd + sd | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_rt02A"))
     # add overall network
     # model4 <- brm(log(rt) ~ vd + ov + nd + sd + on + (vd + ov + nd + sd + on | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt04"))
     # add overall similarity
@@ -423,34 +424,31 @@ estimate_brms <- function(df, outcome = "choice") {
     # model8 <- brm(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt08"))
     # add interaction ov:os
     # model9 <- brm(log(rt) ~ vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os + (vd + ov + nd + sd + on + os + vd:nd + vd:sd + ov:on + ov:os | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "fit_rt09"))
-    
-    return(list(model1, model2A, model2B, model3)) 
-    
+
+    return(list(model1, model2A, model2B, model3))
   }
   # list(model1, model2, model3, model9)
-
 }
 
 estimate_mlms <- function(df, outcome = "choice") {
   # estimate the mixed effect regressions using lme4 package
   if (outcome == "choice") {
     # base model
-    model1  = glmer(choice ~ zleft_rating + zright_rating + (1 | subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    model1 <- glmer(choice ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating| subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
     # add network difference
-    model2A <- glmer(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 | subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    model2A <- glmer(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating+ zleft_net + zright_net| subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
     # add similarity difference
-    model2B <-  glmer(choice ~ zleft_rating + zright_rating + zleft_sim + zright_sim + (1 | subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
-    # add both 
-    model3 <-glmer(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + zleft_sim + zright_sim + (1 | subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
-    
-    model4 <- glmer(choice ~ (zleft_rating*zleft_net) + (zright_rating*zright_net) + zleft_sim + zright_sim + (1 | subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
-    
-    return(list(model1, model2A, model2B, model3, model4)) 
-    
+    model2B <- glmer(choice ~ zleft_rating + zright_rating + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating + zleft_sim + zright_sim| subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    # add both
+    model3 <- glmer(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating + zleft_net + zright_net| subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+
+    model4 <- glmer(choice ~ (zleft_rating * zleft_net) + (zright_rating * zright_net) + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating + zleft_net + zright_net| subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+
+    return(list(model1, model2A, model2B, model3, model4))
   } else if (outcome == "correct") {
     # base model
-    df = create_dataset(df, type = "correct/rt")
-    model1 <- glmer(correct ~ vd + ov + (1| subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    df <- create_dataset(df, type = "correct/rt")
+    model1 <- glmer(correct ~ vd + ov + (1 | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add network difference
     model2A <- glmer(correct ~ vd + ov + nd + (1 | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     model2B <- glmer(correct ~ vd + ov + sd + (1 | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
@@ -460,27 +458,24 @@ estimate_mlms <- function(df, outcome = "choice") {
     # model4 <- glmer(correct ~ vd + ov + nd + sd + on + (1 | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add overall similarity
     # model5 <- glmer(correct ~ vd + ov + nd + sd + on + os + (1| subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-    return(list(model1, model2A, model2B, model3)) 
-    
+    return(list(model1, model2A, model2B, model3))
   } else if (outcome == "rt") {
-    df = create_dataset(df, type = "correct/rt")
-    
+    df <- create_dataset(df, type = "correct/rt")
+    # df = df[df$correct == 1,] #check only correct
     # base model
-    model1 <- lmer(log(rt) ~ vd + ov + (1 | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model1 <- lmer(log(rt) ~ vd + ov + (1 + vd + ov | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add network difference
-    model2A <- lmer(log(rt) ~ vd + ov + nd + (1 | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model2A <- lmer(log(rt) ~ vd + ov + nd + (1 + vd + ov + nd | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add similarity difference
-    model2B <- lmer(log(rt) ~ vd + ov + sd + (1 | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model2B <- lmer(log(rt) ~ vd + ov + sd + (1 + vd + ov + sd | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
 
-    model3 <- lmer(log(rt) ~ vd + ov + nd + sd + (1 | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model3 <- lmer(log(rt) ~ vd + ov + nd + sd + (1 + vd + ov + nd + sd| subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add overall network
     # model4 <- lmer(log(rt) ~ vd + ov + nd + sd + on + (1 | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add overall similarity
     # model5 <- lmer(log(rt) ~ vd + ov + nd + sd + on + os + (1 | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-    return(list(model1, model2A, model2B, model3)) 
-    
+    return(list(model1, model2A, model2B, model3))
   }
-
 }
 
 generate_table <- function(ms, type, net_stat, save = F) {
@@ -495,23 +490,24 @@ generate_table <- function(ms, type, net_stat, save = F) {
       title = title,
       fmt = 2,
       shape = term ~ model + statistic,
-      estimate  = "{estimate}{stars} [{conf.low}, {conf.high}]",
-      statistic = 'p.value',
+      estimate = "{estimate}{stars} [{conf.low}, {conf.high}]",
+      statistic = "p.value",
       coef_omit = "Intercept",
-      gof_omit = 'RMSE|ICC|R2 Cond.',
-      output = file_name)
-    
+      gof_omit = "RMSE|ICC|R2 Cond.",
+      output = file_name
+    )
   } else {
     table_temp <- modelsummary(
       ms,
       title = title,
       fmt = 2,
       shape = term ~ model + statistic,
-      estimate  = "{estimate}{stars} [{conf.low}, {conf.high}]",
-      statistic = 'p.value',
+      estimate = "{estimate}{stars} [{conf.low}, {conf.high}]",
+      statistic = "p.value",
       coef_omit = "Intercept",
-      gof_omit = 'RMSE|ICC|R2 Cond.',
-      output = "gt")
+      gof_omit = "RMSE|ICC|R2 Cond.",
+      output = "gt"
+    )
   }
   return(table_temp)
 }
