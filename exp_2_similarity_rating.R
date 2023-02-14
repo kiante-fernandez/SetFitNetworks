@@ -169,7 +169,8 @@ compares <- res %>%
   group_by(stimulus) %>%
   summarise(
     subgraph_mean = mean(response),
-    se = sqrt(var(response) / length(response))
+    se = sqrt(var(response) / length(response)),
+    subgraph_sd = sd(response)
   )
 
 compares$mod <- mod_res
@@ -203,6 +204,8 @@ bayesfactor_models(result)
 plot(bayesfactor_models(result)) +
   scale_fill_pizza()
 
+result <- cor.test(compares$subgraph_mean, compares$c)
+report::report(result)
  # piecewise analysis on modularity
 library(segmented)
 # fit simple linear regression model
@@ -277,6 +280,23 @@ ggplot(compares, aes(c, subgraph_mean)) +
     axis.title = element_text(face = "bold")
   )
 
+
+compares %>% 
+  select(subgraph_mean, subgraph_sd, mod, ed, st, c) %>% 
+  cor() %>% 
+  ggcorrplot::ggcorrplot(type = "upper",
+                         lab = TRUE)+
+  theme_classic()+
+  labs(x = "", y = "") +
+  theme(
+    axis.text = element_text(face = "bold"),
+    text = element_text(size = 15),
+    axis.title = element_text(face = "bold")
+  )
+
+m <- (lm(subgraph_mean~ scale(subgraph_sd) + scale(c), data = compares))
+report::report(m)
+plot(ggeffects::ggeffect(m, terms = c("subgraph_sd", "c [0.5, .8, 1]")))
 
 par(mfrow = c(1, 3)) # set the plotting area into a 1*3 array
 
