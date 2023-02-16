@@ -23,7 +23,7 @@
 
 # Libraries
 library(modelsummary)
-
+library(purrr)
 #load datasets 
 
 ## choice
@@ -40,6 +40,9 @@ exp_2_fit_choice04 <- readRDS("~/Documents/SetFitNetworks/fits/exp_2_fit_choice0
 
 ms1 <- list(exp_1_fit_choice01, exp_1_fit_choice02, exp_1_fit_choice03)
 ms2 <- list(exp_2_fit_choice01, exp_2_fit_choice02A, exp_2_fit_choice02B, exp_2_fit_choice03, exp_2_fit_choice04)
+
+# map(ms1, bayestestR::sexit)
+map(list(exp_1_fit_choice03, exp_2_fit_choice04), bayestestR::sexit)
 
 cm <- c('b_zleft_rating'    = 'left liking rating',
         'b_zright_rating'    = 'right liking rating',
@@ -105,6 +108,9 @@ exp_2_fit_rt03 <- readRDS("~/Documents/SetFitNetworks/fits/exp_2_fit_rt03.rds")
 rtms1 <- list(exp_1_fit_rt01,exp_1_fit_rt02)
 rtms2 <- list(exp_2_fit_rt01, exp_2_fit_rt02A, exp_2_fit_rt02B, exp_2_fit_rt03)
 
+map(rtms1, bayestestR::sexit)
+map(rtms2, bayestestR::sexit)
+
 # TODO labels need to be changed
 cm <- c('b_zleft_rating'    = 'left liking rating',
         'b_zright_rating'    = 'right liking rating',
@@ -131,3 +137,30 @@ modelsummary(panels,
              output = file_name
 )
 
+
+#exp1                                                                                                                                                                                                                                                                                                                  
+
+  Parameter                | Median |         95% CI | Direction | Significance (> |0.09|) | Large (> |0.54|)
+  -----------------------------------------------------------------------------------------------------------
+  Intercept                |   0.02 |  [-0.09, 0.13] |      0.63 |                    0.10 |             0.00
+  zleft_rating             |   0.94 |   [0.74, 1.16] |      1.00 |                    1.00 |             1.00
+  zleft_net                |   0.09 |  [-0.02, 0.20] |      0.95 |                    0.49 |             0.00
+  zright_rating            |  -0.80 | [-1.03, -0.60] |      1.00 |                    1.00 |             0.99
+  zright_net               |  -0.09 |  [-0.20, 0.02] |      0.95 |                    0.50 |             0.00
+  zleft_rating:zleft_net   |   0.07 |  [-0.04, 0.18] |      0.90 |                    0.37 |             0.00
+  zright_rating:zright_net |  -0.01 |  [-0.12, 0.10] |      0.60 |                    0.08 |             0.00
+                                                                                                                                             
+
+#exp2                                                                                                                                                                                                                                                                                                                    
+ Parameter                |    Median |         95% CI | Direction | Significance (> |0.09|) | Large (> |0.54|)
+ --------------------------------------------------------------------------------------------------------------
+ Intercept                | -3.65e-03 |  [-0.09, 0.08] |      0.54 |                    0.02 |                0
+ zleft_rating             |      0.82 |   [0.71, 0.94] |      1.00 |                    1.00 |                1
+ zleft_net                |     -0.02 |  [-0.10, 0.05] |      0.72 |                    0.05 |                0
+ zright_rating            |     -0.83 | [-0.95, -0.71] |      1.00 |                    1.00 |                1
+ zright_net               |     -0.04 |  [-0.14, 0.05] |      0.83 |                    0.15 |                0
+ zleft_sim                |      0.02 |  [-0.05, 0.09] |      0.70 |                    0.02 |                0
+ zright_sim               |      0.03 |  [-0.05, 0.10] |      0.76 |                    0.04 |                0
+ zleft_rating:zleft_net   |     -0.03 |  [-0.10, 0.05] |      0.75 |                    0.05 |                0
+ zright_rating:zright_net |      0.04 |  [-0.03, 0.12] |      0.86 |                    0.10 |                0
+ 
