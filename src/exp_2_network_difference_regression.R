@@ -44,12 +44,6 @@ library(gt)
 
 source(here::here("src", "utils.R"))
 
-res_sig<- c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1,
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
-
 ######
 # calculate a bunch of network measures to look at relationship to stuff
 
@@ -57,11 +51,11 @@ source("exploratory_graph_analysis.R")
 # source('fernandez_rating_network.R') #load the EGA from the new rating data
 
 #use the empirical network instead of the bootnet one
-# A <- ega_res[["EGA"]][["network"]]
-# # dimattributes <- ega_res[["EGA"]][["wc"]]
-# dimattributes <- ega_res[["typicalGraph"]][["wc"]]
-# g <- graph_from_adjacency_matrix(A, "undirected", weighted = TRUE)
-# V(g)$snack_type <- dimattributes
+A <- ega_res[["EGA"]][["network"]]
+# dimattributes <- ega_res[["EGA"]][["wc"]]
+dimattributes <- ega_res[["typicalGraph"]][["wc"]]
+g <- graph_from_adjacency_matrix(A, "undirected", weighted = TRUE)
+V(g)$snack_type <- dimattributes # let the communities belong to the bootEGA, but the weights to the empirical
 
 net_degree <- calculate_net_stats(g)
 
@@ -100,7 +94,7 @@ for (subject_idx in 1:length(unique(df$subject_id))) {
 
   rt_exclude_pct[[subject_idx]] <- temp_df$pct_excluded
 
-  if (temp_df$pct_excluded > 0.70) {
+  if (temp_df$pct_excluded > 0.40) {
     print(paste0("######## subject: ", subject_idx, " #######"))
     print(paste0("######## percent trials excluded: ", temp_df$pct_excluded, " #######"))
   }
@@ -162,40 +156,42 @@ for (subject_idx in 1:75) {
       
       p_values[[subject_idx]] <- unique(temp_df$subject_id)
 
-    # plt <- df %>%
-    #   filter(subject_id == subject_idx) %>%
-    #   mutate(trial = 1:100) %>%
-    #   mutate(
-    #     Q1 = quantile(rt, .25),
-    #     Q3 = quantile(rt, .75),
-    #     IQR = IQR(rt)
-    #   ) %>%
-    #   filter(rt > (Q1 - 2 * IQR) & rt < (Q3 + 2 * IQR)) %>%
-    #   filter(!rt <= 300) %>% # response times cutoffs
-    #   filter(!rt >= 9000) %>%
-    #   mutate(vd = left_rating - right_rating) %>%
-    #   mutate(binned_value_diff = as.numeric(cut_number(vd, 9)) - 5) %>%
-    #   group_by(binned_value_diff) %>%
-    #   mutate(
-    #     n = n(),
-    #     m_left = mean(choice),
-    #     se = sqrt(var(choice) / length(choice))
-    #   ) %>%
-    #   ungroup() %>%
-    #   ggplot(aes(x = binned_value_diff, y = m_left)) +
-    #   geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se)) +
-    #   theme_classic() +
-    #   geom_line(size = 1) +
-    #   geom_hline(yintercept = .5, linetype = "dashed") +
-    #   scale_color_brewer(palette = "Set1") +
-    #   scale_y_continuous(limits = c(0, 1.01)) +
-    #   labs(
-    #     title = paste0("subject: ", subject_idx),
-    #     y = "Probability of Choosing Left",
-    #     x = "Value Difference (L-R)"
-    #   )
-    # print(plt)
-    # print(temp_res)
+    plt <- df %>%
+      filter(subject_id == subject_idx) %>%
+      mutate(trial = 1:100) %>%
+      mutate(
+        Q1 = quantile(rt, .25),
+        Q3 = quantile(rt, .75),
+        IQR = IQR(rt)
+      ) %>%
+      filter(rt > (Q1 - 2 * IQR) & rt < (Q3 + 2 * IQR)) %>%
+      filter(!rt <= 300) %>% # response times cutoffs
+      filter(!rt >= 9000) %>%
+      mutate(vd = left_rating - right_rating) %>%
+      mutate(binned_value_diff = as.numeric(cut_number(vd, 9)) - 5) %>%
+      group_by(binned_value_diff) %>%
+      mutate(
+        n = n(),
+        m_left = mean(choice),
+        se = sqrt(var(choice) / length(choice))
+      ) %>%
+      ungroup() %>%
+      ggplot(aes(x = binned_value_diff, y = m_left)) +
+      geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se)) +
+      theme_classic() +
+      geom_line(size = 1) +
+      geom_hline(yintercept = .5, linetype = "dashed") +
+      scale_color_brewer(palette = "Set1") +
+      scale_y_continuous(limits = c(0, 1.01)) +
+      labs(
+        title = paste0("subject: ", subject_idx),
+        y = "Probability of Choosing Left",
+        x = "Value Difference (L-R)"
+      )
+    print(paste0("############### ", "subject: ", subject_idx, " ###############"))
+    
+    print(plt)
+    print(temp_res)
   } else {
     (p_values[[subject_idx]] <- NA)
   }
@@ -207,13 +203,14 @@ for (subject_idx in 1:75) {
 # so if we relax the exclusion criterion to p = 0.0 we get 19%
 print(paste0("############### Subject data exlclusions:", ((length(as.numeric(na.omit(p_values))) + 2) / 75)*100,"%  ###############"))
 
-as.numeric(na.omit(p_values))
+dput(as.numeric(na.omit(p_values)))
+
 
 exlusions <- function(df) {
   # function for data exclusions following the preregistration specs
   temp <- df %>%
-    filter(subject_id != 35) %>% # rt exclusions
-    filter(subject_id != 37) %>% # rt exclusions
+    # filter(!subject_id %in% c(17, 29, 35, 37)) %>% #comment out for no exclusions (subejct 13?)
+    # filter(!subject_id %in% c(4, 5, 10, 12, 17, 22, 29, 35, 37,41, 42, 48, 55, 57, 58, 63, 64, 65, 66, 67, 70, 75)) %>% #comment out for no exclusions (subejct 13?)
     filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
     group_by(subject_id) %>% # response times (IQR exclusion)
     mutate(
@@ -231,11 +228,12 @@ exlusions <- function(df) {
 # net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity")
 # net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity", "conductance","weighted_clustering_coefficient")
 
-net_stats <- c("weighted_transitivity", "edge_density", "modularity", "conductance")
+# net_stats <- c("weighted_transitivity", "edge_density", "modularity", "conductance")
+net_stats <- c( "modularity")
 
 res_netstats <- vector(mode = "list", length = length(net_stats))
 # res_model_comparisons <- vector(mode = "list", length = length(net_stats))
-# net_idx  =3
+# net_idx  = 3
 for (net_idx in 1:length(net_stats)) {
   # for each network statistic...
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
@@ -243,26 +241,26 @@ for (net_idx in 1:length(net_stats)) {
   # generate the dataset with the network statistic of interest
   df <- organize_group_data(experiment = 2, net_stat = net_stats[[net_idx]])
   # test <- df[(df$left_net != 0) | (df$right_net != 0),] #eleminate trials where both are zero
-  
+
   #### data analysis (regressions)
   print(paste0("############### CHOICE ###############"))
-  models_choice <- estimate_mlms(df, outcome = "choice")
-  # models_choice <- estimate_brms(df, outcome = "choice") #bayes versions
+  # models_choice <- estimate_mlms(df, outcome = "choice")
+  models_choice <- estimate_brms(df, outcome = "choice") #bayes versions
   
-  print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC", "R2", "RMSE", "LOGLOSS")))
+  # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC")))
   # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("WAIC","LOOIC")))
   
-  print(parameters::compare_models(models_choice,  style = "ci_p"))
+  # print(parameters::compare_models(models_choice,  style = "ci_p"))
   # print(parameters::compare_models(models_choice))
   
-  mp <- modelplot(models_choice, coef_omit = "Interc") +
-    geom_vline(xintercept = 0, linetype = "dashed") +
-    labs(x = "Coefficients",y = "Terms",
-         title = paste0("Choice: ",net_stats[[net_idx]])
-    ) +
-    theme_classic() +
-    scale_color_brewer(palette = "Set1")
-  print(mp)
+  # mp <- modelplot(models_choice, coef_omit = "Interc") +
+  #   geom_vline(xintercept = 0, linetype = "dashed") +
+  #   labs(x = "Coefficients",y = "Terms",
+  #        title = paste0("Choice: ",net_stats[[net_idx]])
+  #   ) +
+  #   theme_classic() +
+  #   scale_color_brewer(palette = "Set1")
+  # print(mp)
   
   # print(paste0("############### CORRECT ###############"))
   # models_correct<- estimate_mlms(df, outcome = "correct")
@@ -278,26 +276,26 @@ for (net_idx in 1:length(net_stats)) {
   # print(mp)
   
   print(paste0("############### RT ###############"))
-  models_rt <- estimate_mlms(df, outcome = "rt")
-  # models_rt <- estimate_brms(df, outcome = "rt") #bayes versions
+  # models_rt <- estimate_mlms(df, outcome = "rt")
+  models_rt <- estimate_brms(df, outcome = "rt") #bayes versions
   
-  print(performance::compare_performance(models_rt, rank = TRUE))
-  print(parameters::compare_models(models_rt,  style = "ci_p"))
-  # print(parameters::compare_models(models_choice))
-  
-  mp <- modelplot(models_rt, coef_omit = "Interc") +
-    geom_vline(xintercept = 0, linetype = "dashed") +
-    labs(x = "Coefficients",y = "Terms",
-         title = paste0("RT: ",net_stats[[net_idx]])
-    ) +
-    theme_classic() +
-    scale_color_brewer(palette = "Set1")
-  print(mp)
+  # print(performance::compare_performance(models_rt, rank = TRUE))
+  # print(parameters::compare_models(models_rt,  style = "ci_p"))
+  # # print(parameters::compare_models(models_choice))
+  # 
+  # mp <- modelplot(models_rt, coef_omit = "Interc") +
+  #   geom_vline(xintercept = 0, linetype = "dashed") +
+  #   labs(x = "Coefficients",y = "Terms",
+  #        title = paste0("RT: ",net_stats[[net_idx]])
+  #   ) +
+  #   theme_classic() +
+  #   scale_color_brewer(palette = "Set1")
+  # print(mp)
   
   # generate tables
-  generate_table(models_choice, type = "exp_2_choice", net_stat = net_stats[[net_idx]], save = T)
+  # generate_table(models_choice, type = "exp_2_choice", net_stat = net_stats[[net_idx]], save = T)
   # generate_table(models_correct, type = "exp_2_correct", net_stat = net_stats[[net_idx]], save = T)
-  generate_table(models_rt, type = "exp_2_rt", net_stat = net_stats[[net_idx]], save = T)
+  # generate_table(models_rt, type = "exp_2_rt", net_stat = net_stats[[net_idx]], save = T)
   
   #nice way to make those regression coef tables you like
   #TODO make one with factor for each

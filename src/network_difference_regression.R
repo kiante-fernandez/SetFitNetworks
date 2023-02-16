@@ -45,59 +45,53 @@ library(gt)
 source(here::here("src", "utils.R"))
 # source(here::here("src", "utils_plotting.R"))
 
-res_sig <- c(1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1,
-  0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1,
-  1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1,
-  0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1,
-  0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1)
-
 estimate_mlms <- function(df, outcome = "choice") {
   # estimate the mixed effect regressions using lme4 package
   if (outcome == "choice") {
+    df_temp = create_dataset(df, type = "choice")
     # base model
-    model1  = glmer(choice ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating | subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    model1  = glmer(choice ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
     # add network difference
-    model2 <- glmer(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating + zleft_net + zright_net| subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    model2 <- glmer(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
     
-    model3 <- glmer(choice ~ (zleft_rating*zleft_net) + (zright_rating*zright_net) + (1 + zleft_rating + zright_rating + zleft_net + zright_net| subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    model3 <- glmer(choice ~ (zleft_rating*zleft_net) + (zright_rating*zright_net) + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
     
     return(list(model1, model2, model3)) 
     
   } else if (outcome == "correct") {
     # base model
-    df = create_dataset(df, type = "correct/rt")
-    model1 <- glmer(correct ~ vd + ov + (1| subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    df_temp = create_dataset(df, type = "correct/rt")
+    model1 <- glmer(correct ~ vd + ov + (1| subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add network difference
-    model2 <- glmer(correct ~ vd + ov + nd + (1 | subject_id), data = df, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model2 <- glmer(correct ~ vd + ov + nd + (1 | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     return(list(model1, model2)) 
     
   } else if (outcome == "rt") {
-    df = create_dataset(df, type = "correct/rt")
+    df_temp = create_dataset(df, type = "correct/rt")
     # df = df[df$correct == 1,] #check only correct
     
     # base model
-    model1 <- lmer(log(rt) ~ vd + ov + (1 + vd + ov| subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model1 <- lmer(log(rt) ~ vd + ov + (1 + vd + ov| subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # add network difference
-    model2 <- lmer(log(rt) ~ vd + ov + nd + (1 + vd + ov + nd| subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))    # add overall network
+    model2 <- lmer(log(rt) ~ vd + ov + nd + (1 + vd + ov | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))    # add overall network
     
     return(list(model1, model2)) 
   }
 }
 
 estimate_brms <- function(df, outcome = "choice") {
-  # TODO add a saving feature to avoid redundant model estimation
-  # note you could just write out the formula for each and not repeat so much here
-  # but this seems okay so long as we aim to be explicit
   #
   # TODO just create a folder for each network statistic, then add an argument that places each model in what ever name you write
   #     create a error too. if the folder name does not exist in the directory then throw an error and don't run the models 'could not find folder to save models'
   if (outcome == "choice") {
+    df_temp = create_dataset(df, type = "choice")
+    
     # base model
-    model1 <- brm(choice ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating | subject_id), data = create_dataset(df, type = "choice"), family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_choice01"))
+    model1 <- brm(choice ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_choice01"))
     # add network difference
-    model2 <- brm(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating + zleft_net + zright_net | subject_id), data = create_dataset(df, type = "choice"), family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_choice02"))
+    model2 <- brm(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating + zleft_net + zright_net | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_choice02"))
     #interactions
-    model3 <- brm(choice ~ (zleft_rating*zleft_net) + (zright_rating*zright_net) + (1 + zleft_rating + zright_rating + zleft_net + zright_net | subject_id), data = create_dataset(df, type = "choice"), family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_choice03"))
+    model3 <- brm(choice ~ (zleft_rating*zleft_net) + (zright_rating*zright_net) + (1 + zleft_rating + zright_rating + zleft_net + zright_net | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_choice03"))
     
     return(list(model1, model2, model3)) 
     
@@ -110,18 +104,17 @@ estimate_brms <- function(df, outcome = "choice") {
     return(list(model1, model2)) 
     
   } else if (outcome == "rt") {
-    df = create_dataset(df, type = "correct/rt")
+    df_temp = create_dataset(df, type = "correct/rt")
     
     # the coded as response time models (which take the absolute value for the regressors)
-    model1 <- brm(log(rt) ~ vd + ov + (vd + ov| subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_rt01"))
+    model1 <- brm(log(rt) ~ vd + ov + (vd + ov| subject_id), data = df_temp, cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_rt01"))
     # add network difference
-    model2 <- brm(log(rt) ~ vd + ov + nd + (vd + ov + nd | subject_id), data = df, cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_rt02"))
+    model2 <- brm(log(rt) ~ vd + ov + nd + (vd + ov + nd | subject_id), data = df_temp, cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_rt02"))
 
     return(list(model1, model2)) 
     
   }
-  # list(model1, model2, model3, model9)
-  
+
 }
 
 ######
@@ -130,11 +123,11 @@ source("exploratory_graph_analysis.R")
 # source('fernandez_rating_network.R') #load the EGA from the new rating data
 
 # #look at the emprical network res
-# A <- ega_res[["EGA"]][["network"]]
-# # dimattributes <- ega_res[["EGA"]][["wc"]]
-# dimattributes <- ega_res[["typicalGraph"]][["wc"]]
-# g <- graph_from_adjacency_matrix(A, "undirected", weighted = TRUE)
-# V(g)$snack_type <- dimattributes
+A <- ega_res[["EGA"]][["network"]]
+# dimattributes <- ega_res[["EGA"]][["wc"]]
+dimattributes <- ega_res[["typicalGraph"]][["wc"]]
+g <- graph_from_adjacency_matrix(A, "undirected", weighted = TRUE)
+V(g)$snack_type <- dimattributes # let the communities belong to the bootEGA, but the weights to the empirical
 
 
 net_degree <- calculate_net_stats(g)
@@ -142,7 +135,7 @@ net_degree <- calculate_net_stats(g)
 ##### loading the data#####
 df <- organize_group_data(experiment = 1, net_stat = "modularity")
 
-rt_exclude_pct <- vector(mode = "numeric", length = 75)
+rt_exclude_pct <- vector(mode = "numeric", length = 30)
 
 for (subject_idx in 1:length(unique(df$subject_id))) {
   temp_df <- df %>%
@@ -160,7 +153,7 @@ for (subject_idx in 1:length(unique(df$subject_id))) {
   
   rt_exclude_pct[[subject_idx]] <- temp_df$pct_excluded
   
-  if (temp_df$pct_excluded > 0.70) {
+  if (temp_df$pct_excluded > 0.50) {
     print(paste0("######## subject: ", subject_idx, " #######"))
     print(paste0("######## percent trials excluded: ", temp_df$pct_excluded, " #######"))
   }
@@ -212,12 +205,12 @@ for (subject_idx in 1:30) {
 
 print(paste0("############### Subject data exlclusions:", ((length(as.numeric(na.omit(p_values)))) / 30)*100,"%  ###############"))
 
-
 as.numeric(na.omit(p_values))
 
 exlusions <- function(df) {
   # function for data exclusions
   temp <- df %>%
+    # filter(!subject_id %in% c(8,9,16)) %>% #comment out for no exclusions (subejct 13?)
     filter(!subject_id %in% as.numeric(na.omit(p_values))) %>% #comment out for no exclusions
     group_by(subject_id) %>% # response times
     mutate(
@@ -236,7 +229,9 @@ exlusions <- function(df) {
 # net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eigen","efficiency", "edge_density", "modularity")
 # net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity")
 
-net_stats <- c("weighted_transitivity","edge_density", "modularity", "conductance")
+# net_stats <- c("weighted_transitivity","edge_density", "modularity", "conductance")
+net_stats <- c( "modularity")
+
 # net_idx <- 3
 for (net_idx in 1:length(net_stats)) {
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
@@ -245,23 +240,23 @@ for (net_idx in 1:length(net_stats)) {
   
   # #### data analysis
   print(paste0("############### CHOICE ###############"))
-  models_choice <- estimate_mlms(df, outcome = "choice")
-  # models_choice <- estimate_brms(df, outcome = "choice") #bayes
+  # models_choice <- estimate_mlms(df, outcome = "choice")
+  models_choice <- estimate_brms(df, outcome = "choice") #bayes
   
-  print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC")))
+  # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC")))
   # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("WAIC","LOOIC"))) #bayes
   
   # print(parameters::compare_models(models_choice))
-  print(parameters::compare_models(models_choice, style = "ci_p"))
-  
-  mp <- modelplot(models_choice, coef_omit = "Interc") +
-    geom_vline(xintercept = 0, linetype = "dashed") +
-    labs(x = "Coefficients",y = "Terms",
-         title = paste0("Choice: ",net_stats[[net_idx]])
-    ) +
-    theme_classic() +
-    scale_color_brewer(palette = "Set1")
-  print(mp)
+  # print(parameters::compare_models(models_choice, style = "ci_p"))
+  # 
+  # mp <- modelplot(models_choice, coef_omit = "Interc") +
+  #   geom_vline(xintercept = 0, linetype = "dashed") +
+  #   labs(x = "Coefficients",y = "Terms",
+  #        title = paste0("Choice: ",net_stats[[net_idx]])
+  #   ) +
+  #   theme_classic() +
+  #   scale_color_brewer(palette = "Set1")
+  # print(mp)
   
   # print(paste0("############### CORRECT ###############"))
   # models_correct<- estimate_mlms(df, outcome = "correct")
@@ -277,26 +272,26 @@ for (net_idx in 1:length(net_stats)) {
   # print(mp)
   
   print(paste0("############### RT ###############"))
-  models_rt <- estimate_mlms(df, outcome = "rt")
-  # models_rt <- estimate_brms(df, outcome = "rt") #bayes versions
+  # models_rt <- estimate_mlms(df, outcome = "rt")
+  models_rt <- estimate_brms(df, outcome = "rt") #bayes versions
   
-  print(performance::compare_performance(models_rt, rank = TRUE))
-  print(parameters::compare_models(models_rt,  style = "ci_p"))
-  # print(parameters::compare_models(models_choice))
-  
-  mp <- modelplot(models_rt, coef_omit = "Interc") +
-    geom_vline(xintercept = 0, linetype = "dashed") +
-    labs(x = "Coefficients",y = "Terms",
-         title = paste0("RT: ",net_stats[[net_idx]])
-    ) +
-    theme_classic() +
-    scale_color_brewer(palette = "Set1")
-  print(mp)
+  # print(performance::compare_performance(models_rt, rank = TRUE))
+  # print(parameters::compare_models(models_rt,  style = "ci_p"))
+  # # print(parameters::compare_models(models_choice))
+  # 
+  # mp <- modelplot(models_rt, coef_omit = "Interc") +
+  #   geom_vline(xintercept = 0, linetype = "dashed") +
+  #   labs(x = "Coefficients",y = "Terms",
+  #        title = paste0("RT: ",net_stats[[net_idx]])
+  #   ) +
+  #   theme_classic() +
+  #   scale_color_brewer(palette = "Set1")
+  # print(mp)
   
   # generate tables
-  generate_table(models_choice, type = "exp_1_choice", net_stat = net_stats[[net_idx]], save = T)
+  # generate_table(models_choice, type = "exp_1_choice", net_stat = net_stats[[net_idx]], save = T)
   # generate_table(models_correct, type = "exp_1_correct", net_stat = net_stats[[net_idx]], save = T)
-  generate_table(models_rt, type = "exp_1_rt", net_stat = net_stats[[net_idx]], save = T)
+  # generate_table(models_rt, type = "exp_1_rt", net_stat = net_stats[[net_idx]], save = T)
   
 }
 # (plts[[1]] + plts[[2]])/(plts[[3]] + plts[[4]])
