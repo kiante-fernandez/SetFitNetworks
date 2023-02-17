@@ -3,8 +3,16 @@
 library(igraph)
 library(purrr)
 library(tidyverse)
+library(here)
 source(here::here("src", "utils.R"))
 
+res_sig<- c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+
+# temp_files <- list.files(path = here::here("data", "pilot_30"), pattern = ".json", full.names = T)
 temp_files <- list.files(path = here::here("data", "exp_2"), pattern = ".json", full.names = T)
 
 load(file = here::here("data", "modularity_100_6.RData"))
@@ -33,6 +41,8 @@ strength_res <- do.call(rbind, strength_res)
 
 # conductance
 source("exploratory_graph_analysis.R")
+# source('fernandez_rating_network.R') #load the EGA from the new rating data
+#^^need file it s on other machine I think
 G <- g
 E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
 mem <- membership(cluster_leading_eigen(G))
@@ -74,7 +84,7 @@ similarity_ratings <- function(data) {
   }
 
   # normalize the ratings?
-  subject_rating_temp$responsenormalized <- (subject_rating_temp$response - min(subject_rating_temp$response)) / range(subject_rating_temp$response) # xnormalized = (x - min(x)) / range(x)
+  subject_rating_temp$responsenormalized <- (subject_rating_temp$response - min(subject_rating_temp$response)) / diff(range(subject_rating_temp$response)) # xnormalized = (x - min(x)) / range(x)
   subject_rating_temp$modularity <- as.vector(mod_res)
   subject_rating_temp$edge_densi <- as.vector(edge_dens)
   subject_rating_temp$strength_res <- as.vector(strength_res)
@@ -130,6 +140,17 @@ ggplot(res, aes(response)) +
     text = element_text(size = 15),
     axis.title = element_text(face = "bold")
   )
+ggplot(res, aes(responsenormalized)) +
+  geom_histogram(color = "black", fill = "dodgerblue1", alpha = .8, bins = 50) +
+  geom_vline(xintercept = mean(res$responsenormalized), linetype = "dashed", size = .7) +
+  theme_classic() +
+  labs(x = "Similarity Judgment (normalized)", y = "Count") +
+  theme(
+    axis.text = element_text(face = "bold"),
+    text = element_text(size = 15),
+    axis.title = element_text(face = "bold")
+  )
+
 
 ggplot(res, aes(modularity)) +
   geom_histogram(color = "black", fill = "dodgerblue1", alpha = .8, bins = 11) +
@@ -168,9 +189,9 @@ ggplot(res, aes(con_cen)) +
 compares <- res %>%
   group_by(stimulus) %>%
   summarise(
-    subgraph_mean = mean(response),
-    se = sqrt(var(response) / length(response)),
-    subgraph_sd = sd(response)
+    subgraph_mean = mean(responsenormalized),
+    se = sqrt(var(responsenormalized) / length(responsenormalized)),
+    subgraph_sd = sd(responsenormalized)
   )
 
 compares$mod <- mod_res
@@ -178,6 +199,9 @@ compares$ed <- edge_dens
 compares$st <- strength_res
 compares$ec <- eigen_cen
 compares$c <- unlist(con_res)
+
+compares <- compares %>%
+  filter(mod != 0)
 
 library(BayesFactor)
 library(bayestestR)
@@ -206,6 +230,10 @@ plot(bayesfactor_models(result)) +
 
 result <- cor.test(compares$subgraph_mean, compares$c)
 report::report(result)
+
+result <- cor.test(compares$subgraph_mean, compares$mod)
+report::report(result)
+
  # piecewise analysis on modularity
 library(segmented)
 # fit simple linear regression model
@@ -224,7 +252,7 @@ ggplot(compares, aes(mod, subgraph_mean, group = grp)) +
   geom_pointrange(aes(ymin = subgraph_mean - se, ymax = subgraph_mean + se), size = .7, color = "red") +
   geom_smooth(method = "lm", formula = y ~ x, se = T, size = 1.8, color = "black") +
   labs(y = "Similarity", x = "Q") +
-  geom_vline(xintercept = 0, linetype = "dashed", size = .7) +
+  # geom_vline(xintercept = 0, linetype = "dashed", size = .7) +
   theme(
     axis.text = element_text(face = "bold"),
     text = element_text(size = 15),
@@ -298,6 +326,23 @@ m <- (lm(subgraph_mean~ scale(subgraph_sd) + scale(c), data = compares))
 report::report(m)
 plot(ggeffects::ggeffect(m, terms = c("subgraph_sd", "c [0.5, .8, 1]")))
 
+
+net_degree <- calculate_net_stats(g)
+# library(RColorBrewer)
+# brewer.pal(n = 7, name = 'Dark2')
+net_degree <- net_degree%>% 
+  mutate(colors = 
+           case_when(  
+             snack_type == 1 ~ "#1B9E77",
+             snack_type == 2 ~ "#D95F02",
+             snack_type == 3 ~ "#7570B3",
+             snack_type == 4 ~ "#E7298A",
+             snack_type == 5 ~ "#66A61E",
+             snack_type == 6 ~ "#E6AB02",
+             snack_type == 7 ~ "#A6761D"
+           )
+  )
+
 par(mfrow = c(1, 3)) # set the plotting area into a 1*3 array
 
 plot(subgraphs[[32]],
@@ -338,30 +383,39 @@ plot(subgraphs[[73]],
   edge.width = abs(E(subgraphs[[73]])$weight) * 10,
 )
 
+
 plot_subgraph <- function(n){
+  V(subgraphs[[n]])$color <- net_degree[net_degree$Name %in% V(subgraphs[[n]])$name,]$colors
+  
   plot(subgraphs[[n]],
-       layout = layout.circle(subgraphs[[n]]),
+       # layout = layout.circle(subgraphs[[n]]),
        margin = .0,
-       vertex.label.color = "black",
+       # vertex.label.color = "black",
        vertex.label.font = 2,
        vertex.label.cex = 1.5,
-       vertex.label.dist = 2,
-       vertex.size = 20,
+       vertex.label.dist = 1,
+       # vertex.size = 30,
        vertex.label.family = "Times",
-       main = paste0("Q = ", round(compares$mod[[n]], 3), " D = ", round(compares$ed[[n]], 3), " s = ", round(compares$st[[n]], 3), " c = ", round(compares$c[[n]], 3)),
-       edge.width = abs(E(subgraphs[[n]])$weight) * 10,
+       # main = paste0("Q = ", round(compares$mod[[n]], 3), " D = ", round(compares$ed[[n]], 3), " s = ", round(compares$st[[n]], 3), " c = ", round(compares$c[[n]], 3)),
+       # edge.width = abs(E(subgraphs[[n]])$weight) * 6,
+       
+       vertex.shape="none", 
+       vertex.label.color=V(subgraphs[[n]])$color,
+       vertex.size = NULL
   )
 }
 
 
+
+
 res %>%
-  select(response, ratings, subject_id, stimulus) %>%
+  select(responsenormalized, ratings, subject_id, stimulus) %>%
   group_by(stimulus) %>%
   summarise(
     rating_mean = mean(ratings),
     rating_se = sqrt(var(ratings) / length(ratings)),
-    sim_mean = mean(response),
-    sim_se = sqrt(var(response) / length(response))
+    sim_mean = mean(responsenormalized),
+    sim_se = sqrt(var(responsenormalized) / length(responsenormalized))
   ) %>%
   ggplot(aes(rating_mean, sim_mean)) +
   geom_point() +
@@ -375,14 +429,17 @@ res %>%
     axis.title = element_text(face = "bold")
   )
 
-par(mfrow = c(2, 4)) # set the plotting area into a 1*3 array
+par(mfrow = c(2, 5)) # set the plotting area into a 1*3 array
 arrange(compares, c)$stimulus
 
 plot_subgraph(46)
 plot_subgraph(98)
 plot_subgraph(32)
 plot_subgraph(60)
+plot_subgraph(55)
 
+
+plot_subgraph(34)
 plot_subgraph(14)
 plot_subgraph(8)
 plot_subgraph(2)
@@ -390,18 +447,95 @@ plot_subgraph(1)
 
 single_item_ratings <- do.call(rbind, map(temp_files, individual_food_ratings))
 
-single_item_ratings %>%
+plotting <- single_item_ratings %>% 
+  group_by(Name) %>% 
+  summarise(n = n(),
+            item_mean = mean(response),
+            se = sqrt(var(response) / length(response))) %>% 
+  left_join(net_degree)
+  
+
+p1 <- single_item_ratings %>%
   ggplot(aes(x = reorder(factor(Name),response) , y = response)) +
-  geom_boxplot(fill = "orange")+
+  geom_boxplot(fill = arrange(plotting, item_mean)$colors)+
   theme_classic()+
   theme(legend.position="none")+
-  labs(y = "Ratings",
-       x = "Food Items")+
+  labs(y = "Liking ratings",
+       x = "Food Item")+
   coord_flip()+
+  theme(
+    axis.text = element_text(face = "bold"),
+    text = element_text(size = 15),
+    axis.title = element_text(face = "bold"),
+    axis.text.y = element_text(face="bold", color=arrange(plotting, item_mean)$colors ,
+                               size=10, angle=40)
+  )
+
+p2 <- single_item_ratings %>% 
+  group_by(Name) %>% 
+  summarise(n = n(),
+            item_mean = mean(response),
+            se = sqrt(var(response) / length(response))) %>% 
+  left_join(net_degree) %>% 
+  ggplot(aes(x = reorder(factor(Name),weighted_transitivity) , y = weighted_transitivity)) +
+  geom_col(fill = "darkgreen")+
+  theme_classic()+
+  theme(legend.position="none")+
+  labs(y = "Transitivity",
+       x = "Food Item")+
+  coord_flip()+
+  theme(
+    axis.text = element_text(face = "bold"),
+    text = element_text(size = 15),
+    axis.title = element_text(face = "bold"),
+    axis.text.y = element_text(face="bold", color=arrange(net_degree, weighted_transitivity)$colors,
+                               size=10, angle=40)
+  )
+p3 <- single_item_ratings %>% 
+  group_by(Name) %>% 
+  summarise(n = n(),
+            item_mean = mean(response),
+            se = sqrt(var(response) / length(response))) %>% 
+  left_join(net_degree) %>% 
+  ggplot(aes(x = weighted_transitivity , y = item_mean)) +
+  # geom_point(color = "darkgreen", size = 3)+
+  geom_pointrange(aes(ymin = item_mean - se, ymax = item_mean + se), size = .7, color = "darkgreen") +
+  geom_smooth(method = "lm", se = T, size = 1.8, color = "black") +
+  theme_classic()+
+  theme(legend.position="none")+
+  labs(y = "Liking rating",
+       x = "transitivity")+
   theme(
     axis.text = element_text(face = "bold"),
     text = element_text(size = 15),
     axis.title = element_text(face = "bold")
   )
+library(patchwork)
+# (p3  + p1)/(p2 +plot_spacer())+
+(p3  + p1)+
+  plot_annotation(tag_levels = 'A')
+test <- single_item_ratings %>% 
+  group_by(Name) %>% 
+  summarise(n = n(),
+            item_mean = mean(response),
+            se = sqrt(var(response) / length(response))) %>% 
+  left_join(net_degree)
 
+m2 <- lm(item_mean ~ scale(sds) + scale(degree),test)
+summary(m2)
+report::report(m2)
+
+test %>% select(item_mean,sds,degree, strength,eigen,weighted_transitivity, closeness,betweenness) %>% 
+  cor() %>% 
+  ggcorrplot::ggcorrplot(type = "upper",
+                         lab = TRUE)+
+  theme_classic()+
+  labs(x = "", y = "") +
+  theme(
+    axis.text = element_text(face = "bold"),
+    text = element_text(size = 15),
+    axis.title = element_text(face = "bold"),
+    axis.text.y = element_text(face="bold",size=10, angle=40),
+    axis.text.x = element_text(face="bold",size=10, angle=40, hjust= .9)
+  )
 

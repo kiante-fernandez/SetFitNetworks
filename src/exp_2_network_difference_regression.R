@@ -88,7 +88,7 @@ for (subject_idx in 1:length(unique(df$subject_id))) {
       IQR = IQR(rt)
     ) %>%
     filter(rt > (Q1 - 2 * IQR) & rt < (Q3 + 2 * IQR)) %>%
-    filter(!rt <= 300) %>% # response times cutoffs
+    filter(!rt <= 250) %>% # response times cutoffs
     filter(!rt >= 9000) %>%
     summarise(pct_excluded = (100 - n()) / 100)
 
