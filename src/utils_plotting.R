@@ -435,3 +435,104 @@ d <- df %>%
 #   ) +  theme(legend.position="top"))
 (a + b)/(c + d )+ plot_annotation(tag_levels = 'A')
 
+
+
+
+
+
+
+
+
+
+
+
+source("exploratory_graph_analysis.R")
+source(here::here("src", "utils.R"))
+library(RColorBrewer)
+
+brewer.pal(n = 7, name = 'Dark2')
+
+G <- g
+E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
+
+net_degree <- calculate_net_stats(g)
+
+l <- layout_nicely(G)
+l <- layout_with_graphopt(G)
+l <- layout.mds(G)
+
+V(g)$color <- net_degree$colors
+
+E(g)$color[E(g)$weight > 0] <- "forestgreen"
+E(g)$color[E(g)$weight < 0] <- "red2"
+
+plot(g,
+     layout = l,
+     margin = .0,
+     vertex.label = V(g)$name,
+     # vertex.label = NA,
+     vertex.label.color = "black",
+     label.font = 2,
+     vertex.frame.color=adjustcolor(net_degree$colors, alpha.f = .1),
+     # vertex.label.degree = 0,
+     vertex.label.dist	= 1,
+     vertex.label.cex = 1,
+     vertex.size = 13,
+     vertex.label.family = "Times",
+     # edge.curved = .1,
+     edge.width = E(g)$weight * 5
+)
+
+legend(x=1, 
+       y=0, 
+       c("Savory","Fruit","Dessert","Chocolate","Chip","Cracker","Bread"), 
+       pch=21, 
+       pt.bg=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02", 
+               "#A6761D"),
+       pt.cex=2, 
+       cex=.8, 
+       bty="n", 
+       ncol=1)
+
+
+plot(g,
+     layout = l,
+     # margin = .0,
+     vertex.shape="none", 
+     vertex.label.cex=.8,
+     vertex.label = V(g)$name,
+     vertex.label.font = 2,
+     # vertex.label = NA,
+     vertex.label.color=net_degree$colors,
+     vertex.size = NULL,
+     vertex.label.family = "Times",
+     # edge.curved = .1,
+     # edge.color= "grey",
+     edge.width = E(g)$weight,
+)
+
+legend(x=1, 
+       y=0, 
+       c("Savory","Fruit","Dessert","Chocolate","Chip","Cracker","Bread"), 
+       pch=21, 
+       pt.bg=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02", 
+               "#A6761D"),
+       pt.cex=2, 
+       cex=.8, 
+       bty="n", 
+       ncol=1)
+
+# ega_res
+# 
+# ega_res$summary.table
+# ega_res$frequency
+# 
+# stab <- EGAnet::dimensionStability(ega_res)
+# 
+# stab$dimension.stability
+# stab$item.stability
+
+library(aricode)
+
+NMI(cl,iris$Species)
+
