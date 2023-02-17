@@ -89,5 +89,16 @@ save(NCT_res, file = here("data", "fernandez_lee_NCT_2.RData"))
 
 #TODO compare the first rating dataset to the second in our study.
 
+source("exploratory_graph_analysis.R")
+cl1 <- ega_res$typicalGraph$typical.dim.variables
+cl1 <- ega_res$EGA$wc
+source('fernandez_rating_network.R') #load the EGA from the new rating data
+cl2 <- ega_res$typicalGraph$typical.dim.variables
+cl2 <- ega_res$EGA$wc
+
+library(aricode)
+
+aricode::NMI(cl1$dimension, cl2$dimension)
+aricode::NMI(cl1, cl2)
 
 

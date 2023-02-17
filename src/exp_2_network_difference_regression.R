@@ -202,6 +202,7 @@ for (subject_idx in 1:75) {
 # so far we have a 25% exclusion rate
 # so if we relax the exclusion criterion to p = 0.0 we get 19%
 print(paste0("############### Subject data exlclusions:", ((length(as.numeric(na.omit(p_values))) + 2) / 75)*100,"%  ###############"))
+length(as.numeric(na.omit(p_values)))
 
 dput(as.numeric(na.omit(p_values)))
 
@@ -211,7 +212,7 @@ exlusions <- function(df) {
   temp <- df %>%
     # filter(!subject_id %in% c(17, 29, 35, 37)) %>% #comment out for no exclusions (subejct 13?)
     # filter(!subject_id %in% c(4, 5, 10, 12, 17, 22, 29, 35, 37,41, 42, 48, 55, 57, 58, 63, 64, 65, 66, 67, 70, 75)) %>% #comment out for no exclusions (subejct 13?)
-    filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
+    # filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
     group_by(subject_id) %>% # response times (IQR exclusion)
     mutate(
       Q1 = quantile(rt, .25),
@@ -220,7 +221,7 @@ exlusions <- function(df) {
     ) %>%
     filter(rt > (Q1 - 2 * IQR) & rt < (Q3 + 2 * IQR)) %>%
     ungroup() %>%
-    filter(!rt <= 300) %>% # response times cutoffs
+    filter(!rt <= 250) %>% # response times cutoffs
     filter(!rt >= 9000)
   return(temp)
 }
@@ -244,13 +245,13 @@ for (net_idx in 1:length(net_stats)) {
 
   #### data analysis (regressions)
   print(paste0("############### CHOICE ###############"))
-  # models_choice <- estimate_mlms(df, outcome = "choice")
-  models_choice <- estimate_brms(df, outcome = "choice") #bayes versions
+  models_choice <- estimate_mlms(df, outcome = "choice")
+  # models_choice <- estimate_brms(df, outcome = "choice") #bayes versions
   
   # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC")))
   # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("WAIC","LOOIC")))
   
-  # print(parameters::compare_models(models_choice,  style = "ci_p"))
+  print(parameters::compare_models(models_choice,  style = "ci_p"))
   # print(parameters::compare_models(models_choice))
   
   # mp <- modelplot(models_choice, coef_omit = "Interc") +

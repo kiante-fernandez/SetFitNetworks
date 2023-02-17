@@ -64,7 +64,7 @@ cm <- c('b_zleft_rating'    = 'left liking rating',
 #              coef_map = cm,
 #              gof_map = NA)
 
-net_stat = "modularity"
+net_stat = "edge_density"
 file_name <- here::here("tables", paste0("choice", "_", net_stat, ".html"))
 
 panels <- list("Experiment one:" = ms1,

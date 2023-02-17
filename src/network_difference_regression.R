@@ -147,7 +147,7 @@ for (subject_idx in 1:length(unique(df$subject_id))) {
       IQR = IQR(rt)
     ) %>%
     filter(rt > (Q1 - 2 * IQR) & rt < (Q3 + 2 * IQR)) %>%
-    filter(!rt <= 300) %>% # response times cutoffs
+    filter(!rt <= 250) %>% # response times cutoffs
     filter(!rt >= 9000) %>%
     summarise(pct_excluded = (99 - n()) / 99)
   
@@ -210,7 +210,7 @@ as.numeric(na.omit(p_values))
 exlusions <- function(df) {
   # function for data exclusions
   temp <- df %>%
-    # filter(!subject_id %in% c(8,9,16)) %>% #comment out for no exclusions (subejct 13?)
+    filter(!subject_id %in% c(8,9,16)) %>% #comment out for no exclusions (subejct 13?)
     filter(!subject_id %in% as.numeric(na.omit(p_values))) %>% #comment out for no exclusions
     group_by(subject_id) %>% # response times
     mutate(
@@ -220,7 +220,7 @@ exlusions <- function(df) {
     ) %>%
     filter(rt > (Q1 - 2 * IQR) & rt < (Q3 + 2 * IQR)) %>%
     ungroup() %>%
-    filter(!rt <= 300) %>% # response times cutoffs
+    filter(!rt <= 250) %>% # response times cutoffs
     filter(!rt >= 9000)
   return(temp)
 }
@@ -232,7 +232,7 @@ exlusions <- function(df) {
 # net_stats <- c("weighted_transitivity","edge_density", "modularity", "conductance")
 net_stats <- c( "modularity")
 
-# net_idx <- 3
+# net_idx <- 1
 for (net_idx in 1:length(net_stats)) {
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
   df <- organize_group_data(experiment = 1, net_stat = net_stats[[net_idx]])
@@ -240,23 +240,23 @@ for (net_idx in 1:length(net_stats)) {
   
   # #### data analysis
   print(paste0("############### CHOICE ###############"))
-  # models_choice <- estimate_mlms(df, outcome = "choice")
-  models_choice <- estimate_brms(df, outcome = "choice") #bayes
+  models_choice <- estimate_mlms(df, outcome = "choice")
+  # models_choice <- estimate_brms(df, outcome = "choice") #bayes
   
   # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC")))
   # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("WAIC","LOOIC"))) #bayes
   
   # print(parameters::compare_models(models_choice))
-  # print(parameters::compare_models(models_choice, style = "ci_p"))
+  print(parameters::compare_models(models_choice, style = "ci_p"))
   # 
-  # mp <- modelplot(models_choice, coef_omit = "Interc") +
-  #   geom_vline(xintercept = 0, linetype = "dashed") +
-  #   labs(x = "Coefficients",y = "Terms",
-  #        title = paste0("Choice: ",net_stats[[net_idx]])
-  #   ) +
-  #   theme_classic() +
-  #   scale_color_brewer(palette = "Set1")
-  # print(mp)
+  mp <- modelplot(models_choice, coef_omit = "Interc") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    labs(x = "Coefficients",y = "Terms",
+         title = paste0("Choice: ",net_stats[[net_idx]])
+    ) +
+    theme_classic() +
+    scale_color_brewer(palette = "Set1")
+  print(mp)
   
   # print(paste0("############### CORRECT ###############"))
   # models_correct<- estimate_mlms(df, outcome = "correct")
