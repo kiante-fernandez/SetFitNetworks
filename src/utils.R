@@ -341,8 +341,8 @@ create_dataset <- function(df, type, standardized = TRUE) {
         os = scale(left_sim + right_sim, center = standardized, scale = standardized),
         zleft_rating = scale(left_rating, center = standardized, scale = standardized),
         zright_rating = scale(right_rating, center = standardized, scale = standardized),
-        zleft_net = scale(left_net, center = standardized, scale = standardized),
-        zright_net = scale(right_net, center = standardized, scale = standardized),
+        zleft_net = scale(left_net, center = F, scale = F),
+        zright_net = scale(right_net, center = F, scale = F),
         zleft_sim = scale(left_sim, center = standardized, scale = standardized),
         zright_sim = scale(right_sim, center = standardized, scale = standardized)
       ) %>%
@@ -413,16 +413,17 @@ estimate_brms <- function(df, outcome = "choice") {
 estimate_mlms <- function(df, outcome = "choice") {
   # estimate the mixed effect regressions using lme4 package
   if (outcome == "choice") {
+    df_temp <- create_dataset(df, type = "choice")
     # base model
-    model1 <- glmer(choice ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating| subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    model1 <- glmer(choice ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating| subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
     # add network difference
-    model2A <- glmer(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating| subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    model2A <- glmer(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating| subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
     # add similarity difference
-    model2B <- glmer(choice ~ zleft_rating + zright_rating + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating | subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    model2B <- glmer(choice ~ zleft_rating + zright_rating + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
     # add both
-    model3 <- glmer(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating | subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    model3 <- glmer(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
 
-    model4 <- glmer(choice ~ (zleft_rating * zleft_net) + (zright_rating * zright_net) + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating | subject_id), data = create_dataset(df, type = "choice"), family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    model4 <- glmer(choice ~ (zleft_rating * zleft_net) + (zright_rating * zright_net) + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
 
     return(list(model1, model2A, model2B, model3, model4))
   } else if (outcome == "correct") {

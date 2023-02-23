@@ -118,7 +118,6 @@ for (subject_idx in 1:75) {
     filter(!rt <= 300) %>% # response times cutoffs
     filter(!rt >= 9000) %>%
     mutate(vd = left_rating - right_rating) %>%
-    mutate(nd = left_net - right_net) %>%
     mutate(sd = left_sim - right_sim)
   
   # df %>% select(choice,left_MAX,right_MAX,left_MIN,right_MIN,choose_max,choose_min) %>% View
@@ -212,7 +211,7 @@ exlusions <- function(df) {
   temp <- df %>%
     # filter(!subject_id %in% c(17, 29, 35, 37)) %>% #comment out for no exclusions (subejct 13?)
     # filter(!subject_id %in% c(4, 5, 10, 12, 17, 22, 29, 35, 37,41, 42, 48, 55, 57, 58, 63, 64, 65, 66, 67, 70, 75)) %>% #comment out for no exclusions (subejct 13?)
-    # filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
+    filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
     group_by(subject_id) %>% # response times (IQR exclusion)
     mutate(
       Q1 = quantile(rt, .25),
@@ -240,9 +239,13 @@ for (net_idx in 1:length(net_stats)) {
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
 
   # generate the dataset with the network statistic of interest
+  # (no longer needed each time. Will save alot of computation time)
   df <- organize_group_data(experiment = 2, net_stat = net_stats[[net_idx]])
   # test <- df[(df$left_net != 0) | (df$right_net != 0),] #eleminate trials where both are zero
-
+  
+  df$left_net <- df$left_net_pca1
+  df$right_net <- df$right_net_pca1
+  
   #### data analysis (regressions)
   print(paste0("############### CHOICE ###############"))
   models_choice <- estimate_mlms(df, outcome = "choice")
