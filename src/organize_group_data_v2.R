@@ -279,6 +279,8 @@ organize_group_data <- function(experiment, weight = "degree") {
       left_net_edge_density,right_net_edge_density,
       left_net_modularity,right_net_modularity,
       left_net_conductance,right_net_conductance,
+      left_net_pca1,right_net_pca1,
+      left_net_pca2,right_net_pca2,
       left_sim, right_sim,
       left_correlation, right_correlation, left_sd, right_sd,
       left_MAX, right_MAX, left_MIN, right_MIN
