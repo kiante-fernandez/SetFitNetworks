@@ -73,6 +73,13 @@ calculate_net_stats <- function(g) {
     dplyr::left_join(load_food_names()$foods_in_image, "Name")
 
   net_degree$snack_type <- V(g)$snack_type
+  
+  dat_pca <- net_degree[,c("degree","strength","eigen","weighted_transitivity","closeness","betweenness")]
+  pca_res <- prcomp(dat_pca)
+  net_degree$PCA1 <-  pca_res$x[,1]
+  net_degree$PCA2 <- pca_res$x[,2]
+  net_degree$PCA3 <- pca_res$x[,3]
+  
   return(net_degree)
 }
 

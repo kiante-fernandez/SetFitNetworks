@@ -88,17 +88,34 @@ save(NCT_res, file = here("data", "fernandez_lee_NCT_2.RData"))
 #we found that the networks are similar to one another...
 
 #TODO compare the first rating dataset to the second in our study.
+library(aricode)
 
 source("exploratory_graph_analysis.R")
 cl1 <- ega_res$typicalGraph$typical.dim.variables
 cl1 <- ega_res$EGA$wc
+cl1 <- ega_res$boot.wc
+
 source('fernandez_rating_network.R') #load the EGA from the new rating data
 cl2 <- ega_res$typicalGraph$typical.dim.variables
 cl2 <- ega_res$EGA$wc
+cl2 <- ega_res$boot.wc
+library(purrr)
 
-library(aricode)
+test <- list(cl1, cl2)
+
+# map(test, function (x){aricode::NMI(x[[1]], x[[2]])})
 
 aricode::NMI(cl1$dimension, cl2$dimension)
 aricode::NMI(cl1, cl2)
 
+temp_res <- vector(mode = "numeric", length = 1000)
+for (foo in 1:1000){
+  temp_res[[foo]] <- aricode::NMI(test[[1]][[foo]], test[[2]][[foo]])
+  print(temp_res)
+}
+hist(temp_res)
+confint(temp_res)
+psych::describe(temp_res)
+model <- lm(temp_res ~ 1)
+confint(model, level=0.95)
 
