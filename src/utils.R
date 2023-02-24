@@ -74,8 +74,11 @@ calculate_net_stats <- function(g) {
 
   net_degree$snack_type <- V(g)$snack_type
   
-  dat_pca <- net_degree[,c("degree","strength","eigen","weighted_transitivity","closeness","betweenness")]
-  pca_res <- prcomp(dat_pca)
+  dat_pca <- net_degree[,c("sds","degree","strength","eigen","weighted_transitivity","closeness","betweenness")]
+  # dat_pca <- net_degree[,c("strength","eigen","weighted_transitivity","closeness")]
+  pca_res <- prcomp(dat_pca, center = TRUE, scale. = TRUE)
+  print(pca_res)
+  print(summary(pca_res))
   net_degree$PCA1 <-  pca_res$x[,1]
   net_degree$PCA2 <- pca_res$x[,2]
   net_degree$PCA3 <- pca_res$x[,3]
@@ -84,10 +87,9 @@ calculate_net_stats <- function(g) {
 }
 
 # get correlations between items
-lee_2021_rating1 <- readr::read_csv(here::here("data", "lee_2021_rating1.csv"), col_names = FALSE)
+lee_2021_rating1 <- readr::read_csv(here::here("data", "lee_2021_rating1.csv"), col_names = load_food_names()$FoodNames$Name)
 cor_snack_food <- SemNeT::similarity(lee_2021_rating1, method = "cor")
 cor_snack_food <- data.frame(matrix(cor_snack_food[cor_snack_food != 1], 59, 60))
-names(cor_snack_food) <- load_food_names()$FoodNames$Name
 
 # experiment = 2
 # weight = "betweenness"
@@ -341,8 +343,8 @@ create_dataset <- function(df, type, standardized = TRUE) {
         os = scale(left_sim + right_sim, center = standardized, scale = standardized),
         zleft_rating = scale(left_rating, center = standardized, scale = standardized),
         zright_rating = scale(right_rating, center = standardized, scale = standardized),
-        zleft_net = scale(left_net, center = F, scale = F),
-        zright_net = scale(right_net, center = F, scale = F),
+        zleft_net = scale(left_net, center = standardized, scale = standardized),
+        zright_net = scale(right_net, center = standardized, scale = standardized),
         zleft_sim = scale(left_sim, center = standardized, scale = standardized),
         zright_sim = scale(right_sim, center = standardized, scale = standardized)
       ) %>%

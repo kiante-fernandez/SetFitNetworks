@@ -53,17 +53,20 @@ source("exploratory_graph_analysis.R")
 
 net_degree <- calculate_net_stats(g)
 
-weights = c("degree", "strength", "weighted_transitivity", "eigen", "closeness", "betweenness")
+weights = c("degree", "strength", "weighted_transitivity", "eigen", "closeness", "betweenness", "PCA1", "PCA2")
 #also look at just weighting by the variance
 subj_weights_models <- subj_weights_models <- rep(list(vector(mode = "list", length = 6)),105)
 
 counter_sub <- 1
 counter_weight <- 1
 
-# weight_idx = 6
+source(here::here("src", "organize_group_data_v2.R"))
+
+# weight_idx = 8
 for (weight_idx in 1:length(weights)) {
   ##### loading the data#####
-df <- organize_group_data(experiment = 2, net_stat = "conductance", weight = weights[[weight_idx]])
+# df <- organize_group_data(experiment = 2, net_stat = "conductance", weight = weights[[weight_idx]])
+df <- organize_group_data(experiment = 2, weight = weights[[weight_idx]])
 
 ## model comparisons with weighted average models
 p_res <- data.frame(matrix(NA, nrow = 1, ncol = 14))
@@ -164,7 +167,7 @@ p_temp_2 <- p_res %>%
   labs(y = "BIC wt",x = "Subject",fill = "model",
        title = paste0("experiment two model comparisons for : ", weights[[weight_idx]])
   )
-# print(p_temp_2)
+print(p_temp_2)
 # p_res %>%
 #   na.omit() %>%
 #   # filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
@@ -174,7 +177,8 @@ p_temp_2 <- p_res %>%
 #   theme_classic()+coord_flip()
 
 #########experiment one
-df <- organize_group_data(experiment = 1, net_stat = "conductance", weight = weights[[weight_idx]])
+# df <- organize_group_data(experiment = 1, net_stat = "conductance", weight = weights[[weight_idx]])
+df <- organize_group_data(experiment = 1, weight = weights[[weight_idx]])
 
 ## model comparisons with weighted average models
 p_res <- data.frame(matrix(NA, nrow = 1, ncol = 14))

@@ -1,5 +1,5 @@
 # weight = "betweenness"
-# experiment =2
+experiment =2
 organize_group_data <- function(experiment, weight = "degree") {
   
   # net_degree <- calculate_net_stats(g)
@@ -40,7 +40,7 @@ organize_group_data <- function(experiment, weight = "degree") {
   ## organize the data and calculate value of group of items and net stats for each subject
   ##
   subject_df <- vector(mode = "list", length = file_idx)
-  # pp =1
+  pp =1
   for (pp in seq_len(file_idx)) {
     # load the  subjects data
     subject_temp <- jsonlite::parse_json(jsonlite::read_json(temp_files[[pp]]), simplifyVector = T)
@@ -91,7 +91,7 @@ organize_group_data <- function(experiment, weight = "degree") {
         stimulus = as.numeric(stringr::str_remove(stimulus, pattern = ".jpg"))
       ) %>%
       unnest(response)
-    
+    # foo = 1
     for (foo in 1:100) {
       # select which stat to calculate
       
@@ -146,6 +146,10 @@ organize_group_data <- function(experiment, weight = "degree") {
         wt <- graph_stats[graph_stats$Name %in% res[[foo]], ]$closeness
       } else if (weight == "betweenness") {
         wt <- graph_stats[graph_stats$Name %in% res[[foo]], ]$betweenness
+      } else if (weight == "PCA1") {
+        wt <- graph_stats[graph_stats$Name %in% res[[foo]], ]$PCA1
+      } else if (weight == "PCA2") {
+        wt <- graph_stats[graph_stats$Name %in% res[[foo]], ]$PCA2
       }
       # wt <- (wt - min(wt)) / diff(range(wt)) #normalize (corrected the issue)
       
@@ -296,5 +300,5 @@ organize_group_data <- function(experiment, weight = "degree") {
   return(df)
 }
 
-df <- organize_group_data(experiment = 2)
+# df <- organize_group_data(experiment = 2)
 

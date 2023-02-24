@@ -103,7 +103,7 @@ individual_food_ratings <- function(data){
   
   subject_value_temp <- subject_temp %>%
     filter(screen_id == "ratings") %>%
-    select(stimulus, response) %>%
+    dplyr::select(stimulus, response) %>%
     mutate(
       Image = stringr::str_remove(stimulus, pattern = "../../img/60Foods/item"),
       Image = as.numeric(stringr::str_remove(Image, pattern = ".jpg"))
@@ -200,8 +200,19 @@ compares$st <- strength_res
 compares$ec <- eigen_cen
 compares$c <- unlist(con_res)
 
-compares <- compares %>%
-  filter(mod != 0)
+dat_pca <- compares[,c("subgraph_sd","mod","ed","st","ec","c")]
+pca_res <- prcomp(dat_pca, center = TRUE, scale. = TRUE)
+pca_res
+plot(pca_res)
+summary(pca_res)
+biplot(pca_res , c(1,3))
+
+m_data <- data.frame(cbind(subgraph_mean = compares$subgraph_mean, pca_res$x)) 
+summary(lm(subgraph_mean ~ PC1 + PC3, m_data))
+#graphs with more connections have higher similarity scores
+
+# compares <- compares %>%
+#   filter(mod != 0)
 
 library(BayesFactor)
 library(bayestestR)
@@ -234,30 +245,30 @@ report::report(result)
 result <- cor.test(compares$subgraph_mean, compares$mod)
 report::report(result)
 
- # piecewise analysis on modularity
-library(segmented)
-# fit simple linear regression model
-fit <- lm(subgraph_mean ~ mod, data = compares)
-# fit piecewise regression model to original model, estimating a breakpoint at x=9
-segmented.fit <- segmented(fit, seg.Z = ~mod, psi = 0)
-# view summary of segmented model
-summary(segmented.fit)
-# group according to the changepoint
-compares$grp <- factor(ifelse(compares$mod > 0, 1, 0))
-
-# you can also see a quadratic relationship with our similarity score
-ggplot(compares, aes(mod, subgraph_mean, group = grp)) +
-  geom_point() +
-  theme_classic() +
-  geom_pointrange(aes(ymin = subgraph_mean - se, ymax = subgraph_mean + se), size = .7, color = "red") +
-  geom_smooth(method = "lm", formula = y ~ x, se = T, size = 1.8, color = "black") +
-  labs(y = "Similarity", x = "Q") +
-  # geom_vline(xintercept = 0, linetype = "dashed", size = .7) +
-  theme(
-    axis.text = element_text(face = "bold"),
-    text = element_text(size = 15),
-    axis.title = element_text(face = "bold")
-  )
+#  # piecewise analysis on modularity
+# library(segmented)
+# # fit simple linear regression model
+# fit <- lm(subgraph_mean ~ mod, data = compares)
+# # fit piecewise regression model to original model, estimating a breakpoint at x=9
+# segmented.fit <- segmented(fit, seg.Z = ~mod, psi = 0)
+# # view summary of segmented model
+# summary(segmented.fit)
+# # group according to the changepoint
+# compares$grp <- factor(ifelse(compares$mod > 0, 1, 0))
+# 
+# # you can also see a quadratic relationship with our similarity score
+# ggplot(compares, aes(mod, subgraph_mean, group = grp)) +
+#   geom_point() +
+#   theme_classic() +
+#   geom_pointrange(aes(ymin = subgraph_mean - se, ymax = subgraph_mean + se), size = .7, color = "red") +
+#   geom_smooth(method = "lm", formula = y ~ x, se = T, size = 1.8, color = "black") +
+#   labs(y = "Similarity", x = "Q") +
+#   # geom_vline(xintercept = 0, linetype = "dashed", size = .7) +
+#   theme(
+#     axis.text = element_text(face = "bold"),
+#     text = element_text(size = 15),
+#     axis.title = element_text(face = "bold")
+#   )
 
 ggplot(compares, aes(ec, subgraph_mean)) +
   geom_point() +
@@ -310,7 +321,7 @@ ggplot(compares, aes(c, subgraph_mean)) +
 
 
 compares %>% 
-  select(subgraph_mean, subgraph_sd, mod, ed, st, c) %>% 
+  dplyr::select(subgraph_mean, subgraph_sd, mod, ed, st, c) %>% 
   cor() %>% 
   ggcorrplot::ggcorrplot(type = "upper",
                          lab = TRUE)+
@@ -396,7 +407,7 @@ plot_subgraph <- function(n){
        vertex.label.dist = 1,
        # vertex.size = 30,
        vertex.label.family = "Times",
-       # main = paste0("Q = ", round(compares$mod[[n]], 3), " D = ", round(compares$ed[[n]], 3), " s = ", round(compares$st[[n]], 3), " c = ", round(compares$c[[n]], 3)),
+       main = paste0("avg sim: ", round(compares$subgraph_mean[n], 5)),
        # edge.width = abs(E(subgraphs[[n]])$weight) * 6,
        
        vertex.shape="none", 
@@ -405,11 +416,8 @@ plot_subgraph <- function(n){
   )
 }
 
-
-
-
 res %>%
-  select(responsenormalized, ratings, subject_id, stimulus) %>%
+  dplyr::select(responsenormalized, ratings, subject_id, stimulus) %>%
   group_by(stimulus) %>%
   summarise(
     rating_mean = mean(ratings),
@@ -429,21 +437,15 @@ res %>%
     axis.title = element_text(face = "bold")
   )
 
-par(mfrow = c(2, 5)) # set the plotting area into a 1*3 array
-arrange(compares, c)$stimulus
-
-plot_subgraph(46)
-plot_subgraph(98)
-plot_subgraph(32)
-plot_subgraph(60)
-plot_subgraph(55)
-
-
-plot_subgraph(34)
-plot_subgraph(14)
-plot_subgraph(8)
-plot_subgraph(2)
-plot_subgraph(1)
+# Open pdf file
+pdf(file= "subgraphs.pdf" )
+# create a 2X2 grid
+par( mfrow= c(2,2) )
+#the high sim 
+for (foo_plt in arrange(compares, subgraph_mean)$stimulus){
+  print(plot_subgraph(foo_plt))
+}
+dev.off()
 
 single_item_ratings <- do.call(rbind, map(temp_files, individual_food_ratings))
 
@@ -514,6 +516,7 @@ library(patchwork)
 # (p3  + p1)/(p2 +plot_spacer())+
 (p3  + p1)+
   plot_annotation(tag_levels = 'A')
+
 test <- single_item_ratings %>% 
   group_by(Name) %>% 
   summarise(n = n(),
@@ -521,11 +524,11 @@ test <- single_item_ratings %>%
             se = sqrt(var(response) / length(response))) %>% 
   left_join(net_degree)
 
-m2 <- lm(item_mean ~ scale(sds) + scale(degree),test)
+m2 <- lm(item_mean ~ scale(sds) + scale(PCA1),test) #PCA test
 summary(m2)
 report::report(m2)
 
-test %>% select(item_mean,sds,degree, strength,eigen,weighted_transitivity, closeness,betweenness) %>% 
+test %>%dplyr::select(item_mean,sds,degree, strength,eigen,weighted_transitivity, closeness,betweenness,PCA1, PCA2) %>% 
   cor() %>% 
   ggcorrplot::ggcorrplot(type = "upper",
                          lab = TRUE)+

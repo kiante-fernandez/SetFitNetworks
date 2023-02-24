@@ -23,6 +23,20 @@
 
 #TODO you need to make functions out of these plotting commands
 
+source(here::here("src", "organize_group_data_v2.R"))
+# df <- organize_group_data(experiment = 2, net_stat = "modularity")
+df <- organize_group_data(experiment = 1)
+
+net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
+
+net_idx = 4
+
+df$left_net <-   select(df,contains(net_stats[[net_idx]]))[[1]]
+df$right_net <-   select(df,contains(net_stats[[net_idx]]))[[2]]
+
+# df$left_net <-   df$left_sd
+# df$right_net <-   df$right_sd
+
 ## make a plot of the vd:nd interaction
 a <- df %>%
   exlusions() %>%
@@ -57,7 +71,7 @@ a <- df %>%
     # title = paste0(net_stats[[net_idx]]),
     y = "Probability of Choosing Left",
     x = "Value Difference (L-R)",
-    color = "Modularity Difference (L-R)"
+    color = "Network Difference (L-R)"
   ) +
   theme(text = element_text(size = 15),
         legend.position = c(0.25, 0.85),
@@ -68,15 +82,15 @@ b <- df %>%
   exlusions() %>%
   group_by(subject_id) %>%
   mutate(
-    ov = left_rating + right_rating,
-    on = left_net + right_net
+    vd = left_rating - right_rating,
+    nd = left_net - right_net
   ) %>%
   mutate(
-    binned_value_diff = as.numeric(cut_number(ov, 7)) - 4,
+    binned_net_diff = as.numeric(cut_number(nd, 7)) - 4,
   ) %>%
-  group_by(subject_id, binned_value_diff) %>%
+  group_by(subject_id, binned_net_diff) %>%
   mutate(
-    binned_net_diff = as.numeric(cut_number(on, 3)) - 2
+    binned_value_diff = as.numeric(cut_number(vd, 3)) - 2
   ) %>%
   group_by(binned_net_diff, binned_value_diff) %>%
   mutate(
@@ -85,22 +99,22 @@ b <- df %>%
     se = sqrt(var(choice) / length(choice))
   ) %>%
   ungroup() %>%
-  ggplot(aes(x = binned_value_diff, y = m_left, color = factor(binned_net_diff))) +
+  ggplot(aes(x = binned_net_diff, y = m_left, color = factor(binned_value_diff))) +
   geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se), size = 1.1) +
   theme_classic() +
   geom_line(size = 2) +
   geom_hline(yintercept = .5, linetype = "dashed", size = .25) +
   geom_vline(xintercept = 0, linetype = "dashed", size = .25) +
-  scale_color_brewer(palette = "Set1") +
+  scale_color_brewer(palette = "Set2") +
   scale_y_continuous(limits = c(0, 1.01)) +
   labs(
     # title = paste0(net_stats[[net_idx]]),
     y = "Probability of Choosing Left",
-    x = "Sum of Ratings (L+R)",
-    color = "Sum of Modularity (L+R)"
+    x = "Network Difference (L-R)",
+    color = "Value Difference (L-R)"
   ) +
   theme(text = element_text(size = 15),
-        legend.position = c(0.25, 0.85),
+        legend.position = c(0.20, 0.85),
         axis.text = element_text(face="bold"),
         axis.title = element_text(face="bold"))
 
@@ -135,7 +149,7 @@ c <- df %>%
   labs(
     y = "RT(s)",
     x = "|Value Difference| (L-R)",
-    color = "|Modularity Difference| (L-R)"
+    color = "|Network Difference| (L-R)"
   )+
   theme(axis.text = element_text(face="bold"),
         text = element_text(size = 15),
@@ -144,19 +158,19 @@ c <- df %>%
         )
 
 # 
-d <- df %>%
+d <-  df %>%
   exlusions() %>%
   group_by(subject_id) %>%
   mutate(
-    vd = left_rating + right_rating,
-    nd = left_net + right_net
+    vd = abs(left_rating - right_rating),
+    nd = abs(left_net - right_net)
   ) %>%
   mutate(
-    binned_value_diff = as.numeric(cut_number(vd, 5)) - 1,
+    binned_net_diff = as.numeric(cut_number(nd, 5)) - 1,
   ) %>%
-  group_by(subject_id, binned_value_diff) %>%
+  group_by(subject_id, binned_net_diff) %>%
   mutate(
-    binned_net_diff = as.numeric(cut_number(nd, 3)) - 1
+    binned_value_diff = as.numeric(cut_number(vd, 3)) - 1
   ) %>%
   group_by(binned_net_diff, binned_value_diff) %>%
   mutate(
@@ -166,19 +180,19 @@ d <- df %>%
     se = sqrt(var(rt) / length(rt))
   ) %>%
   ungroup() %>%
-  ggplot(aes(x = binned_value_diff, y = m_rt, color = factor(binned_net_diff))) +
+  ggplot(aes(x = binned_net_diff, y = m_rt, color = factor(binned_value_diff))) +
   geom_pointrange(aes(ymin = m_rt - se, ymax = m_rt + se), size = 1.1) +
   theme_classic() +
   geom_line(size = 2) +
-  scale_color_brewer(palette = "Set1") +
+  scale_color_brewer(palette = "Set2") +
   labs(
     y = "RT(s)",
-    x = "Sum of Ratings (L+R)",
-    color = "Sum of Modularity (L+R)"
+    x = "|Network Difference| (L-R)",
+    color = "|Value Difference| (L-R)"
   )+
   theme(axis.text = element_text(face="bold"),
         text = element_text(size = 15),
-        legend.position = c(0.8, 0.8),
+        legend.position = c(0.25, 0.18),
         axis.title = element_text(face="bold")
   )
 # 
