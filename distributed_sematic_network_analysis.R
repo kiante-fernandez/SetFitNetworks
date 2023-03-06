@@ -13,6 +13,9 @@ library(patchwork)
 
 library(readxl)
 
+sim_gpt3 <- as.matrix(read_csv("data/Lee_Holyoak_GPT3.csv"))
+sim_gpt3 <- SemNeT::similarity(sim_gpt3, method = "cosine")
+
 sim_lsa <- as.matrix(readxl::read_excel(here::here("data", "Lee_Holyoak_LSA.xlsx"))[,-1])
 
 sim_BERT <- as.matrix(readxl::read_excel(here::here("data", "Lee_Holyoak_BERT.xlsx"))[,-1])
@@ -20,11 +23,12 @@ sim_BERT <- as.matrix(readxl::read_excel(here::here("data", "Lee_Holyoak_BERT.xl
 sim_word2vec <- as.matrix(readxl::read_excel(here::here("data", "Lee_Holyoak_word2vec.xlsx"))[,-1])
 # cor.snack_food <- SemNeT::similarity(sim_word2vec, method = "cor")
 
+net_sim_GPT3 <- SemNeT::TMFG(sim_gpt3)
 net_sim_lsa <- SemNeT::TMFG(sim_lsa)
 net_sim_word2vec <- SemNeT::TMFG(sim_word2vec)
 net_sim_bert <- SemNeT::TMFG(sim_BERT)
 
-par(mfrow = c(1, 3)) # set the plotting area into a 1*3 array
+par(mfrow = c(1, 4)) # set the plotting area into a 1*3 array
 
 AJ_graph <- function(matrix){
   # visualize the matrix as a heatmap.
@@ -39,7 +43,7 @@ AJ_graph <- function(matrix){
   # legend(x = "bottom", legend = c("min", "med", "max", "higher"), fill = hcl.colors(4))
   
 }
-
+AJ_graph(net_sim_GPT3)
 AJ_graph(net_sim_lsa)
 AJ_graph(net_sim_word2vec)
 AJ_graph(net_sim_bert)
@@ -52,6 +56,10 @@ plot_network <- function(x, name){
                                            diag = F
   )
   clp <- cluster_walktrap(graph)
+  # cls <- cluster_fast_greedy(graph_ratings) #5
+  # cls <- cluster_edge_betweenness(graph_ratings) #6
+  # cls <- cluster_leading_eigen(graph_ratings) #5
+
   V(graph)$community <- clp$membership
   plot(graph,
        layout = layout_nicely(graph),
@@ -66,9 +74,8 @@ plot_network <- function(x, name){
        main = name,
        edge.width = abs(E(graph)$weight) * 3)
 }
-
+plot_network(net_sim_GPT3, "GPT3")
 plot_network(net_sim_lsa, "lsa")
 plot_network(net_sim_word2vec, "word2vec")
 plot_network(net_sim_bert, "BERT")
-
 
