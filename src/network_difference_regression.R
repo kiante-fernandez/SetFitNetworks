@@ -56,7 +56,9 @@ estimate_mlms <- function(df, outcome = "choice") {
     
     model3 <- glmer(choice ~ (zleft_rating*zleft_net) + (zright_rating*zright_net) + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
     
-    return(list(model1, model2, model3)) 
+    model4 <- glmer(choice ~ (zleft_rating*zleft_net) +  (zright_rating*zright_net) + zleft_sd + zright_sd + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    
+    return(list(model1, model2, model3, model4)) 
     
   } else if (outcome == "correct") {
     # base model
@@ -134,7 +136,12 @@ source("exploratory_graph_analysis.R")
 # # g <- graph_from_adjacency_matrix(SemNeT::TMFG(SemNeT::similarity(lee_2021_rating1, method = "cor")), "undirected", weighted = TRUE,diag = F)
 # V(g)$snack_type <- dimattributes
 
+g <- graph_BERT
+clp <- cluster_walktrap(g)
+V(g)$snack_type <- clp$membership
+
 net_degree <- calculate_net_stats(g)
+
 
 ##### loading the data#####
 source(here::here("src", "organize_group_data_v2.R"))
@@ -235,13 +242,14 @@ exlusions <- function(df) {
 # net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eigen","efficiency", "edge_density", "modularity")
 # net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity")
 
-# net_stats <- c("weighted_transitivity","edge_density", "modularity", "conductance", "pca1", "pca2")
-net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
+net_stats <- c("weighted_transitivity","edge_density", "modularity", "conductance", "pca1", "pca2")
+# net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
 
 # net_stats <- c("weighted_transitivity","edge_density", "modularity", "conductance")
 # net_stats <- c( "modularity")
 
-# net_idx <- 1
+# net_idx <- 2
+
 for (net_idx in 1:length(net_stats)) {
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
   # df <- organize_group_data(experiment = 1, net_stat = net_stats[[net_idx]])

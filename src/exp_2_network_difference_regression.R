@@ -238,8 +238,8 @@ exlusions <- function(df) {
 # net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity")
 # net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity", "conductance","weighted_clustering_coefficient")
 
-# net_stats <- c("weighted_transitivity", "edge_density", "modularity", "conductance", "pca1", "pca2")
-net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
+net_stats <- c("weighted_transitivity", "edge_density", "modularity", "conductance", "pca1", "pca2")
+# net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
 
 # net_stats <- c("modularity")
 

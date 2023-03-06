@@ -74,7 +74,7 @@ calculate_net_stats <- function(g) {
 
   net_degree$snack_type <- V(g)$snack_type
   
-  dat_pca <- net_degree[,c("sds","degree","strength","eigen","weighted_transitivity","closeness","betweenness")]
+  dat_pca <- net_degree[,c("degree","strength","eigen","weighted_transitivity","closeness","betweenness")]
   # dat_pca <- net_degree[,c("strength","eigen","weighted_transitivity","closeness")]
   pca_res <- prcomp(dat_pca, center = TRUE, scale. = TRUE)
   print(pca_res)
@@ -346,10 +346,12 @@ create_dataset <- function(df, type, standardized = TRUE) {
         zleft_net = scale(left_net, center = standardized, scale = standardized),
         zright_net = scale(right_net, center = standardized, scale = standardized),
         zleft_sim = scale(left_sim, center = standardized, scale = standardized),
-        zright_sim = scale(right_sim, center = standardized, scale = standardized)
+        zright_sim = scale(right_sim, center = standardized, scale = standardized),
+        zleft_sd = scale(left_sd, center = standardized, scale = standardized),
+        zright_sd = scale(right_sd, center = standardized, scale = standardized)
       ) %>%
       ungroup() %>%
-      select(subject_id, choice, nd, vd, sd, ov, on, os, zleft_rating, zright_rating, zleft_net, zright_net, zleft_sim, zright_sim)
+      select(subject_id, choice, nd, vd, sd, ov, on, os, zleft_rating, zright_rating, zleft_net, zright_net, zleft_sim, zright_sim, zleft_sd, zright_sd)
   } else if (type == "correct/rt") {
     model_dat <- df %>%
       exlusions() %>%
@@ -427,7 +429,10 @@ estimate_mlms <- function(df, outcome = "choice") {
 
     model4 <- glmer(choice ~ (zleft_rating * zleft_net) + (zright_rating * zright_net) + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
 
-    return(list(model1, model2A, model2B, model3, model4))
+    model5 <- glmer(choice ~ (zleft_rating*zleft_net) +  (zright_rating*zright_net) + zleft_sim + zright_sim + zleft_sd + zright_sd + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    
+    # return(list(model1, model2, model3, model4)) 
+    return(list(model1, model2A, model2B, model3, model4, model5))
   } else if (outcome == "correct") {
     # base model
     df <- create_dataset(df, type = "correct/rt")

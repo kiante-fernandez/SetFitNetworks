@@ -200,15 +200,19 @@ compares$st <- strength_res
 compares$ec <- eigen_cen
 compares$c <- unlist(con_res)
 
-dat_pca <- compares[,c("subgraph_sd","mod","ed","st","ec","c")]
+dat_pca <- compares[,c("mod","ed","st","ec","c")]
+# dat_pca <- compares[,c("mod","ed","st","ec","c")]
+
 pca_res <- prcomp(dat_pca, center = TRUE, scale. = TRUE)
 pca_res
 plot(pca_res)
 summary(pca_res)
-biplot(pca_res , c(1,3))
+# biplot(pca_res , c(1,3))
 
-m_data <- data.frame(cbind(subgraph_mean = compares$subgraph_mean, pca_res$x)) 
-summary(lm(subgraph_mean ~ PC1 + PC3, m_data))
+m_data <- data.frame(cbind(subgraph_mean = compares$subgraph_mean, subgraph_sd =compares$subgraph_sd , pca_res$x)) 
+summary(lm(subgraph_mean ~ subgraph_sd + PC1 + PC2 +  PC3, m_data))
+# summary(lm(subgraph_mean ~ scale(subgraph_sd) + scale(PC1) + scale(PC2) +  scale(PC3), m_data))
+
 #graphs with more connections have higher similarity scores
 
 # compares <- compares %>%
@@ -318,7 +322,6 @@ ggplot(compares, aes(c, subgraph_mean)) +
     text = element_text(size = 15),
     axis.title = element_text(face = "bold")
   )
-
 
 compares %>% 
   dplyr::select(subgraph_mean, subgraph_sd, mod, ed, st, c) %>% 
@@ -479,40 +482,62 @@ p2 <- single_item_ratings %>%
             item_mean = mean(response),
             se = sqrt(var(response) / length(response))) %>% 
   left_join(net_degree) %>% 
-  ggplot(aes(x = reorder(factor(Name),weighted_transitivity) , y = weighted_transitivity)) +
+  ggplot(aes(x = reorder(factor(Name),PCA2) , y = PCA2)) +
   geom_col(fill = "darkgreen")+
   theme_classic()+
   theme(legend.position="none")+
-  labs(y = "Transitivity",
+  labs(y = "PCA2",
        x = "Food Item")+
   coord_flip()+
   theme(
     axis.text = element_text(face = "bold"),
     text = element_text(size = 15),
     axis.title = element_text(face = "bold"),
-    axis.text.y = element_text(face="bold", color=arrange(net_degree, weighted_transitivity)$colors,
+    axis.text.y = element_text(face="bold", color=arrange(net_degree, PCA2)$colors,
                                size=10, angle=40)
   )
+p4 <- single_item_ratings %>% 
+  group_by(Name) %>% 
+  summarise(n = n(),
+            item_mean = mean(response),
+            se = sqrt(var(response) / length(response))) %>% 
+  left_join(net_degree) %>% 
+  ggplot(aes(x = reorder(factor(Name),PCA1) , y = PCA1)) +
+  geom_col(fill = "darkgreen")+
+  theme_classic()+
+  theme(legend.position="none")+
+  labs(y = "PCA1",
+       x = "Food Item")+
+  coord_flip()+
+  theme(
+    axis.text = element_text(face = "bold"),
+    text = element_text(size = 15),
+    axis.title = element_text(face = "bold"),
+    axis.text.y = element_text(face="bold", color=arrange(net_degree, PCA1)$colors,
+                               size=10, angle=40)
+  )
+
 p3 <- single_item_ratings %>% 
   group_by(Name) %>% 
   summarise(n = n(),
             item_mean = mean(response),
             se = sqrt(var(response) / length(response))) %>% 
   left_join(net_degree) %>% 
-  ggplot(aes(x = weighted_transitivity , y = item_mean)) +
+  ggplot(aes(x = PCA1 , y = item_mean)) +
   # geom_point(color = "darkgreen", size = 3)+
   geom_pointrange(aes(ymin = item_mean - se, ymax = item_mean + se), size = .7, color = "darkgreen") +
   geom_smooth(method = "lm", se = T, size = 1.8, color = "black") +
   theme_classic()+
   theme(legend.position="none")+
   labs(y = "Liking rating",
-       x = "transitivity")+
+       x = "PCA1")+
   theme(
     axis.text = element_text(face = "bold"),
     text = element_text(size = 15),
     axis.title = element_text(face = "bold")
   )
 library(patchwork)
+p4 + p2
 # (p3  + p1)/(p2 +plot_spacer())+
 (p3  + p1)+
   plot_annotation(tag_levels = 'A')
@@ -524,11 +549,12 @@ test <- single_item_ratings %>%
             se = sqrt(var(response) / length(response))) %>% 
   left_join(net_degree)
 
-m2 <- lm(item_mean ~ scale(sds) + scale(PCA1),test) #PCA test
+# m2 <- lm(item_mean ~ scale(sds) + scale(PCA1),test) #PCA test
+m2 <- lm(item_mean ~ scale(PCA1) + scale(PCA2) + scale(PCA3),test) #PCA test
 summary(m2)
 report::report(m2)
 
-test %>%dplyr::select(item_mean,sds,degree, strength,eigen,weighted_transitivity, closeness,betweenness,PCA1, PCA2) %>% 
+test %>%dplyr::select(item_mean,sds,degree, strength,eigen,weighted_transitivity, closeness,betweenness,PCA1, PCA2, PCA3) %>% 
   cor() %>% 
   ggcorrplot::ggcorrplot(type = "upper",
                          lab = TRUE)+

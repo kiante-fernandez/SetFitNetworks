@@ -154,7 +154,9 @@ organize_group_data <- function(experiment, weight = "degree") {
       # wt <- (wt - min(wt)) / diff(range(wt)) #normalize (corrected the issue)
       
       # use weight to get weighted average
-      set_weighted_values_temp[[foo]] <- weighted.mean(x, wt)
+      # set_weighted_values_temp[[foo]] <- weighted.mean(x, wt)
+      set_weighted_values_temp[[foo]] <- NA
+      
       
       set_values_temp[[foo]] <- sum(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
       # set_values_temp[[foo]] <- mean(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
