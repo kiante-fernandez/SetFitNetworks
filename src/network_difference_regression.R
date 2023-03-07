@@ -136,8 +136,8 @@ source("exploratory_graph_analysis.R")
 # # g <- graph_from_adjacency_matrix(SemNeT::TMFG(SemNeT::similarity(lee_2021_rating1, method = "cor")), "undirected", weighted = TRUE,diag = F)
 # V(g)$snack_type <- dimattributes
 
-g <- graph_BERT
-clp <- cluster_walktrap(g)
+g <-graph_from_adjacency_matrix(net_sim_GPT3,"undirected",weighted = TRUE,diag = F)
+clp <- cluster_fast_greedy(g)
 V(g)$snack_type <- clp$membership
 
 net_degree <- calculate_net_stats(g)
@@ -271,14 +271,14 @@ for (net_idx in 1:length(net_stats)) {
   # print(parameters::compare_models(models_choice))
   print(parameters::compare_models(models_choice, style = "ci_p"))
   # 
-  mp <- modelplot(models_choice, coef_omit = "Interc") +
-    geom_vline(xintercept = 0, linetype = "dashed") +
-    labs(x = "Coefficients",y = "Terms",
-         title = paste0("Choice: ",net_stats[[net_idx]])
-    ) +
-    theme_classic() +
-    scale_color_brewer(palette = "Set1")
-  print(mp)
+  # mp <- modelplot(models_choice, coef_omit = "Interc") +
+  #   geom_vline(xintercept = 0, linetype = "dashed") +
+  #   labs(x = "Coefficients",y = "Terms",
+  #        title = paste0("Choice: ",net_stats[[net_idx]])
+  #   ) +
+  #   theme_classic() +
+  #   scale_color_brewer(palette = "Set1")
+  # print(mp)
   
   # print(paste0("############### CORRECT ###############"))
   # models_correct<- estimate_mlms(df, outcome = "correct")
@@ -303,19 +303,19 @@ for (net_idx in 1:length(net_stats)) {
   print(parameters::compare_models(models_rt,  style = "ci_p"))
   # # print(parameters::compare_models(models_choice))
   # 
-  mp <- modelplot(models_rt, coef_omit = "Interc") +
-    geom_vline(xintercept = 0, linetype = "dashed") +
-    labs(x = "Coefficients",y = "Terms",
-         title = paste0("RT: ",net_stats[[net_idx]])
-    ) +
-    theme_classic() +
-    scale_color_brewer(palette = "Set1")
-  print(mp)
+  # mp <- modelplot(models_rt, coef_omit = "Interc") +
+  #   geom_vline(xintercept = 0, linetype = "dashed") +
+  #   labs(x = "Coefficients",y = "Terms",
+  #        title = paste0("RT: ",net_stats[[net_idx]])
+  #   ) +
+  #   theme_classic() +
+  #   scale_color_brewer(palette = "Set1")
+  # print(mp)
   
   # generate tables
-  generate_table(models_choice, type = "exp_1_choice", net_stat = net_stats[[net_idx]], save = T)
+  # generate_table(models_choice, type = "exp_1_choice", net_stat = net_stats[[net_idx]], save = T)
   # generate_table(models_correct, type = "exp_1_correct", net_stat = net_stats[[net_idx]], save = T)
-  generate_table(models_rt, type = "exp_1_rt", net_stat = net_stats[[net_idx]], save = T)
+  # generate_table(models_rt, type = "exp_1_rt", net_stat = net_stats[[net_idx]], save = T)
   
 }
 # (plts[[1]] + plts[[2]])/(plts[[3]] + plts[[4]])

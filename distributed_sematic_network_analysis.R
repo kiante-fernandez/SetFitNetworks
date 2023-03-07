@@ -55,10 +55,10 @@ plot_network <- function(x, name){
                                            weighted = TRUE,
                                            diag = F
   )
-  clp <- cluster_walktrap(graph)
-  # cls <- cluster_fast_greedy(graph_ratings) #5
-  # cls <- cluster_edge_betweenness(graph_ratings) #6
-  # cls <- cluster_leading_eigen(graph_ratings) #5
+  # clp <- cluster_walktrap(graph)
+  clp <- cluster_fast_greedy(graph) #5
+  # clp <- cluster_edge_betweenness(graph) #6
+  # clp <- cluster_leading_eigen(graph) #5
 
   V(graph)$community <- clp$membership
   plot(graph,
@@ -75,7 +75,7 @@ plot_network <- function(x, name){
        edge.width = abs(E(graph)$weight) * 3)
 }
 plot_network(net_sim_GPT3, "GPT3")
-plot_network(net_sim_lsa, "lsa")
+plot_network(net_sim_lsa, "LSA")
 plot_network(net_sim_word2vec, "word2vec")
 plot_network(net_sim_bert, "BERT")
 
