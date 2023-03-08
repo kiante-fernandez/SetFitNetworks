@@ -54,15 +54,25 @@ cm <- c('b_zleft_rating'    = 'left liking rating',
         'b_zright_rating:zright_net' = 'right rating × network estimate'
 )
 
+
+cm <- c('zleft_rating'    = 'left liking rating',
+        'zright_rating'    = 'right liking rating',
+        'zleft_net' = 'left network estimate',
+        'zright_net' = 'right network estimate',
+        'zleft_sim' = 'left similarity judgment',
+        'zright_sim' = 'right similarity judgment',
+        'zleft_rating:zleft_net' = 'left rating × network estimate',
+        'zright_rating:zright_net' = 'right rating × network estimate'
+)
 #exp two
-# modelsummary(ms, 
-#              shape = term ~ model + statistic,
-#              fmt = 2,
-#              centrality = "median", 
-#              statistic = "[{conf.low}, {conf.high}]",
-#              coef_omit = "Intercept|.*subject_id",
-#              coef_map = cm,
-#              gof_map = NA)
+modelsummary(res_netstats,
+             shape = term ~ model + statistic,
+             fmt = 2,
+             estimate = "{estimate}{stars} [{conf.low}, {conf.high}]",
+             statistic = NULL,
+             coef_omit = "Intercept|.*subject_id",
+             coef_map = cm,
+             gof_map = NA)
 
 net_stat = "edge_density"
 file_name <- here::here("tables", paste0("choice", "_", net_stat, ".html"))

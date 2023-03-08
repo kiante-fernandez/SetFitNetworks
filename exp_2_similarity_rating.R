@@ -18,36 +18,54 @@ temp_files <- list.files(path = here::here("data", "exp_2"), pattern = ".json", 
 load(file = here::here("data", "modularity_100_6.RData"))
 
 # load(file = here::here("data", "LowHighWithinBetween.RData"))
+g <-graph_from_adjacency_matrix(net_sim_GPT3,"undirected",weighted = TRUE,diag = F)
+clp <- cluster_fast_greedy(g)
+V(g)$snack_type <- clp$membership
 
-# get mod scores
-mod_res <- map(subgraphs, function(x) unique(V(x)$mod))
-mod_res <- map(subgraphs, function(x) {as.numeric(modularity(x, V(x)$snack_type))})
-mod_res <- do.call(rbind, mod_res)
-# mod_res[res_sig == 0] <- 0
 
-edge_dens <- map(subgraphs, function(x) edge_density(x))
-edge_dens <- do.call(rbind, edge_dens)
-
-# note the negative weights issue here
-eigen_cen <- map(subgraphs, function(x) {
-  E(x)$weight <- 2**((E(x)$weight - min(E(x)$weight)) / diff(range(E(x)$weight)))
-  sum(eigen_centrality(x)$vector)
-})
-
-eigen_cen <- do.call(rbind, eigen_cen)
-
-strength_res <- map(subgraphs, function(x) sum(strength(x)))
-strength_res <- do.call(rbind, strength_res)
-
-# conductance
-source("exploratory_graph_analysis.R")
-# source('fernandez_rating_network.R') #load the EGA from the new rating data
-#^^need file it s on other machine I think
 G <- g
 E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
 mem <- membership(cluster_leading_eigen(G))
+# get mod scores
+# mod_res <- map(subgraphs, function(x) unique(V(x)$mod))
+mod_res <- map(subgraphs, function(x) {temp <- igraph::induced_subgraph(g, V(x)$name) 
+                                                                     as.numeric(modularity(temp, V(temp)$snack_type))})
+mod_res <- do.call(rbind, mod_res)
+
+
+
+# mod_res[res_sig == 0] <- 0
+
+# edge_dens <- map(subgraphs, function(x) edge_density(x))
+
+edge_dens <- map(subgraphs, function(x) edge_density(igraph::induced_subgraph(g, V(x)$name) ))
+
+edge_dens <- do.call(rbind, edge_dens)
+
+# note the negative weights issue here
+# eigen_cen <- map(subgraphs, function(x) {
+#   E(x)$weight <- 2**((E(x)$weight - min(E(x)$weight)) / diff(range(E(x)$weight)))
+#   sum(eigen_centrality(x)$vector)
+# })
+eigen_cen <- map(subgraphs, function(x) {
+  temp <- igraph::induced_subgraph(g, V(x)$name)
+  E(temp)$weight <- 2**((E(temp)$weight - min(E(temp)$weight)) / diff(range(E(temp)$weight)))
+  
+  sum(eigen_centrality(temp)$vector)
+})
+eigen_cen <- do.call(rbind, eigen_cen)
+
+strength_res <- map(subgraphs, function(x) sum(strength(igraph::induced_subgraph(g, V(x)$name))))
+strength_res <- do.call(rbind, strength_res)
+
+# conductance
+# source("exploratory_graph_analysis.R")
+# source('fernandez_rating_network.R') #load the EGA from the new rating data
+#^^need file it s on other machine I think
+
 
 con_res <- map(subgraphs, function(x) {
+  x <- igraph::induced_subgraph(g, V(x)$name)
   mem[names(mem)] = 1
   mem[names(mem) %in% V(x)$name] = 2  
   conductance_temp <- clustAnalytics::conductance(g, mem)[2]
@@ -201,6 +219,7 @@ compares$ec <- eigen_cen
 compares$c <- unlist(con_res)
 
 dat_pca <- compares[,c("mod","ed","st","ec","c")]
+
 # dat_pca <- compares[,c("mod","ed","st","ec","c")]
 
 pca_res <- prcomp(dat_pca, center = TRUE, scale. = TRUE)
@@ -243,10 +262,17 @@ bayesfactor_models(result)
 plot(bayesfactor_models(result)) +
   scale_fill_pizza()
 
-result <- cor.test(compares$subgraph_mean, compares$c)
+result <- cor.test(compares$subgraph_mean, compares$c, method = "spearman")
 report::report(result)
 
-result <- cor.test(compares$subgraph_mean, compares$mod)
+result <- cor.test(compares$subgraph_mean,compares$st,  method = "spearman")
+report::report(result)
+
+result <- cor.test(compares$subgraph_mean,compares$ed,  method = "spearman")
+report::report(result)
+
+result <- cor.test(compares$subgraph_mean,compares$ec,  method = "spearman")
+
 report::report(result)
 
 #  # piecewise analysis on modularity
@@ -399,9 +425,12 @@ plot(subgraphs[[73]],
 
 
 plot_subgraph <- function(n){
-  V(subgraphs[[n]])$color <- net_degree[net_degree$Name %in% V(subgraphs[[n]])$name,]$colors
+  temp <- igraph::induced_subgraph(g, V(subgraphs[[n]])$name) 
+  # temp <- subgraphs[[n]]
   
-  plot(subgraphs[[n]],
+  V(temp)$color <- net_degree[net_degree$Name %in% V(temp)$name,]$colors
+  
+  plot(temp,
        # layout = layout.circle(subgraphs[[n]]),
        margin = .0,
        # vertex.label.color = "black",
@@ -414,7 +443,7 @@ plot_subgraph <- function(n){
        # edge.width = abs(E(subgraphs[[n]])$weight) * 6,
        
        vertex.shape="none", 
-       vertex.label.color=V(subgraphs[[n]])$color,
+       vertex.label.color=V(temp)$color,
        vertex.size = NULL
   )
 }
@@ -523,14 +552,14 @@ p3 <- single_item_ratings %>%
             item_mean = mean(response),
             se = sqrt(var(response) / length(response))) %>% 
   left_join(net_degree) %>% 
-  ggplot(aes(x = PCA1 , y = item_mean)) +
+  ggplot(aes(x = PCA2 , y = item_mean)) +
   # geom_point(color = "darkgreen", size = 3)+
   geom_pointrange(aes(ymin = item_mean - se, ymax = item_mean + se), size = .7, color = "darkgreen") +
   geom_smooth(method = "lm", se = T, size = 1.8, color = "black") +
   theme_classic()+
   theme(legend.position="none")+
   labs(y = "Liking rating",
-       x = "PCA1")+
+       x = "PCA2")+
   theme(
     axis.text = element_text(face = "bold"),
     text = element_text(size = 15),
@@ -568,3 +597,5 @@ test %>%dplyr::select(item_mean,sds,degree, strength,eigen,weighted_transitivity
     axis.text.x = element_text(face="bold",size=10, angle=40, hjust= .9)
   )
 
+# library("factoextra")
+# fviz_eig(res.pca, addlabels = TRUE, ylim = c(0, 50))

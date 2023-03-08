@@ -192,7 +192,7 @@ d <-  df %>%
   )+
   theme(axis.text = element_text(face="bold"),
         text = element_text(size = 15),
-        legend.position = c(0.25, 0.18),
+        # legend.position = c(0.25, 0.18),
         axis.title = element_text(face="bold")
   )
 # 

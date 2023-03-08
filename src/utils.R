@@ -78,6 +78,14 @@ calculate_net_stats <- function(g) {
   # dat_pca <- net_degree[,c("strength","eigen","weighted_transitivity","closeness")]
   pca_res <- prcomp(dat_pca, center = TRUE, scale. = TRUE)
   print(pca_res)
+  # library("factoextra")
+  # fviz_eig(pca_res, addlabels = TRUE, ylim = c(0, 70))
+  # fviz_pca_var(pca_res, col.var = "black")
+  # fviz_pca_var(pca_res, col.var = "contrib",
+  #              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"))
+  # fviz_contrib(pca_res, choice = "var", axes = 1)
+  # fviz_contrib(pca_res, choice = "var", axes = 2)
+  
   print(summary(pca_res))
   net_degree$PCA1 <-  pca_res$x[,1]
   net_degree$PCA2 <- pca_res$x[,2]
@@ -351,7 +359,7 @@ create_dataset <- function(df, type, standardized = TRUE) {
         zright_sd = scale(right_sd, center = standardized, scale = standardized)
       ) %>%
       ungroup() %>%
-      select(subject_id, choice, nd, vd, sd, ov, on, os, zleft_rating, zright_rating, zleft_net, zright_net, zleft_sim, zright_sim, zleft_sd, zright_sd)
+      select(subject_id, choice, rt, nd, vd, sd, ov, on, os, zleft_rating, zright_rating, zleft_net, zright_net, zleft_sim, zright_sim, zleft_sd, zright_sd)
   } else if (type == "correct/rt") {
     model_dat <- df %>%
       exlusions() %>%
@@ -446,18 +454,35 @@ estimate_mlms <- function(df, outcome = "choice") {
     return(list(model1, model2A, model2B, model3))
     
   } else if (outcome == "rt") {
-    df <- create_dataset(df, type = "correct/rt")
+    # df <- create_dataset(df, type = "correct/rt")
+    df_temp <- create_dataset(df, type = "choice")
+    
     # df = df[df$correct == 1,] #check only correct
     # base model
-    model1 <- lmer(log(rt) ~ vd + ov + (1 + vd + ov | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    # model1 <- lmer(log(rt) ~ vd + ov + (1 + vd + ov | subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    # # add network difference
+    # model2A <- lmer(log(rt) ~ vd + ov + nd + (1 + vd + ov| subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    # # add similarity difference
+    # model2B <- lmer(log(rt) ~ vd + ov + sd + (1 + vd + ov| subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    # 
+    # model3 <- lmer(log(rt) ~ vd + ov + nd + sd + (1 + vd + ov| subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    # 
+    # return(list(model1, model2A, model2B, model3))
+    
+    model1 <- lmer(log(rt) ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating| subject_id), data = df_temp , control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
     # add network difference
-    model2A <- lmer(log(rt) ~ vd + ov + nd + (1 + vd + ov| subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model2A <- lmer(log(rt) ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating| subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
     # add similarity difference
-    model2B <- lmer(log(rt) ~ vd + ov + sd + (1 + vd + ov| subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-
-    model3 <- lmer(log(rt) ~ vd + ov + nd + sd + (1 + vd + ov| subject_id), data = df, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-
-    return(list(model1, model2A, model2B, model3))
+    model2B <- lmer(log(rt) ~ zleft_rating + zright_rating + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    # add both
+    model3 <- lmer(log(rt) ~ zleft_rating + zright_rating + zleft_net + zright_net + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    
+    model4 <- lmer(log(rt) ~ (zleft_rating * zleft_net) + (zright_rating * zright_net) + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    
+    model5 <- lmer(log(rt) ~ (zleft_rating*zleft_net) +  (zright_rating*zright_net) + zleft_sim + zright_sim + zleft_sd + zright_sd + (1 + zleft_rating + zright_rating | subject_id), data = df_temp,control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    
+    # return(list(model1, model2, model3, model4)) 
+    return(list(model1, model2A, model2B, model3, model4, model5))
   }
 }
 

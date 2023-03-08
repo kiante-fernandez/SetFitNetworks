@@ -221,10 +221,10 @@ dput(as.numeric(na.omit(p_values)))
 exlusions <- function(df) {
   # function for data exclusions following the preregistration specs
   temp <- df %>%
-    filter(subject_id != 35) %>%
+    # filter(subject_id != 35) %>%
     # filter(!subject_id %in% c(17, 29, 35, 37)) %>% #comment out for no exclusions (subejct 13?)
     # filter(!subject_id %in% c(4, 5, 10, 12, 17, 22, 29, 35, 37,41, 42, 48, 55, 57, 58, 63, 64, 65, 66, 67, 70, 75)) %>% #comment out for no exclusions (subejct 13?)
-    # filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
+    filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
     group_by(subject_id) %>% # response times (IQR exclusion)
     mutate(
       Q1 = quantile(rt, .25),
@@ -241,12 +241,16 @@ exlusions <- function(df) {
 # net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity")
 # net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity", "conductance","weighted_clustering_coefficient")
 
-net_stats <- c("weighted_transitivity", "edge_density", "modularity", "conductance", "pca1", "pca2")
+net_stats <- c("edge_density", "modularity", "pca1", "pca2")
+
+# net_stats <- c("weighted_transitivity", "edge_density", "modularity", "conductance", "pca1", "pca2")
 # net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
 
 # net_stats <- c("modularity")
 
 res_netstats <- vector(mode = "list", length = length(net_stats))
+res_netstats2 <- vector(mode = "list", length = length(net_stats))
+
 # res_model_comparisons <- vector(mode = "list", length = length(net_stats))
 # net_idx  = 6
 for (net_idx in 1:length(net_stats)) {
@@ -272,14 +276,15 @@ for (net_idx in 1:length(net_stats)) {
   print(parameters::compare_models(models_choice,  style = "ci_p"))
   # print(parameters::compare_models(models_choice))
   
-  # mp <- modelplot(models_choice, coef_omit = "Interc") +
-  #   geom_vline(xintercept = 0, linetype = "dashed") +
-  #   labs(x = "Coefficients",y = "Terms",
-  #        title = paste0("Choice: ",net_stats[[net_idx]])
-  #   ) +
-  #   theme_classic() +
-  #   scale_color_brewer(palette = "Set1")
-  # print(mp)
+  mp <- modelplot(models_choice, coef_omit = "Interc") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    labs(x = "Coefficients",y = "Terms",
+         title = paste0("Choice: ",net_stats[[net_idx]])
+    ) +
+    theme_classic() +
+    scale_color_brewer(palette = "Set1")
+  print(mp)
+  res_netstats[[net_idx]] <- models_choice[[5]]
   
   # print(paste0("############### CORRECT ###############"))
   # models_correct<- estimate_mlms(df, outcome = "correct")
@@ -304,19 +309,20 @@ for (net_idx in 1:length(net_stats)) {
   print(parameters::compare_models(models_rt,  style = "ci_p"))
   # # print(parameters::compare_models(models_choice))
   # 
-  # mp <- modelplot(models_rt, coef_omit = "Interc") +
-  #   geom_vline(xintercept = 0, linetype = "dashed") +
-  #   labs(x = "Coefficients",y = "Terms",
-  #        title = paste0("RT: ",net_stats[[net_idx]])
-  #   ) +
-  #   theme_classic() +
-  #   scale_color_brewer(palette = "Set1")
-  # print(mp)
+  mp <- modelplot(models_rt, coef_omit = "Interc") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    labs(x = "Coefficients",y = "Terms",
+         title = paste0("RT: ",net_stats[[net_idx]])
+    ) +
+    theme_classic() +
+    scale_color_brewer(palette = "Set1")
+  print(mp)
+  # res_netstats[[net_idx]] <- models_rt[[5]]
   
   # generate tables
-  # generate_table(models_choice, type = "exp_2_choice", net_stat = net_stats[[net_idx]], save = T)
+  generate_table(models_choice, type = "exp_2_choice", net_stat = net_stats[[net_idx]], save = T)
   # generate_table(models_correct, type = "exp_2_correct", net_stat = net_stats[[net_idx]], save = T)
-  # generate_table(models_rt, type = "exp_2_rt", net_stat = net_stats[[net_idx]], save = T)
+  generate_table(models_rt, type = "exp_2_rt", net_stat = net_stats[[net_idx]], save = T)
   
   #nice way to make those regression coef tables you like
   #TODO make one with factor for each
