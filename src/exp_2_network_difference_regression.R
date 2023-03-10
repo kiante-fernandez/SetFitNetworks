@@ -47,7 +47,7 @@ source(here::here("src", "utils.R"))
 ######
 # calculate a bunch of network measures to look at relationship to stuff
 
-source("exploratory_graph_analysis.R")
+# source("exploratory_graph_analysis.R")
 # source('fernandez_rating_network.R') #load the EGA from the new rating data
 
 #use the empirical network instead of the bootnet one
@@ -61,9 +61,10 @@ source("exploratory_graph_analysis.R")
 # g <- graph_from_adjacency_matrix(SemNeT::similarity(lee_2021_rating1, method = "cor"), "undirected", weighted = TRUE,diag = F)
 # # g <- graph_from_adjacency_matrix(SemNeT::TMFG(SemNeT::similarity(lee_2021_rating1, method = "cor")), "undirected", weighted = TRUE,diag = F)
 # V(g)$snack_type <- dimattributes
-g <-graph_from_adjacency_matrix(net_sim_GPT3,"undirected",weighted = TRUE,diag = F)
-clp <- cluster_fast_greedy(g)
-V(g)$snack_type <- clp$membership
+
+# g <-graph_from_adjacency_matrix(net_sim_bert,"undirected",weighted = TRUE,diag = F)
+# clp <- cluster_fast_greedy(g)
+# V(g)$snack_type <- clp$membership
 
 net_degree <- calculate_net_stats(g)
 
@@ -238,15 +239,12 @@ exlusions <- function(df) {
   return(temp)
 }
 # net_stats <- c("strength", "eigen", "edge_density", "modularity")
-# net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity")
 # net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity", "conductance","weighted_clustering_coefficient")
+net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eigen", "edge_density", "modularity","pca1", "pca2")
 
 net_stats <- c("edge_density", "modularity", "pca1", "pca2")
 
 # net_stats <- c("weighted_transitivity", "edge_density", "modularity", "conductance", "pca1", "pca2")
-# net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
-
-# net_stats <- c("modularity")
 
 res_netstats <- vector(mode = "list", length = length(net_stats))
 res_netstats2 <- vector(mode = "list", length = length(net_stats))
@@ -268,14 +266,14 @@ for (net_idx in 1:length(net_stats)) {
   #### data analysis (regressions)
   print(paste0("############### CHOICE ###############"))
   models_choice <- estimate_mlms(df, outcome = "choice")
-  # models_choice <- estimate_brms(df, outcome = "choice") #bayes versions
-  
-  # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC")))
-  # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("WAIC","LOOIC")))
-  
+  # # models_choice <- estimate_brms(df, outcome = "choice") #bayes versions
+  # 
+  # # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC")))
+  # # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("WAIC","LOOIC")))
+  # 
   print(parameters::compare_models(models_choice,  style = "ci_p"))
-  # print(parameters::compare_models(models_choice))
-  
+  # # print(parameters::compare_models(models_choice))
+  # 
   mp <- modelplot(models_choice, coef_omit = "Interc") +
     geom_vline(xintercept = 0, linetype = "dashed") +
     labs(x = "Coefficients",y = "Terms",
@@ -284,8 +282,9 @@ for (net_idx in 1:length(net_stats)) {
     theme_classic() +
     scale_color_brewer(palette = "Set1")
   print(mp)
-  res_netstats[[net_idx]] <- models_choice[[5]]
   
+  res_netstats[[net_idx]] <- models_choice[[5]]
+  # 
   # print(paste0("############### CORRECT ###############"))
   # models_correct<- estimate_mlms(df, outcome = "correct")
   # print(performance::compare_performance(models_correct, rank = TRUE, metrics = c("AIC", "BIC", "R2", "RMSE", "LOGLOSS")))
@@ -299,7 +298,7 @@ for (net_idx in 1:length(net_stats)) {
   #   scale_color_brewer(palette = "Set1")
   # print(mp)
   
-  print(paste0("############### RT ###############"))
+  # print(paste0("############### RT ###############"))
   models_rt <- estimate_mlms(df, outcome = "rt")
   # models_rt <- estimate_mlms(df[df$correct == 1,], outcome = "rt") #only ocrrect
   
@@ -308,7 +307,7 @@ for (net_idx in 1:length(net_stats)) {
   # print(performance::compare_performance(models_rt, rank = TRUE))
   print(parameters::compare_models(models_rt,  style = "ci_p"))
   # # print(parameters::compare_models(models_choice))
-  # 
+  
   mp <- modelplot(models_rt, coef_omit = "Interc") +
     geom_vline(xintercept = 0, linetype = "dashed") +
     labs(x = "Coefficients",y = "Terms",
@@ -317,12 +316,12 @@ for (net_idx in 1:length(net_stats)) {
     theme_classic() +
     scale_color_brewer(palette = "Set1")
   print(mp)
-  # res_netstats[[net_idx]] <- models_rt[[5]]
+  # res_netstats2[[net_idx]] <- models_rt[[4]]
   
   # generate tables
-  generate_table(models_choice, type = "exp_2_choice", net_stat = net_stats[[net_idx]], save = T)
+  # generate_table(models_choice, type = "exp_2_choice", net_stat = net_stats[[net_idx]], save = T)
   # generate_table(models_correct, type = "exp_2_correct", net_stat = net_stats[[net_idx]], save = T)
-  generate_table(models_rt, type = "exp_2_rt", net_stat = net_stats[[net_idx]], save = T)
+  # generate_table(models_rt, type = "exp_2_rt", net_stat = net_stats[[net_idx]], save = T)
   
   #nice way to make those regression coef tables you like
   #TODO make one with factor for each

@@ -1,8 +1,6 @@
 # weight = "betweenness"
-experiment =2
+# experiment = 2
 organize_group_data <- function(experiment, weight = "degree") {
-  
-  # net_degree <- calculate_net_stats(g)
   
   # which data set are we working with?
   if (experiment == 1) {
@@ -40,7 +38,7 @@ organize_group_data <- function(experiment, weight = "degree") {
   ## organize the data and calculate value of group of items and net stats for each subject
   ##
   subject_df <- vector(mode = "list", length = file_idx)
-  pp =1
+  # pp =1
   for (pp in seq_len(file_idx)) {
     # load the  subjects data
     subject_temp <- jsonlite::parse_json(jsonlite::read_json(temp_files[[pp]]), simplifyVector = T)
@@ -109,9 +107,10 @@ organize_group_data <- function(experiment, weight = "degree") {
       
       set_degree_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$degree)
       set_strength_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$strength)
-      set_weighted_transitivity_temp[[foo]] <- NetworkToolbox::clustcoeff(adj_temp, weighted = T)$CC
-      ifelse(is.nan(set_weighted_transitivity_temp[[foo]]), set_weighted_transitivity_temp[[foo]] <- 0, set_weighted_transitivity_temp[[foo]] <- set_weighted_transitivity_temp[[foo]])
-        
+      # set_weighted_transitivity_temp[[foo]] <- NetworkToolbox::clustcoeff(adj_temp, weighted = T)$CC
+      # ifelse(is.nan(set_weighted_transitivity_temp[[foo]]), set_weighted_transitivity_temp[[foo]] <- 0, set_weighted_transitivity_temp[[foo]] <- set_weighted_transitivity_temp[[foo]])
+      set_weighted_transitivity_temp[[foo]] <-sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$weighted_transitivity)
+      
       set_eigen_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$eigen)
       set_closeness_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$closeness)
       set_betweenness_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$betweenness)
@@ -301,6 +300,4 @@ organize_group_data <- function(experiment, weight = "degree") {
   
   return(df)
 }
-
-# df <- organize_group_data(experiment = 2)
 

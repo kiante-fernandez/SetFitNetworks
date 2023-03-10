@@ -64,9 +64,17 @@ cm <- c('zleft_rating'    = 'left liking rating',
         'zleft_rating:zleft_net' = 'left rating × network estimate',
         'zright_rating:zright_net' = 'right rating × network estimate'
 )
+rm <- c('vd'    = 'abs value difference',
+        'nd'    = 'abs network difference',
+        'ov' = 'overall value'
+)
 #exp two
+names(res_netstats) <- c("strength","betweenness","closeness","transitivity","eigen", "edge density", "modularity","PC1", "PC2")
+# names(res_netstats) <- c("edge_density", "modularity", "PC1", "PC2")
+names(res_netstats2) <- c("strength","betweenness","closeness","transitivity","eigen", "edge density", "modularity","PC1", "PC2")
+
 modelsummary(res_netstats,
-             shape = term ~ model + statistic,
+             # shape = term ~ model + statistic,
              fmt = 2,
              estimate = "{estimate}{stars} [{conf.low}, {conf.high}]",
              statistic = NULL,
@@ -74,8 +82,8 @@ modelsummary(res_netstats,
              coef_map = cm,
              gof_map = NA)
 
-net_stat = "edge_density"
-file_name <- here::here("tables", paste0("choice", "_", net_stat, ".html"))
+# net_stat = "edge_density"
+# file_name <- here::here("tables", paste0("choice", "_", net_stat, ".html"))
 
 panels <- list("Experiment one:" = ms1,
                "Experiment two:" = ms2)

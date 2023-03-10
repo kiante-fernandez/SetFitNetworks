@@ -471,10 +471,32 @@ E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
 
 net_degree <- calculate_net_stats(g)
 
-l <- layout_nicely(G)
+l <- layout_nicely(g)
 l <- layout_with_graphopt(G)
 l <- layout.mds(G)
 
+# net_degree <- net_degree%>% 
+#   mutate(colors = 
+#            case_when(  
+#              snack_type == 1 ~ "#1B9E77",
+#              snack_type == 2 ~ "#D95F02",
+#              sna ck_type == 3 ~ "#7570B3",
+#              snack_type == 4 ~ "#E7298A",
+#              snack_type == 5 ~ "#66A61E",
+#              snack_type == 6 ~ "#E6AB02",
+#              snack_type == 7 ~ "#A6761D"
+#            )
+#   )
+net_degree <- net_degree%>% 
+  mutate(colors = 
+           case_when(  
+             snack_type == 1 ~ "#1B9E77",
+             snack_type == 2 ~ "#D95F02",
+             snack_type == 3 ~ "#7570B3",
+             snack_type == 4 ~ "#E7298A",
+             snack_type == 5 ~ "#66A61E"
+           )
+  )
 V(g)$color <- net_degree$colors
 
 E(g)$color[E(g)$weight > 0] <- "forestgreen"

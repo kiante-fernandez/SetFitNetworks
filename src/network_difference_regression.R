@@ -69,27 +69,26 @@ estimate_mlms <- function(df, outcome = "choice") {
     return(list(model1, model2)) 
     
   } else if (outcome == "rt") {
-    # df_temp = create_dataset(df, type = "correct/rt")
-    df_temp = create_dataset(df, type = "choice")
-    
+    df_temp = create_dataset(df, type = "correct/rt")
+
     # df = df[df$correct == 1,] #check only correct
     
     # base model
-    # model1 <- lmer(log(rt) ~ vd + ov + (1 + vd + ov| subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    model1 <- lmer(log(rt) ~ vd + ov + (1 + vd + ov| subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
     # # add network difference
-    # model2 <- lmer(log(rt) ~ vd + ov + nd + (1 + vd + ov | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))    # add overall network
+    model2 <- lmer(log(rt) ~ vd + ov + nd + (1 + vd + ov | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))    # add overall network
     # 
-    # return(list(model1, model2))
+    return(list(model1, model2))
     
-    model1  = lmer(log(rt) ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-    # add network difference
-    model2 <- lmer(log(rt) ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-    
-    model3 <- lmer(log(rt) ~ (zleft_rating*zleft_net) + (zright_rating*zright_net) + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-    
-    model4 <- lmer(log(rt) ~ (zleft_rating*zleft_net) +  (zright_rating*zright_net) + zleft_sd + zright_sd + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-    
-    return(list(model1, model2, model3, model4)) 
+    # model1  = lmer(log(rt) ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    # # add network difference
+    # model2 <- lmer(log(rt) ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    # 
+    # model3 <- lmer(log(rt) ~ (zleft_rating*zleft_net) + (zright_rating*zright_net) + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    # 
+    # model4 <- lmer(log(rt) ~ (zleft_rating*zleft_net) +  (zright_rating*zright_net) + zleft_sd + zright_sd + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+    # 
+    # return(list(model1, model2, model3, model4)) 
     
   }
 }
@@ -149,9 +148,9 @@ source("exploratory_graph_analysis.R")
 # # g <- graph_from_adjacency_matrix(SemNeT::TMFG(SemNeT::similarity(lee_2021_rating1, method = "cor")), "undirected", weighted = TRUE,diag = F)
 # V(g)$snack_type <- dimattributes
 
-g <-graph_from_adjacency_matrix(net_sim_GPT3,"undirected",weighted = TRUE,diag = F)
-clp <- cluster_fast_greedy(g)
-V(g)$snack_type <- clp$membership
+# g <-graph_from_adjacency_matrix(net_sim_bert,"undirected",weighted = TRUE,diag = F)
+# clp <- cluster_fast_greedy(g)
+# V(g)$snack_type <- clp$membership
 
 net_degree <- calculate_net_stats(g)
 
@@ -252,16 +251,14 @@ exlusions <- function(df) {
 }
 
 # net_stats <- c("strength", "eigen", "edge_density", "modularity")
-# net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eigen","efficiency", "edge_density", "modularity")
+net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eigen", "edge_density", "modularity","pca1", "pca2")
+
 # net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity")
 
-net_stats <- c("edge_density", "modularity", "pca1", "pca2")
+# net_stats <- c("edge_density", "modularity", "pca1", "pca2")
 # net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
 
-# net_stats <- c("weighted_transitivity","edge_density", "modularity", "conductance")
-# net_stats <- c( "modularity")
-
-net_idx <- 4
+# net_idx <- 4
 res_netstats <- vector(mode = "list", length = length(net_stats))
 
 for (net_idx in 1:length(net_stats)) {
@@ -277,14 +274,14 @@ for (net_idx in 1:length(net_stats)) {
   print(paste0("############### CHOICE ###############"))
 
   models_choice <- estimate_mlms(df, outcome = "choice")
-  # models_choice <- estimate_brms(df, outcome = "choice") #bayes
-  
+  # # models_choice <- estimate_brms(df, outcome = "choice") #bayes
+  #
   # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC")))
-  # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("WAIC","LOOIC"))) #bayes
-  
-  # print(parameters::compare_models(models_choice))
-  print(parameters::compare_models(models_choice, style = "ci_p"))
-  # 
+  # # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("WAIC","LOOIC"))) #bayes
+  #
+  print(parameters::compare_models(models_choice))
+  # print(parameters::compare_models(models_choice, style = "ci_p"))
+  # #
   mp <- modelplot(models_choice, coef_omit = "Interc") +
     geom_vline(xintercept = 0, linetype = "dashed") +
     labs(x = "Coefficients",y = "Terms",
@@ -294,7 +291,7 @@ for (net_idx in 1:length(net_stats)) {
     scale_color_brewer(palette = "Set1")
   print(mp)
   
-  # res_netstats[[net_idx]] <- models_choice[[3]]
+  res_netstats[[net_idx]] <- models_choice[[3]]
   # print(paste0("############### CORRECT ###############"))
   # models_correct<- estimate_mlms(df, outcome = "correct")
   # print(performance::compare_performance(models_correct, rank = TRUE, metrics = c("AIC", "BIC", "R2", "RMSE", "LOGLOSS")))
@@ -326,7 +323,7 @@ for (net_idx in 1:length(net_stats)) {
     theme_classic() +
     scale_color_brewer(palette = "Set1")
   print(mp)
-  res_netstats[[net_idx]] <- models_rt[[3]]
+  # res_netstats2[[net_idx]] <- models_rt[[2]]
   
   # generate tables
   generate_table(models_choice, type = "exp_1_choice", net_stat = net_stats[[net_idx]], save = T)
