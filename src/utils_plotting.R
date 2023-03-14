@@ -29,7 +29,7 @@ df <- organize_group_data(experiment = 1)
 
 net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
 
-net_idx = 4
+net_idx = 9
 
 df$left_net <-   select(df,contains(net_stats[[net_idx]]))[[1]]
 df$right_net <-   select(df,contains(net_stats[[net_idx]]))[[2]]
@@ -195,6 +195,25 @@ d <-  df %>%
         # legend.position = c(0.25, 0.18),
         axis.title = element_text(face="bold")
   )
+
+#model prediction plot. Can we just get the data on it?
+# plot(ggeffects::ggpredict(models_choice[[3]], terms = c("zleft_rating [all]", "zleft_net[-1.5, 0 ,1.5]")))+
+#   geom_vline(xintercept = 0, linetype = "dashed")+
+#   geom_hline(yintercept = 0.5, linetype = "dashed")+
+#   theme_classic()+
+#   labs(
+#     title = "",
+#     y = "Probability of Choosing Left",
+#     x = "left rating",
+#     color = "network score"
+#   ) +
+#   theme(text = element_text(size = 15),
+#         legend.position = c(0.25, 0.85),
+#         axis.text = element_text(face="bold"),
+#         axis.title = element_text(face="bold"))
+# 
+
+
 # 
 # # correct absolute value plot
 # print(df %>%
@@ -571,4 +590,56 @@ legend(x=1,
 library(aricode)
 
 NMI(cl,iris$Species)
+
+
+df %>% 
+  exlusions() %>%
+  select(subject_id, left_rating,right_rating, left_net, right_net) %>% 
+  group_by(subject_id) %>%
+  #add constant
+  mutate(left_net = left_net + c,
+         right_net = right_net + c) %>% 
+  mutate(
+    vd = left_rating - right_rating,
+    nd = left_net - right_net
+  ) %>% View
+  
+c = 20
+df %>%
+  exlusions() %>%
+  group_by(subject_id) %>%
+  #add constant
+  mutate(left_net = left_net + c,
+         right_net = right_net + c) %>% 
+  mutate(
+    vd = left_rating - right_rating,
+    nd = left_net - right_net
+  ) %>% 
+  mutate(
+    binned_value_diff = as.numeric(cut_number(vd, 9)) - 5,
+  ) %>%
+  group_by(subject_id, binned_value_diff) %>%
+  mutate(
+    binned_net_diff = as.numeric(cut_number(nd, 2)) - 1
+  ) %>%
+  group_by(binned_net_diff, binned_value_diff) %>%
+  mutate(
+    n = n(),
+    m_left = mean(choice),
+    se = sqrt(var(choice) / length(choice))
+  ) %>%
+  ungroup() %>%
+  ggplot(aes(x = binned_value_diff, y = m_left, color = factor(binned_net_diff))) +
+  geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se), size = 1.1) +
+  theme_classic() +
+  geom_line(size = 2) +
+  geom_hline(yintercept = .5, linetype = "dashed", size = .25) +
+  geom_vline(xintercept = 0, linetype = "dashed", size = .25) +
+  scale_color_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1.01)) +
+  labs(
+    y = "Probability of Choosing Left",
+    x = "Value Difference (L-R)",
+    color = "Network Difference (L-R)"
+  ) 
 

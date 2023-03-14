@@ -234,6 +234,26 @@ boot_pleasure <- EGAnet::bootEGA(lee_2021_pleasure1,
 boot_test$plot.typical.ega
 boot_test$summary.table
 boot_test$frequency
+
+# EGA (with redundant variables combined)
+# see https://alexchristensen.github.io/files/Christensen2020_Uniquevariableanalysis_anovelapproachtodetectredundantvariablesinmultivariatedata.pdf
+# bapq.auto <- UVA(
+#   data =lee_2021_rating1,
+#   sig = .20, # Threshold value
+#   auto = TRUE
+# )
+
+# ega.bapq.reduced <- EGA(bapq.auto$reduced$data)
+# plot.ega.reduced <- plot(
+#   ega.bapq.reduced,
+#   plot.args = list(node.size = 8, label.size = 4)
+# )
+# boot.ega.bapq.reduced <- bootEGA(
+#   data = bapq.auto$reduced$data,
+#   iter = 500, model = "glasso",
+#   ncores = 4
+# )
+
 # you are having an issue with the labeling doubling. Here is a crude way to
 # fix that issue for now. Here we are just setting the layer in the plot that is
 # related to the issue to null. I am sure it is not everything in the layer.

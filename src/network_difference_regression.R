@@ -258,7 +258,7 @@ net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eig
 # net_stats <- c("edge_density", "modularity", "pca1", "pca2")
 # net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
 
-# net_idx <- 4
+net_idx <- 9
 res_netstats <- vector(mode = "list", length = length(net_stats))
 
 for (net_idx in 1:length(net_stats)) {
@@ -336,4 +336,3 @@ for (net_idx in 1:length(net_stats)) {
 # knitr::kable(bayestestR::sexit(exp_1_fit_choice03), digits = 2)
 # bayestestR::sexit(exp_1_fit_rt02, significant = 0.01)
 # bayestestR::sexit(exp_1_fit_choice03, significant = 0.01)
-
