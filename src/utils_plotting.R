@@ -36,6 +36,41 @@ df$right_net <-   select(df,contains(net_stats[[net_idx]]))[[2]]
 
 # df$left_net <-   df$left_sd
 # df$right_net <-   df$right_sd
+df %>%
+  exlusions() %>%
+  group_by(subject_id) %>%
+  mutate(
+    nd = left_net - right_net
+  ) %>%
+  mutate(
+    binned_net_diff = as.numeric(cut_number(nd, 7)) - 4,
+  ) %>%
+  group_by(binned_net_diff) %>%
+  mutate(
+    n = n(),
+    m_left = mean(choice),
+    se = sqrt(var(choice) / length(choice))
+  ) %>%
+  ungroup() %>%
+  ggplot(aes(x = binned_net_diff, y = m_left)) +
+  geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se), size = 1.1) +
+  theme_classic() +
+  geom_line(size = 2) +
+  geom_hline(yintercept = .5, linetype = "dashed", size = .25) +
+  geom_vline(xintercept = 0, linetype = "dashed", size = .25) +
+  scale_color_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1.01)) +
+  labs(
+    # title = paste0(net_stats[[net_idx]]),
+    y = "Probability of Choosing Left",
+    x = "Network Difference (L-R)",
+  ) +
+  theme(text = element_text(size = 15),
+        legend.position = c(0.25, 0.85),
+        axis.text = element_text(face="bold"),
+        axis.title = element_text(face="bold"))
+
+
 
 ## make a plot of the vd:nd interaction
 a <- df %>%
@@ -494,28 +529,28 @@ l <- layout_nicely(g)
 l <- layout_with_graphopt(G)
 l <- layout.mds(G)
 
+net_degree <- net_degree%>%
+  mutate(colors =
+           case_when(
+             snack_type == 1 ~ "#1B9E77",
+             snack_type == 2 ~ "#D95F02",
+             snack_type == 3 ~ "#7570B3",
+             snack_type == 4 ~ "#E7298A",
+             snack_type == 5 ~ "#66A61E",
+             snack_type == 6 ~ "#E6AB02",
+             snack_type == 7 ~ "#A6761D"
+           )
+  )
 # net_degree <- net_degree%>% 
 #   mutate(colors = 
 #            case_when(  
 #              snack_type == 1 ~ "#1B9E77",
 #              snack_type == 2 ~ "#D95F02",
-#              sna ck_type == 3 ~ "#7570B3",
+#              snack_type == 3 ~ "#7570B3",
 #              snack_type == 4 ~ "#E7298A",
-#              snack_type == 5 ~ "#66A61E",
-#              snack_type == 6 ~ "#E6AB02",
-#              snack_type == 7 ~ "#A6761D"
+#              snack_type == 5 ~ "#66A61E"
 #            )
 #   )
-net_degree <- net_degree%>% 
-  mutate(colors = 
-           case_when(  
-             snack_type == 1 ~ "#1B9E77",
-             snack_type == 2 ~ "#D95F02",
-             snack_type == 3 ~ "#7570B3",
-             snack_type == 4 ~ "#E7298A",
-             snack_type == 5 ~ "#66A61E"
-           )
-  )
 V(g)$color <- net_degree$colors
 
 E(g)$color[E(g)$weight > 0] <- "forestgreen"
@@ -524,8 +559,8 @@ E(g)$color[E(g)$weight < 0] <- "red2"
 plot(g,
      layout = l,
      margin = .0,
-     vertex.label = V(g)$name,
-     # vertex.label = NA,
+     # vertex.label = V(g)$name,
+     vertex.label = NA,
      vertex.label.color = "black",
      label.font = 2,
      vertex.frame.color=adjustcolor(net_degree$colors, alpha.f = .1),
@@ -538,8 +573,8 @@ plot(g,
      edge.width = E(g)$weight * 5
 )
 
-legend(x=1, 
-       y=0, 
+legend(x=1.1, 
+       y=1, 
        c("Savory","Fruit","Dessert","Chocolate","Chip","Cracker","Bread"), 
        pch=21, 
        pt.bg=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02", 
@@ -576,6 +611,34 @@ legend(x=1,
        cex=.8, 
        bty="n", 
        ncol=1)
+
+load(file = here::here("data", "modularity_100_6.RData"))
+
+V(g)$color <- net_degree$colors
+
+E(g)$color[E(g)$weight > 0] <- "forestgreen"
+E(g)$color[E(g)$weight < 0] <- "red2"
+
+V(subgraphs[[32]])$color <-  net_degree[net_degree$Name %in% V(subgraphs[[32]])$name,]$colors
+V(subgraphs[[2]])$color <-  net_degree[net_degree$Name %in% V(subgraphs[[2]])$name,]$colors
+
+plot(subgraphs[[2]],
+     # layout = layout.circle(subgraphs[[32]]),
+     margin = .0,
+     # vertex.label = V(g)$name,
+     vertex.label = NA,
+     vertex.label.color = "black",
+     label.font = 2,
+     # vertex.frame.color=adjustcolor(net_degree$colors, alpha.f = .1),
+     # vertex.label.degree = 0,
+     vertex.label.dist	= 1,
+     vertex.label.cex = 1,
+     vertex.size = 30,
+     vertex.label.family = "Times",
+     edge.width = abs(E(subgraphs[[2]])$weight) * 100,
+)
+
+
 
 # ega_res
 # 
