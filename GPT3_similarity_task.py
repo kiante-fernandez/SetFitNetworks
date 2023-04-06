@@ -16,7 +16,7 @@ ans = pd.DataFrame(columns=food_items, index= food_items)
 for x in food_items:
     question =  "On a scale from -100 to 100 how similar is " + x + " to each of the follow foods:\n\norange\nplum\nblackberry\npeach\ncherry\nraspberry\napple\ngrape\ngolden delicious apple\nhoneydew melon\nkiwi\ngreen bell pepper\ncarrot\npeanuts\nalmonds\nbaguette\nsliced  loaf bread\nboule bread\nrye bread\ndeli turkey\nchicken tenders\nmeatballs\ngouda\nswiss cheese\npotato chips\ntortilla chips\ndoritos\nritz cracker\nsaltine cracker\nwheat thins\negg rolls \nfrench fries\nbuttered popcorn\ntriscuits\nwavy lays\nchocolate ice cream cone\nstrawberry ice cream cone\nvanilla soft serve cone\nnutrigrain bar\nchurro\ntwist donut\ntuile cookie\nmadeleine\noatmeal raisin cookie\nthumprint cookie\nsugar cookie\nvanilla wafer\nchocolate wafer\nchocolate bark\ndark chocolate\nmilk chocolate\npocky\ntoblerone\nlindt lindor chocolate truffle\ntwix\ncaramel\npeanut m&m's\nbrownie\nfrosted brownie\nlemon cake\n\nsimilarity ratings:\n",
     response_temp = openai.Completion.create(
-        model="text-davinci-003",
+        model="gpt-3.5-turbo",
         prompt= question,
         temperature=0,
         max_tokens=522,
@@ -33,5 +33,5 @@ for x in food_items:
     ans.loc[x] = numbers 
     
 #save output
-ans.to_csv('data/Lee_Holyoak_GPT3.csv', index=False) 
+ans.to_csv('data/Lee_Holyoak_GPT3V2.csv', index=False) 
 

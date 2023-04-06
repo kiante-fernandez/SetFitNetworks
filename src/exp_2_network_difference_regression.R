@@ -47,7 +47,7 @@ source(here::here("src", "utils.R"))
 ######
 # calculate a bunch of network measures to look at relationship to stuff
 
-# source("exploratory_graph_analysis.R")
+source("exploratory_graph_analysis.R")
 # source('fernandez_rating_network.R') #load the EGA from the new rating data
 
 #use the empirical network instead of the bootnet one
@@ -250,7 +250,7 @@ res_netstats <- vector(mode = "list", length = length(net_stats))
 res_netstats2 <- vector(mode = "list", length = length(net_stats))
 
 # res_model_comparisons <- vector(mode = "list", length = length(net_stats))
-# net_idx  = 6
+net_idx  = 9
 for (net_idx in 1:length(net_stats)) {
   # for each network statistic...
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))

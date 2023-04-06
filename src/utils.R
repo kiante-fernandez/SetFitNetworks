@@ -67,7 +67,8 @@ calculate_net_stats <- function(g) {
     weighted_transitivity = transitivity(g, type = "weighted"),
     closeness = igraph::closeness.estimate(G, normalized = TRUE, cutoff = -1),
     betweenness = betweenness(G, normalized = TRUE),
-    sds = apply(cor_snack_food, 2, sd)
+    sd = apply(cor_snack_food, 2, sd),
+    precision = apply(cor_snack_food, 2, function(.){LaplacesDemon::var2prec(var(.))})
   ) %>%
     tibble::rownames_to_column("Name") %>%
     dplyr::left_join(load_food_names()$foods_in_image, "Name")
@@ -77,21 +78,28 @@ calculate_net_stats <- function(g) {
   dat_pca <- net_degree[,c("degree","strength","eigen","weighted_transitivity","closeness","betweenness")]
   # dat_pca <- net_degree[,c("strength","eigen","weighted_transitivity","closeness")]
   rownames(dat_pca) <- net_degree$Name
-  # fghjk = psych::principal(dat_pca)
-  
+
   pca_res <- prcomp(dat_pca, center = TRUE, scale. = TRUE)
   #try to use another type of PCA functions with more 
   #ablilties to change things 
   print(pca_res)
+  # summary(pca_res)
   # library("factoextra")
-  # fviz_eig(pca_res, addlabels = TRUE, ylim = c(0, 70))+
+  # scree_p <- fviz_eig(pca_res, addlabels = TRUE, ylim = c(0, 70))+
   #   theme_classic()+
   #   theme(
   #     axis.text = element_text(face = "bold"),
   #     text = element_text(size = 15),
   #     axis.title = element_text(face = "bold")
   #   )+labs(x = "PC")
-  # # fviz_pca_var(pca_res, col.var = "black")
+  # pc_plt <- fviz_pca_var(pca_res, col.var = "black")+
+  #   theme_classic()+
+  #   theme(
+  #     axis.text = element_text(face = "bold"),
+  #     axis.text.x = element_text(face="bold", size=14),
+  #     text = element_text(size = 15),
+  #     axis.title = element_text(face = "bold")
+  #   ) + labs(x = "PC1", y = "PC2", title = "")
   # # fviz_pca_var(pca_res, col.var = "contrib",
   # #              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"))
   # fviz_contrib(pca_res, choice = "var", axes = 1, ylim = c(0, 40))+
@@ -114,26 +122,28 @@ calculate_net_stats <- function(g) {
   #   )+
   #   scale_x_discrete(labels=c("weighted_transitivity" = "transitivity"))+
   #   labs(x = "centrality measure", title = "PC2")
-
-  # fviz_pca_ind(pca_res, col.ind = net_degree$snack_type,
+  # 
+  # pc_nodes <- fviz_pca_ind(pca_res, col.ind = net_degree$snack_type,
   #              gradient.cols = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02",
   #                          "#A6761D"),
   #              repel = TRUE # Avoid text overlapping (slow if many points)
   # )+ theme_classic()+ theme(
   #   axis.text = element_text(face = "bold"),
   #   text = element_text(size = 15),
-  #   axis.title = element_text(face = "bold")
+  #   axis.title = element_text(face = "bold"),
+  #   legend.position = "none"
   # )+    labs(x = "PC1", y = "PC2", title = "")
-  
+  # (scree_p + pc_plt)/ pc_nodes + plot_annotation(tag_levels = "A")
   # fviz_pca_ind(pca_res, col.ind = net_degree$snack_type,
   #              gradient.cols = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E"),
   #              repel = TRUE # Avoid text overlapping (slow if many points)
   # )+ theme_classic()+ theme(
   #   axis.text = element_text(face = "bold"),
   #   text = element_text(size = 15),
-  #   axis.title = element_text(face = "bold")
+  #   axis.title = element_text(face = "bold"),
+  #   legend.position = "none"
   # )+    labs(x = "PC1", y = "PC2", title = "")
-  
+
   print(summary(pca_res))
   net_degree$PCA1 <-  pca_res$x[,1]
   net_degree$PCA2 <- pca_res$x[,2]
@@ -409,7 +419,7 @@ create_dataset <- function(df, type, standardized = TRUE) {
       ungroup() %>%
       select(subject_id, choice, rt, nd, vd, sd, ov, on, os, zleft_rating, zright_rating, zleft_net, zright_net, zleft_sim, zright_sim, zleft_sd, zright_sd)
   } else if (type == "correct/rt") {
-    c = 15
+    c = 0
     model_dat <- df %>%
       exlusions() %>%
       group_by(subject_id) %>%
@@ -489,10 +499,12 @@ estimate_mlms <- function(df, outcome = "choice") {
 
     model4 <- glmer(choice ~ (zleft_rating * zleft_net) + (zright_rating * zright_net) + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
 
-    model5 <- glmer(choice ~ (zleft_rating*zleft_net) +  (zright_rating*zright_net) + zleft_sim + zright_sim + zleft_sd + zright_sd + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+    # model5 <- glmer(choice ~ (zleft_rating*zleft_net) +  (zright_rating*zright_net) + zleft_sim + zright_sim + zleft_sd + zright_sd + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
     
     # return(list(model1, model2, model3, model4)) 
-    return(list(model1, model2A, model2B, model3, model4, model5))
+    return(list(model1, model2A, model2B, model3, model4))
+    # return(list(model1, model2A, model2B, model3, model4, model5))
+    
   } else if (outcome == "correct") {
     # base model
     df <- create_dataset(df, type = "correct/rt")
