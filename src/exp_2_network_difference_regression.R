@@ -222,7 +222,7 @@ dput(as.numeric(na.omit(p_values)))
 exlusions <- function(df) {
   # function for data exclusions following the preregistration specs
   temp <- df %>%
-    # filter(subject_id != 35) %>%
+    filter(subject_id != 35) %>%
     # filter(!subject_id %in% c(17, 29, 35, 37)) %>% #comment out for no exclusions (subejct 13?)
     # filter(!subject_id %in% c(4, 5, 10, 12, 17, 22, 29, 35, 37,41, 42, 48, 55, 57, 58, 63, 64, 65, 66, 67, 70, 75)) %>% #comment out for no exclusions (subejct 13?)
     filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%

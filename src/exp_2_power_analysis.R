@@ -27,6 +27,8 @@ library(lme4)
 library(lmerTest)
 library(parallel)
 # Load the data (from other script)
+model_dat = create_dataset(df, type = "choice")
+
 data <- model_dat
 
 # Define the model
@@ -35,6 +37,10 @@ model <- glmer(correct ~ vd*nd + ov*on + (vd*nd + ov*on | subject_id),
                family = binomial(link = "logit"),
                control = glmerControl(optimizer = "bobyqa",
                                       optCtrl = list(maxfun = 2e5)))
+# model <- glmer(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating | subject_id), 
+#                 data = data, family = binomial(link = "logit"), 
+#                 control = glmerControl(optimizer = "bobyqa", 
+#                                        optCtrl = list(maxfun = 2e7)))
 
 # Print a summary of the model
 summary(model)
@@ -52,7 +58,6 @@ main_effect_res <- mclapply(n, simulate_power, model = model, test = simr::fixed
 
 # Simulate power for interaction effect
 interaction_effect_res <- mclapply(n, simulate_power, model = model, test = simr::fixed("vd:nd", "z"))
-
 # Stop the parallel cluster
 stopCluster(cluster)
 
