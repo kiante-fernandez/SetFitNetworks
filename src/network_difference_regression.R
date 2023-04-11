@@ -101,13 +101,15 @@ estimate_brms <- function(df, outcome = "choice") {
     df_temp = create_dataset(df, type = "choice")
     
     # base model
-    model1 <- brm(choice ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_choice01"))
+    # model1 <- brm(choice ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_choice01"))
     # add network difference
-    model2 <- brm(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating + zleft_net + zright_net | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_choice02"))
+    # model2 <- brm(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating + zleft_net + zright_net | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_choice02"))
     #interactions
     model3 <- brm(choice ~ (zleft_rating*zleft_net) + (zright_rating*zright_net) + (1 + zleft_rating + zright_rating + zleft_net + zright_net | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_choice03"))
     
-    return(list(model1, model2, model3)) 
+    # return(list(model1, model2, model3)) 
+    return(list(model3)) 
+    
     
   } else if (outcome == "correct") {
     # the coded as correct models (which take the absolute value for the regressors)
@@ -121,11 +123,12 @@ estimate_brms <- function(df, outcome = "choice") {
     df_temp = create_dataset(df, type = "correct/rt")
     
     # the coded as response time models (which take the absolute value for the regressors)
-    model1 <- brm(log(rt) ~ vd + ov + (vd + ov| subject_id), data = df_temp, cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_rt01"))
+    # model1 <- brm(log(rt) ~ vd + ov + (vd + ov| subject_id), data = df_temp, cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_rt01"))
     # add network difference
     model2 <- brm(log(rt) ~ vd + ov + nd + (vd + ov + nd | subject_id), data = df_temp, cores = 4, iter = 10000, file = here::here("fits", "exp_1_fit_rt02"))
 
-    return(list(model1, model2)) 
+    # return(list(model1, model2)) 
+    return(list(model1))
     
   }
 
@@ -258,40 +261,52 @@ net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eig
 # net_stats <- c("edge_density", "modularity", "pca1", "pca2")
 # net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
 
-net_idx <- 9
 res_netstats <- vector(mode = "list", length = length(net_stats))
-
+net_idx = 8
 for (net_idx in 1:length(net_stats)) {
+  # if (net_idx %in% c(6)) {
+  #   next
+  # }
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
   # df <- organize_group_data(experiment = 1, net_stat = net_stats[[net_idx]])
   # test <- df[(df$left_net != 0) | (df$right_net != 0),] #eleminate trials where both are zero
   #now the loop just finds the relevant stat and renames it rather than recalculating
   
-  df$left_net <-   select(df,contains(net_stats[[net_idx]]))[[1]]
-  df$right_net <-   select(df,contains(net_stats[[net_idx]]))[[2]]
+  df$left_net1 <-   select(df,contains(net_stats[[net_idx]]))[[1]]
+  df$right_net1 <-   select(df,contains(net_stats[[net_idx]]))[[2]]
+  
+  df$left_net2 <-   select(df,contains(net_stats[[9]]))[[1]] #pc2
+  df$right_net2 <-   select(df,contains(net_stats[[9]]))[[2]] #pc2
   
   # #### data analysis
   print(paste0("############### CHOICE ###############"))
-
-  models_choice <- estimate_mlms(df, outcome = "choice")
-  # # models_choice <- estimate_brms(df, outcome = "choice") #bayes
+  
+  df_temp = create_dataset(df, type = "choice")
+  
+  models_choice <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) + 
+                  (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), 
+                data = df_temp, family = "bernoulli", iter = 10000, 
+                chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
+                file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_1_fit_choice03")))
+  
+  # models_choice <- estimate_mlms(df, outcome = "choice")
+  # models_choice <- estimate_brms(df, outcome = "choice") #bayes
   #
   # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC")))
   # # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("WAIC","LOOIC"))) #bayes
   #
-  print(parameters::compare_models(models_choice))
+  # print(parameters::compare_models(models_choice))
   # print(parameters::compare_models(models_choice, style = "ci_p"))
   # #
-  mp <- modelplot(models_choice, coef_omit = "Interc") +
-    geom_vline(xintercept = 0, linetype = "dashed") +
-    labs(x = "Coefficients",y = "Terms",
-         title = paste0("Choice: ",net_stats[[net_idx]])
-    ) +
-    theme_classic() +
-    scale_color_brewer(palette = "Set1")
-  print(mp)
+  # mp <- modelplot(models_choice, coef_omit = "Interc") +
+  #   geom_vline(xintercept = 0, linetype = "dashed") +
+  #   labs(x = "Coefficients",y = "Terms",
+  #        title = paste0("Choice: ",net_stats[[net_idx]])
+  #   ) +
+  #   theme_classic() +
+  #   scale_color_brewer(palette = "Set1")
+  # print(mp)
   
-  res_netstats[[net_idx]] <- models_choice[[3]]
   # print(paste0("############### CORRECT ###############"))
   # models_correct<- estimate_mlms(df, outcome = "correct")
   # print(performance::compare_performance(models_correct, rank = TRUE, metrics = c("AIC", "BIC", "R2", "RMSE", "LOGLOSS")))
@@ -306,33 +321,49 @@ for (net_idx in 1:length(net_stats)) {
   # print(mp)
   
   print(paste0("############### RT ###############"))
-  models_rt <- estimate_mlms(df, outcome = "rt")
+  # models_rt <- estimate_mlms(df, outcome = "rt")
   # models_rt <- estimate_mlms(df[df$correct == 1,], outcome = "rt") #only ocrrect
-  
   # models_rt <- estimate_brms(df, outcome = "rt") #bayes versions
   
+  df_temp = create_dataset(df, type = "correct/rt")
+
+  models_rt <- brm(log(rt) ~ vd + ov + nd1 + nd2 +
+                     (vd + ov + nd1 + nd2  | subject_id), 
+                   data = df_temp, iter = 10000, 
+                   chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
+                   file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_1_fit_rt02V2")))
+  
   # print(performance::compare_performance(models_rt, rank = TRUE))
-  print(parameters::compare_models(models_rt,  style = "ci_p"))
+  # print(parameters::compare_models(models_rt,  style = "ci_p"))
   # # print(parameters::compare_models(models_choice))
   # 
-  mp <- modelplot(models_rt, coef_omit = "Interc") +
-    geom_vline(xintercept = 0, linetype = "dashed") +
-    labs(x = "Coefficients",y = "Terms",
-         title = paste0("RT: ",net_stats[[net_idx]])
-    ) +
-    theme_classic() +
-    scale_color_brewer(palette = "Set1")
-  print(mp)
+  # mp <- modelplot(models_rt, coef_omit = "Interc") +
+  #   geom_vline(xintercept = 0, linetype = "dashed") +
+  #   labs(x = "Coefficients",y = "Terms",
+  #        title = paste0("RT: ",net_stats[[net_idx]])
+  #   ) +
+  #   theme_classic() +
+  #   scale_color_brewer(palette = "Set1")
+  # print(mp)
   # res_netstats2[[net_idx]] <- models_rt[[2]]
   
   # generate tables
-  generate_table(models_choice, type = "exp_1_choice", net_stat = net_stats[[net_idx]], save = T)
+  # generate_table(models_choice, type = "exp_1_choice", net_stat = net_stats[[net_idx]], save = T)
   # generate_table(models_correct, type = "exp_1_correct", net_stat = net_stats[[net_idx]], save = T)
-  generate_table(models_rt, type = "exp_1_rt", net_stat = net_stats[[net_idx]], save = T)
+  # generate_table(models_rt, type = "exp_1_rt", net_stat = net_stats[[net_idx]], save = T)
+  
+  res_netstats[[net_idx]] <- list(models_choice,models_rt)
   
 }
 # (plts[[1]] + plts[[2]])/(plts[[3]] + plts[[4]])
 
 # knitr::kable(bayestestR::sexit(exp_1_fit_choice03), digits = 2)
 # bayestestR::sexit(exp_1_fit_rt02, significant = 0.01)
-# bayestestR::sexit(exp_1_fit_choice03, significant = 0.01)
+#  bayestestR::sexit(exp_2_fit_choice04)
+bayestestR::sexit(models_rt)
+# #  
+# bayestestR::sexit(pca1_exp_1_fit_choice03)
+# bayestestR::sexit(pca1_exp_2_fit_choice03)
+# 
+# bayestestR::sexit(pca1_exp_1_fit_rt02)
+# bayestestR::sexit(pca1_exp_2_fit_rt02)

@@ -65,6 +65,11 @@ res <- parallel::mccollect(list(main_effect_res1exp1, main_effect_res2exp1, main
 save(res,file  = "data/pwr_analysis_pc_results.RData")
 names(res) <- as.character(c(rep(n + 24,2), rep(n + 51,2)))
 
-do.call(rbind, purrr::map(res,summary))[c(1,5),]
-do.call(rbind, purrr::map(res,summary))[c(11,16),]
+mean(do.call(rbind, purrr::map(res,summary))[c(1,5),]$mean)
+mean(do.call(rbind, purrr::map(res,summary))[c(1,5),]$lower)
+mean(do.call(rbind, purrr::map(res,summary))[c(1,5),]$upper)
+
+mean(do.call(rbind, purrr::map(res,summary))[c(11,16),]$mean)
+mean(do.call(rbind, purrr::map(res,summary))[c(11,16),]$lower)
+mean(do.call(rbind, purrr::map(res,summary))[c(11,16),]$upper)
 

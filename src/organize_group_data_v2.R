@@ -1,5 +1,5 @@
 # weight = "betweenness"
-# experiment = 2
+experiment = 2
 organize_group_data <- function(experiment, weight = "degree") {
   
   # which data set are we working with?
@@ -80,6 +80,8 @@ organize_group_data <- function(experiment, weight = "degree") {
     
     set_weighted_values_temp <- vector(mode = "numeric", length = 100)
     
+    set_fruit_temp <- vector(mode = "numeric", length = 100)
+    
     # similarity ratings
     subject_similarity_temp <- subject_temp %>%
       filter(screen_id == "similarity") %>%
@@ -105,6 +107,10 @@ organize_group_data <- function(experiment, weight = "degree") {
       graph_stats <- net_degree[net_degree$Name %in% res[[foo]], ]
       adj_temp <- igraph::as_adjacency_matrix(subgraph, sparse = F, attr = "weight")
       
+      if (2 %in% graph_stats[graph_stats$Name %in% res[[foo]], ]$snack_type){
+        set_fruit_temp[[foo]] <-  sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$snack_type == 2)
+      } else {set_fruit_temp[[foo]] <- 0}
+
       set_degree_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$degree)
       set_strength_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$strength)
       # set_weighted_transitivity_temp[[foo]] <- NetworkToolbox::clustcoeff(adj_temp, weighted = T)$CC
@@ -162,7 +168,8 @@ organize_group_data <- function(experiment, weight = "degree") {
       
       set_values_MAX_temp[[foo]] <- max(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
       set_values_MIN_temp[[foo]] <- min(do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response))
-      
+
+      #
       set_correlations_temp[[foo]] <- sum(apply(cor_snack_food[colnames(cor_snack_food) %in% res[[foo]], ], 2, mean, na.rm = T)[res[[foo]]])
       set_sd_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$sds)
       
@@ -225,6 +232,9 @@ organize_group_data <- function(experiment, weight = "degree") {
     xxxx$left_MIN <- NULL
     xxxx$right_MIN <- NULL
     
+    xxxx$left_fruit <- NULL
+    xxxx$right_fruit <- NULL
+    
     for (foo in seq_len(nrow(xxxx))) {
       xxxx$left_rating[[foo]] <- as.numeric(set_values_temp[xxxx$left[[foo]]])
       xxxx$right_rating[[foo]] <- as.numeric(set_values_temp[xxxx$right[[foo]]])
@@ -265,6 +275,9 @@ organize_group_data <- function(experiment, weight = "degree") {
       xxxx$right_MAX[[foo]] <- as.numeric(set_values_MAX_temp[xxxx$right[[foo]]])
       xxxx$left_MIN[[foo]] <- as.numeric(set_values_MIN_temp[xxxx$left[[foo]]])
       xxxx$right_MIN[[foo]] <- as.numeric(set_values_MIN_temp[xxxx$right[[foo]]])
+      
+      xxxx$left_fruit[[foo]] <-  as.numeric(set_fruit_temp[xxxx$left[[foo]]])
+      xxxx$right_fruit[[foo]] <-  as.numeric(set_fruit_temp[xxxx$right[[foo]]])
     }
     # xxxx$value_network_corr <- cor(set_values_temp, set_network_temp)
     # xxxx$value_network_corr_p <- cor.test(set_values_temp, set_network_temp)$p.value
@@ -288,7 +301,8 @@ organize_group_data <- function(experiment, weight = "degree") {
       left_net_pca2,right_net_pca2,
       left_sim, right_sim,
       left_correlation, right_correlation, left_sd, right_sd,
-      left_MAX, right_MAX, left_MIN, right_MIN
+      left_MAX, right_MAX, left_MIN, right_MIN,
+      left_fruit, right_fruit
     ))
   # add the correct response col and choose max and not choose min col
   df$correct <- as.numeric((df$left_rating > df$right_rating & df$choice == 1) | (df$left_rating < df$right_rating & df$choice == 0))
