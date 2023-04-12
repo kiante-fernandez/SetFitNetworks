@@ -147,7 +147,8 @@ calculate_net_stats <- function(g) {
   # )+    labs(x = "PC1", y = "PC2", title = "")
 
   print(summary(pca_res))
-  net_degree$PCA1 <-  pca_res$x[,1] * -1 #change the scale w/ linear transformation
+  # net_degree$PCA1 <-  pca_res$x[,1] * -1 #change the scale w/ linear transformation
+  net_degree$PCA1 <-  pca_res$x[,1] #change the scale w/ linear transformation
   net_degree$PCA2 <- pca_res$x[,2]
   net_degree$PCA3 <- pca_res$x[,3]
   net_degree$PCA4 <-  pca_res$x[,4]

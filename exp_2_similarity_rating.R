@@ -321,6 +321,10 @@ library(see)
 result <- correlationBF(compares$subgraph_mean, compares$st)
 describe_posterior(result, test = "p_direction")
 bayesfactor_models(result)
+samples = correlationBF(compares$subgraph_mean, compares$st,
+                        posterior = TRUE, iterations = 10000)
+plot(samples[,"rho"])
+
 result <- correlationBF(compares$subgraph_mean, compares$ed)
 describe_posterior(result, test = "p_direction")
 bayesfactor_models(result)
