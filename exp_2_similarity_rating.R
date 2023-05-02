@@ -20,9 +20,9 @@ load(file = here::here("data", "modularity_100_6.RData"))
 # load(file = here::here("data", "LowHighWithinBetween.RData"))
 source("exploratory_graph_analysis.R")
 
-g <-graph_from_adjacency_matrix(net_sim_GPT3,"undirected",weighted = TRUE,diag = F)
-clp <- cluster_fast_greedy(g)
-V(g)$snack_type <- clp$membership
+# g <-graph_from_adjacency_matrix(net_sim_GPT3,"undirected",weighted = TRUE,diag = F)
+# clp <- cluster_fast_greedy(g)
+# V(g)$snack_type <- clp$membership
 net_degree <- calculate_net_stats(g)
 
 V(g)$name <- net_degree$Name
@@ -56,27 +56,27 @@ eigen_cen <- map(subgraphs, function(x) {
   temp <- igraph::induced_subgraph(g, V(x)$name)
   E(temp)$weight <- 2**((E(temp)$weight - min(E(temp)$weight)) / diff(range(E(temp)$weight)))
   
-  sum(eigen_centrality(temp)$vector)
+  mean(eigen_centrality(temp)$vector)
 })
 eigen_cen <- do.call(rbind, eigen_cen)
 
-strength_res <- map(subgraphs, function(x) sum(strength(igraph::induced_subgraph(g, V(x)$name))))
+strength_res <- map(subgraphs, function(x) mean(strength(igraph::induced_subgraph(g, V(x)$name))))
 strength_res <- do.call(rbind, strength_res)
 #did i mess up how to caculate strength
-strength_res <- map(subgraphs, function(x) {
-  temp <- igraph::induced_subgraph(g, V(x)$name)
-  sum(net_degree[net_degree$Name %in% V(temp)$name, ]$strength)
-})
-strength_res <- do.call(rbind, strength_res)
+# strength_res <- map(subgraphs, function(x) {
+#   temp <- igraph::induced_subgraph(g, V(x)$name)
+#   mean(net_degree[net_degree$Name %in% V(temp)$name, ]$strength)
+# })
+# strength_res <- do.call(rbind, strength_res)
 
-degree_res <- map(subgraphs, function(x) sum(degree(igraph::induced_subgraph(g, V(x)$name),normalized = TRUE)))
+degree_res <- map(subgraphs, function(x) mean(degree(igraph::induced_subgraph(g, V(x)$name),normalized = TRUE)))
 degree_res <- do.call(rbind, degree_res)
 
 pca1 <- map(subgraphs, function(x) {
   temp <- igraph::induced_subgraph(g, V(x)$name)
   print(V(temp)$name)
   print(net_degree[net_degree$Name %in% V(temp)$name, ]$PCA1)
-  sum(net_degree[net_degree$Name %in% V(temp)$name, ]$PCA1)
+  mean(net_degree[net_degree$Name %in% V(temp)$name, ]$PCA1)
 })
 pca1 <- do.call(rbind, pca1)
 
@@ -84,14 +84,14 @@ pca2 <- map(subgraphs, function(x) {
   temp <- igraph::induced_subgraph(g, V(x)$name)
   print(V(temp)$name)
   print(net_degree[net_degree$Name %in% V(temp)$name, ]$PCA2)
-  print(sum(net_degree[net_degree$Name %in% V(temp)$name, ]$PCA2))
+  print(mean(net_degree[net_degree$Name %in% V(temp)$name, ]$PCA2))
 })
 pca2 <- do.call(rbind, pca2)
 
 pca3 <- map(subgraphs, function(x) {
   temp <- igraph::induced_subgraph(g, V(x)$name)
   
-  sum(net_degree[net_degree$Name %in% V(temp)$name, ]$PCA3)
+  mean(net_degree[net_degree$Name %in% V(temp)$name, ]$PCA3)
 })
 pca3 <- do.call(rbind, pca3)
 # conductance
@@ -268,16 +268,17 @@ ggplot(res, aes(pca2)) +
   )
 library(lme4)
 library(lmerTest)
-m <- lmer(responsenormalized ~ strength_res  + (1 | subject_id) + (1 | stimulus), data = res)
+m <- lmer(responsenormalized ~ strength_res  + (strength_res| stimulus), data = res)
 summary(m)
 summary(lm(responsenormalized ~ strength_res, data = res))
 
 compares <- res %>%
   group_by(stimulus) %>%
   summarise(
-    subgraph_mean = mean(response),
-    se = sqrt(var(response) / length(response)),
-    subgraph_sd = sd(response)
+    subgraph_mean = mean(responsenormalized),
+    se = sqrt(var(responsenormalized) / length(responsenormalized)),
+    subgraph_sd = sd(responsenormalized),
+    # rating_mean = mean(ratings),
   )
 
 compares$mod <- mod_res
@@ -292,7 +293,7 @@ compares$pca2 <- pca2
 compares$pca3 <- pca3
 
 correlation::correlation(compares)
-dat_pca <- compares[,c("mod","ed","st","ec","c")]
+dat_pca <- compares[,c("mod","ed","st","c")]
 
 # dat_pca <- compares[,c("mod","ed","st","ec","c")]
 
@@ -306,7 +307,7 @@ m_data <- data.frame(cbind(subgraph_mean = compares$subgraph_mean,
 
 
 m_data <- data.frame(cbind(subgraph_mean = compares$subgraph_mean, subgraph_sd =compares$subgraph_sd , pca_res$x)) 
-summary(lm(subgraph_mean ~ subgraph_sd + PC1 + PC2 +  PC3, m_data))
+summary(lm(subgraph_mean ~ PC1 + PC2 +  PC3, m_data))
 # summary(lm(subgraph_mean ~ scale(subgraph_sd) + scale(PC1) + scale(PC2) +  scale(PC3), m_data))
 
 #graphs with more connections have higher similarity scores
@@ -320,6 +321,10 @@ library(see)
 result <- correlationBF(compares$subgraph_mean, compares$st)
 describe_posterior(result, test = "p_direction")
 bayesfactor_models(result)
+samples = correlationBF(compares$subgraph_mean, compares$st,
+                        posterior = TRUE, iterations = 10000)
+plot(samples[,"rho"])
+
 result <- correlationBF(compares$subgraph_mean, compares$ed)
 describe_posterior(result, test = "p_direction")
 bayesfactor_models(result)
@@ -345,6 +350,7 @@ plot(bayesfactor_models(result)) +
   scale_fill_pizza()
 
 result <- cor.test(compares$subgraph_mean, compares$c, method = "spearman")
+
 report::report(result)
 
 result <- cor.test(compares$subgraph_mean,compares$st,  method = "spearman")
@@ -490,7 +496,7 @@ ggplot(compares, aes(pca3, subgraph_mean)) +
   )
 
 compares %>% 
-  dplyr::select(subgraph_mean, mod, ed, st, pca1, pca2,pca3) %>% 
+  dplyr::select(subgraph_mean, mod, ed, st, c) %>% 
   cor() %>% 
   ggcorrplot::ggcorrplot(type = "upper",
                          lab = TRUE)+

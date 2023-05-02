@@ -80,6 +80,8 @@ calculate_net_stats <- function(g) {
   rownames(dat_pca) <- net_degree$Name
 
   pca_res <- prcomp(dat_pca, center = TRUE, scale. = TRUE)
+  # pca_res <- princomp(dat_pca)
+  
   #try to use another type of PCA functions with more 
   #ablilties to change things 
   print(pca_res)
@@ -145,10 +147,34 @@ calculate_net_stats <- function(g) {
   # )+    labs(x = "PC1", y = "PC2", title = "")
 
   print(summary(pca_res))
-  net_degree$PCA1 <-  pca_res$x[,1]
+  # net_degree$PCA1 <-  pca_res$x[,1] * -1 #change the scale w/ linear transformation
+  net_degree$PCA1 <-  pca_res$x[,1] #change the scale w/ linear transformation
   net_degree$PCA2 <- pca_res$x[,2]
   net_degree$PCA3 <- pca_res$x[,3]
+  net_degree$PCA4 <-  pca_res$x[,4]
+  net_degree$PCA5 <- pca_res$x[,5]
+  net_degree$PCA6 <- pca_res$x[,6]
   
+  # net_degree$PCA1 <-  pca_res$scores[,1]
+  # net_degree$PCA2 <- pca_res$scores[,2]
+  # net_degree$PCA3 <- pca_res$scores[,3]
+  # net_degree$PCA4 <-  pca_res$scores[,4]
+  # net_degree$PCA5 <- pca_res$scores[,5]
+  # net_degree$PCA6 <- pca_res$scores[,6]
+  
+  cor_p <- net_degree %>% 
+    dplyr::select(degree,strength,eigen,weighted_transitivity,closeness,betweenness,PCA1, PCA2, PCA3, PCA4, PCA5, PCA6) %>% 
+    cor() %>% 
+    ggcorrplot::ggcorrplot(type = "upper",
+                           lab = TRUE)+
+    theme_classic()+
+    labs(x = "", y = "") +
+    theme(
+      axis.text = element_text(face = "bold"),
+      text = element_text(size = 15),
+      axis.title = element_text(face = "bold")
+    )
+  print(cor_p)
   return(net_degree)
 }
 
@@ -401,40 +427,43 @@ create_dataset <- function(df, type, standardized = TRUE) {
       exlusions() %>%
       group_by(subject_id) %>%
       mutate(
-        nd = scale(left_net - right_net, center = standardized, scale = standardized),
+        nd = scale(left_net1 - right_net1, center = standardized, scale = standardized),
         vd = scale(left_rating - right_rating, center = standardized, scale = standardized),
         sd = scale(left_sim - right_sim, center = standardized, scale = standardized),
         ov = scale(left_rating + right_rating, center = standardized, scale = standardized),
-        on = scale(left_net + right_net, center = standardized, scale = standardized),
+        on = scale(left_net1 + left_net1, center = standardized, scale = standardized),
         os = scale(left_sim + right_sim, center = standardized, scale = standardized),
         zleft_rating = scale(left_rating, center = standardized, scale = standardized),
         zright_rating = scale(right_rating, center = standardized, scale = standardized),
-        zleft_net = scale(left_net, center = standardized, scale = standardized),
-        zright_net = scale(right_net, center = standardized, scale = standardized),
+        zleft_net1 = scale(left_net1, center = standardized, scale = standardized),
+        zright_net1 = scale(right_net1, center = standardized, scale = standardized),
+        zleft_net2 = scale(left_net2, center = standardized, scale = standardized),
+        zright_net2 = scale(right_net2, center = standardized, scale = standardized),
         zleft_sim = scale(left_sim, center = standardized, scale = standardized),
         zright_sim = scale(right_sim, center = standardized, scale = standardized),
         zleft_sd = scale(left_sd, center = standardized, scale = standardized),
         zright_sd = scale(right_sd, center = standardized, scale = standardized)
       ) %>%
       ungroup() %>%
-      select(subject_id, choice, rt, nd, vd, sd, ov, on, os, zleft_rating, zright_rating, zleft_net, zright_net, zleft_sim, zright_sim, zleft_sd, zright_sd)
+      select(subject_id, choice, rt, nd, vd, sd, ov, on, os, zleft_rating, zright_rating, zleft_net1, zright_net1, zleft_net2, zright_net2, zleft_sim, zright_sim, zleft_sd, zright_sd)
   } else if (type == "correct/rt") {
     c = 0
     model_dat <- df %>%
       exlusions() %>%
       group_by(subject_id) %>%
       #add constant
-      mutate(left_net = left_net + c,
-             right_net = right_net + c) %>% 
+      # mutate(left_net = left_net + c,
+      #        right_net = right_net + c) %>% 
       mutate( # take absolute value
-        nd = scale(abs(left_net - right_net), center = standardized, scale = standardized),
+        nd1 = scale(abs(left_net1 - right_net1), center = standardized, scale = standardized),
+        nd2 = scale(abs(left_net2 - right_net2), center = standardized, scale = standardized),
         vd = scale(abs(left_rating - right_rating), center = standardized, scale = standardized),
         sd = scale(abs(left_sim - right_sim), center = standardized, scale = standardized),
         ov = scale(left_rating + right_rating, center = standardized, scale = standardized),
-        on = scale(left_net + right_net, center = standardized, scale = standardized),
+        on = scale(left_net1 + left_net1, center = standardized, scale = standardized),
         os = scale(left_sim + right_sim, center = standardized, scale = standardized)
       ) %>%
-      select(subject_id, correct, rt, vd, nd, sd, ov, on, os)
+      select(subject_id, correct, rt, vd, nd1, nd2, sd, ov, on, os)
   }
   return(model_dat)
 }
@@ -446,17 +475,18 @@ estimate_brms <- function(df, outcome = "choice") {
   if (outcome == "choice") {
     df_temp <- create_dataset(df, type = "choice")
     # base model
-    model1 <- brm(choice ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_choice01"))
+    # model1 <- brm(choice ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_choice01"))
     # add network difference
-    model2A <- brm(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating + zleft_net + zright_net | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_choice02A"))
+    # model2A <- brm(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating + zleft_net + zright_net | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_choice02A"))
     # add similarity difference
-    model2B <- brm(choice ~ zleft_rating + zright_rating + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating + zleft_sim + zright_sim | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_choice02B"))
+    # model2B <- brm(choice ~ zleft_rating + zright_rating + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating + zleft_sim + zright_sim | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_choice02B"))
     # both
-    model3 <- brm(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating + zleft_net + zright_net + zleft_sim + zright_sim | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_choice03"))
+    # model3 <- brm(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating + zleft_net + zright_net + zleft_sim + zright_sim | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_choice03"))
     # interactions
     model4 <- brm(choice ~ (zleft_rating * zleft_net) + (zright_rating * zright_net) + zleft_sim + zright_sim + (1 + zleft_rating + zright_rating + zleft_net + zright_net + zleft_sim + zright_sim | subject_id), data = df_temp, family = "bernoulli", cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_choice04"))
 
-    return(list(model1, model2A, model2B, model3, model4))
+    # return(list(model1, model2A, model2B, model3, model4))
+    return(list(model4))
     
   } else if (outcome == "correct") {
     # the coded as correct models (which take the absolute value for the regressors)
@@ -473,14 +503,16 @@ estimate_brms <- function(df, outcome = "choice") {
     df_temp <- create_dataset(df, type = "correct/rt")
 
     # the coded as response time models (which take the absolute value for the regressors)
-    model1 <- brm(log(rt) ~ vd + ov + (vd + ov | subject_id), data = df_temp, cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_rt01"))
+    # model1 <- brm(log(rt) ~ vd + ov + (vd + ov | subject_id), data = df_temp, cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_rt01"))
     # add network difference
-    model2A <- brm(log(rt) ~ vd + ov + nd + (vd + ov + nd | subject_id), data = df_temp, cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_rt02A"))
-    model2B <- brm(log(rt) ~ vd + ov + sd + (vd + ov + sd | subject_id), data = df_temp, cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_rt02B"))
+    # model2A <- brm(log(rt) ~ vd + ov + nd + (vd + ov + nd | subject_id), data = df_temp, cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_rt02A"))
+    # model2B <- brm(log(rt) ~ vd + ov + sd + (vd + ov + sd | subject_id), data = df_temp, cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_rt02B"))
     # add similarity difference
     model3 <- brm(log(rt) ~ vd + ov + nd + sd + (vd + ov + nd + sd | subject_id), data = df_temp, cores = 4, iter = 10000, file = here::here("fits", "exp_2_fit_rt03"))
 
-    return(list(model1, model2A, model2B, model3))
+    # return(list(model1, model2A, model2B, model3))
+    return(list(model3))
+    
   }
 }
 

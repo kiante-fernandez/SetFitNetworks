@@ -71,7 +71,6 @@ net_degree <- calculate_net_stats(g)
 ##### loading the data#####
 source(here::here("src", "organize_group_data_v2.R"))
 
-# df <- organize_group_data(experiment = 2, net_stat = "modularity")
 df <- organize_group_data(experiment = 2)
 
 #trying out the zero out method from the permutation tests?
@@ -115,7 +114,7 @@ mean(rt_exclude_pct)
 
 ## value difference exclusion
 p_values <- vector(mode = "numeric", length = 75)
-#subject_idx = 1
+# subject_idx = 1
 for (subject_idx in 1:75) {
   
   temp_df <- df %>%
@@ -130,7 +129,9 @@ for (subject_idx in 1:75) {
     filter(!rt <= 300) %>% # response times cutoffs
     filter(!rt >= 9000) %>%
     mutate(vd = left_rating - right_rating) %>%
-    mutate(sd = left_sim - right_sim)
+    mutate(sd = left_sim - right_sim) %>% 
+    mutate(left_range =  left_MAX - left_MIN,
+           right_range =  right_MAX - right_MIN)
   
   # df %>% select(choice,left_MAX,right_MAX,left_MIN,right_MIN,choose_max,choose_min) %>% View
   if (subject_idx %in% c(12, 35, 37)) { # remove the one subject that removes all the trials
@@ -151,20 +152,27 @@ for (subject_idx in 1:75) {
   # temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating + left_net + right_net + left_sim + right_sim, family = binomial, data = temp_df))
   # temp_res <- broom::tidy(glm(choice ~ left_wtrating + right_wtrating + left_sim + right_sim, family = binomial, data = temp_df))
   
+
+  # temp_res <- broom::tidy(glm(choice ~ left_fruit + right_fruit, family = binomial, data = temp_df))
+  # temp_res <- broom::tidy(glm(choice ~ left_range + right_range, family = binomial, data = temp_df))
+  
+  # print(temp_res)
+  
   temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating, family = binomial, data = temp_df))
   
   temp_res$p.value <- round(temp_res$p.value, 2)
   
-  # print(temp_res)
-
   # if ((temp_res[2, 5][[1]] > 0.05) & (temp_res[3, 5][[1]] > 0.05) & (temp_res[8, 5][[1]] > 0.05) & (temp_res[9, 5][[1]] > 0.05)) { # check p-value (prereg -- 0.05. check robustness across values)
     if ((temp_res[2, 5][[1]] > 0.05) & (temp_res[3, 5][[1]] > 0.05)) { # check p-value (prereg -- 0.05. check robustness across values)
       # if ((temp_res[2, 5][[1]] > 0.1) & (temp_res[3, 5][[1]] > 0.1)) { # check p-value (prereg -- 0.05. check robustness across values)
         
       #'two-stage residual inclusion to test if people are using the choose min stratedgy
       test <- broom::augment(glm(choice ~ left_rating + right_rating, family = binomial, data = temp_df)) %>% left_join(temp_df)
-
-      # print(broom::tidy(lm(`.resid` ~ choose_max + choose_min, data = test)))
+      
+      # temp_res <- broom::tidy(glm(choice ~ left_range + right_range, family = binomial, data = temp_df))
+      # print(temp_res)
+      
+      # print(broom::tidy(lm(`.resid` ~ left_range + right_range, data = test)))
       
       p_values[[subject_idx]] <- unique(temp_df$subject_id)
 
@@ -209,6 +217,9 @@ for (subject_idx in 1:75) {
   }
   # print(temp_res)
 }
+# 23 subjects excluded from ratings model
+# 38 subjects excluded from fruit model
+# 44 subjects excluded from range model
 
 # print(p_values)
 # so far we have a 25% exclusion rate
@@ -222,10 +233,9 @@ dput(as.numeric(na.omit(p_values)))
 exlusions <- function(df) {
   # function for data exclusions following the preregistration specs
   temp <- df %>%
-    # filter(subject_id != 35) %>%
+    filter(subject_id != 35) %>%
     # filter(!subject_id %in% c(17, 29, 35, 37)) %>% #comment out for no exclusions (subejct 13?)
-    # filter(!subject_id %in% c(4, 5, 10, 12, 17, 22, 29, 35, 37,41, 42, 48, 55, 57, 58, 63, 64, 65, 66, 67, 70, 75)) %>% #comment out for no exclusions (subejct 13?)
-    filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
+    # filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
     group_by(subject_id) %>% # response times (IQR exclusion)
     mutate(
       Q1 = quantile(rt, .25),
@@ -242,7 +252,7 @@ exlusions <- function(df) {
 # net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity", "conductance","weighted_clustering_coefficient")
 net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eigen", "edge_density", "modularity","pca1", "pca2")
 
-net_stats <- c("edge_density", "modularity", "pca1", "pca2")
+# net_stats <- c("edge_density", "modularity", "pca1", "pca2")
 
 # net_stats <- c("weighted_transitivity", "edge_density", "modularity", "conductance", "pca1", "pca2")
 
@@ -250,7 +260,7 @@ res_netstats <- vector(mode = "list", length = length(net_stats))
 res_netstats2 <- vector(mode = "list", length = length(net_stats))
 
 # res_model_comparisons <- vector(mode = "list", length = length(net_stats))
-net_idx  = 9
+net_idx  = 8
 for (net_idx in 1:length(net_stats)) {
   # for each network statistic...
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
@@ -259,31 +269,42 @@ for (net_idx in 1:length(net_stats)) {
   # (no longer needed each time. Will save alot of computation time)
   # df <- organize_group_data(experiment = 2, net_stat = net_stats[[net_idx]])
   # test <- df[(df$left_net != 0) | (df$right_net != 0),] #eleminate trials where both are zero
-
-  df$left_net <-   select(df,contains(net_stats[[net_idx]]))[[1]]
-  df$right_net <-   select(df,contains(net_stats[[net_idx]]))[[2]]
+  
+  df$left_net1 <-   select(df,contains(net_stats[[net_idx]]))[[1]]
+  df$right_net1 <-   select(df,contains(net_stats[[net_idx]]))[[2]]
+  
+  df$left_net2 <-   select(df,contains(net_stats[[9]]))[[1]] 
+  df$right_net2 <-   select(df,contains(net_stats[[9]]))[[2]]
   
   #### data analysis (regressions)
   print(paste0("############### CHOICE ###############"))
-  models_choice <- estimate_mlms(df, outcome = "choice")
-  # # models_choice <- estimate_brms(df, outcome = "choice") #bayes versions
-  # 
+  # models_choice <- estimate_mlms(df, outcome = "choice")
+  # models_choice <- estimate_brms(df, outcome = "choice") #bayes versions
+  
+  df_temp = create_dataset(df, type = "choice")
+  
+  models_choice <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) + zleft_sim + zright_sim +
+                         (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), 
+                       data = df_temp, family = "bernoulli", iter = 10000, 
+                       chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
+                       file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_2_fit_choice03Full_sample")))
+  
   # # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC")))
   # # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("WAIC","LOOIC")))
   # 
-  print(parameters::compare_models(models_choice,  style = "ci_p"))
+  # print(parameters::compare_models(models_choice,  style = "ci_p"))
   # # print(parameters::compare_models(models_choice))
   # 
-  mp <- modelplot(models_choice, coef_omit = "Interc") +
-    geom_vline(xintercept = 0, linetype = "dashed") +
-    labs(x = "Coefficients",y = "Terms",
-         title = paste0("Choice: ",net_stats[[net_idx]])
-    ) +
-    theme_classic() +
-    scale_color_brewer(palette = "Set1")
-  print(mp)
-  
-  res_netstats[[net_idx]] <- models_choice[[5]]
+  # mp <- modelplot(models_choice, coef_omit = "Interc") +
+  #   geom_vline(xintercept = 0, linetype = "dashed") +
+  #   labs(x = "Coefficients",y = "Terms",
+  #        title = paste0("Choice: ",net_stats[[net_idx]])
+  #   ) +
+  #   theme_classic() +
+  #   scale_color_brewer(palette = "Set1")
+  # print(mp)
+  # 
+  # res_netstats[[net_idx]] <- models_choice[[5]]
   # 
   # print(paste0("############### CORRECT ###############"))
   # models_correct<- estimate_mlms(df, outcome = "correct")
@@ -298,24 +319,31 @@ for (net_idx in 1:length(net_stats)) {
   #   scale_color_brewer(palette = "Set1")
   # print(mp)
   
-  # print(paste0("############### RT ###############"))
-  models_rt <- estimate_mlms(df, outcome = "rt")
+  print(paste0("############### RT ###############"))
+  # models_rt <- estimate_mlms(df, outcome = "rt")
   # models_rt <- estimate_mlms(df[df$correct == 1,], outcome = "rt") #only ocrrect
   
   # models_rt <- estimate_brms(df, outcome = "rt") #bayes versions
+  df_temp = create_dataset(df[df$correct == 1,], type = "correct/rt")
+  
+  models_rt <- brm(log(rt) ~ vd + ov + nd1 + nd2 + sd +
+                     (vd + ov + nd1 + nd2 + sd | subject_id), 
+                   data = df_temp, iter = 10000, 
+                   chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
+                   file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_2_fit_rt02Full_sample")))
   
   # print(performance::compare_performance(models_rt, rank = TRUE))
-  print(parameters::compare_models(models_rt,  style = "ci_p"))
+  # print(parameters::compare_models(models_rt,  style = "ci_p"))
   # # print(parameters::compare_models(models_choice))
   
-  mp <- modelplot(models_rt, coef_omit = "Interc") +
-    geom_vline(xintercept = 0, linetype = "dashed") +
-    labs(x = "Coefficients",y = "Terms",
-         title = paste0("RT: ",net_stats[[net_idx]])
-    ) +
-    theme_classic() +
-    scale_color_brewer(palette = "Set1")
-  print(mp)
+  # mp <- modelplot(models_rt, coef_omit = "Interc") +
+  #   geom_vline(xintercept = 0, linetype = "dashed") +
+  #   labs(x = "Coefficients",y = "Terms",
+  #        title = paste0("RT: ",net_stats[[net_idx]])
+  #   ) +
+  #   theme_classic() +
+  #   scale_color_brewer(palette = "Set1")
+  # print(mp)
   # res_netstats2[[net_idx]] <- models_rt[[4]]
   
   # generate tables
@@ -369,9 +397,16 @@ for (net_idx in 1:length(net_stats)) {
   # knitr::kable(bayestestR::sexit(correct_res[[4]]), digits = 2)
   # knitr::kable(bayestestR::sexit(choice_res[[4]]), digits = 2)
   # knitr::kable(bayestestR::sexit(rt_res[[4]]), digits = 2)
+  res_netstats[[net_idx]] <- list(models_choice,models_rt)
+  
+  
 }
 # (res_netstats[[1]] + res_netstats[[2]])/(res_netstats[[3]] + res_netstats[[4]])
 # save(res_netstats, file = here("data", "res_mixed_model.RData"))
+
+#  
+# bayestestR::sexit(models_choice)
+# bayestestR::sexit(models_rt)
 
 
 # Compute the Probability of Direction (pd, also known as the Maximum Probability of Effect - MPE).
@@ -415,3 +450,5 @@ for (net_idx in 1:length(net_stats)) {
 # # #need to change the number of cores used in the function as well I think.
 # fits1 %<-% estimate_brms(df = create_dataset(df, type = "correct/rt"), outcome = "correct")
 # fits2 %<-% estimate_brms(df = create_dataset(df, type = "correct/rt"), outcome = "rt")
+# bayestestR::describe_posterior(models_choice, test = c("pd", "ROPE"))
+

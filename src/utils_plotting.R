@@ -706,3 +706,100 @@ df %>%
     color = "Network Difference (L-R)"
   ) 
 
+
+
+library(sjPlot)
+library(magrittr)
+library(ggplot2)
+pca1_exp_1_fit_choice03 <- readRDS("~/Documents/SetFitNetworks/fits/pca1_exp_1_fit_choice03.rds")
+pca1_exp_2_fit_choice03 <- readRDS("~/Documents/SetFitNetworks/fits/pca1_exp_2_fit_choice03.rds")
+
+plot_model(pca1_exp_1_fit_choice03, type = "pred", terms = c("zleft_rating [all]","zleft_net1[-1,1]","zleft_net2[-1,1]"))
+
+plot_model(pca1_exp_2_fit_choice03, type = "pred", terms = c("zleft_rating [all]","zleft_net1[-1,1]","zleft_net2[-1,1]"))
+
+test <- plot_models(pca1_exp_1_fit_choice03,
+                    pca1_exp_2_fit_choice03,
+                    transform = NULL,
+                    show.values = TRUE,
+                    show.p = FALSE,
+                    m.labels = c("Experiment one", "Experiment two"),
+                    ci.lvl = 0.95)
+
+pd <- position_dodge(1)
+plt_data <- test$data
+dput(levels(plt_data$term))
+levels(plt_data$term) <- c("right rating × PCA2", "right rating × PCA1", 
+                           "left rating × PCA2", "left rating × PCA1", "right PCA2", 
+                           "right PCA1", "right liking rating", "left PCA2", "left PCA1", 
+                           "left liking rating", "intercept")
+plt_data %>% 
+  dplyr::filter(term != "intercept") %>% 
+  dplyr::mutate(estimate =  round(estimate, 2),
+                conf.low = round(conf.low, 2),
+                conf.high = round(conf.high, 2)) %>% 
+  ggplot(aes(y = forcats::fct_reorder(term, estimate), color = group)) +
+  theme_classic()+
+  geom_point(aes(x=estimate), shape=15, size=2,position = pd) +
+  geom_linerange(aes(xmin=conf.low, xmax=conf.high), position = pd, size=.7)+
+  geom_vline(xintercept = 0, linetype = "dashed", linewidth = .4)+
+  scale_color_brewer(palette = "Set1")+
+  labs(
+    y = "terms",
+    x = "estimate",
+    color = ""
+  )+
+  theme(axis.text = element_text(face="bold"),
+        text = element_text(size = 15),
+        axis.title = element_text(face="bold")
+  )+
+  geom_text(aes( label = paste0(estimate, " [", conf.low,",",conf.high, "]"), 
+                 x = estimate, y = term, group = group, color = group), 
+            position = pd, vjust = -0.7,size=3,
+            show.legend = FALSE, check_overlap = FALSE)
+
+
+pca1_exp_1_fit_rt02 <- readRDS("~/Documents/SetFitNetworks/fits/pca1_exp_1_fit_rt02.rds")
+pca1_exp_2_fit_rt02 <- readRDS("~/Documents/SetFitNetworks/fits/pca1_exp_2_fit_rt02.rds")
+
+test <- plot_models(pca1_exp_1_fit_rt02,
+                    pca1_exp_2_fit_rt02,
+                    transform = NULL,
+                    show.values = TRUE,
+                    show.p = FALSE,
+                    m.labels = c("Experiment one", "Experiment two"),
+                    ci.lvl = 0.95)
+
+pd <- position_dodge(1)
+plt_data <- test$data
+dput(levels(plt_data$term))
+levels(plt_data$term) <- c("PCA2 Difference", "PCA1 Difference", 
+                           "Overall Value", "Value Difference", "intercept")
+plt_data %>% 
+  dplyr::filter(term != "intercept") %>% 
+  dplyr::mutate(estimate =  round(estimate, 2),
+                conf.low = round(conf.low, 2),
+                conf.high = round(conf.high, 2)) %>% 
+  ggplot(aes(y = forcats::fct_reorder(term, estimate), color = group)) +
+  theme_classic()+
+  geom_point(aes(x=estimate), shape=15, size=2,position = pd) +
+  geom_linerange(aes(xmin=conf.low, xmax=conf.high), position = pd, size=.7)+
+  geom_vline(xintercept = 0, linetype = "dashed", linewidth = .4)+
+  scale_color_brewer(palette = "Set1")+
+  labs(
+    y = "terms",
+    x = "estimate",
+    color = ""
+  )+
+  theme(axis.text = element_text(face="bold"),
+        text = element_text(size = 15),
+        axis.title = element_text(face="bold")
+  )+
+  geom_text(aes( label = paste0(estimate, " [", conf.low,",",conf.high, "]"), 
+                 x = estimate, y = term, group = group, color = group), 
+            position = pd, vjust = -0.7,size=3,
+            show.legend = FALSE, check_overlap = FALSE)
+
+
+
+
