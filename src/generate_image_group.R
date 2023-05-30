@@ -72,8 +72,10 @@ for (idx in 1:length(temp)) {
   myfiles[[idx]] <- readJPEG(temp[idx])
 }
 ############## subgraph approach
-network_stats <- c("assortment", "edge_density", "weighted_clustering_coefficient")
-network_stats <- c("modularity")
+# network_stats <- c("assortment", "edge_density", "weighted_clustering_coefficient")
+# network_stats <- c("modularity")
+network_stats <- c("average_strength")
+
 network_stat_idx <- 1
 for (network_stat_idx in 1:3) {
   print(paste0("GENERATING STIMULI FOR: ", network_stats[[network_stat_idx]]))
@@ -108,6 +110,8 @@ for (network_stat_idx in 1:3) {
 load(file = here::here("data", "LowHighWithinBetween.RData"))
 #for study two
 load(file = here::here("data", "modularity_100_6.RData"))
+#for study three
+load(file = here::here("data", "average_strength_100_6.RData"))
 
 trial_set <- vector(mode = "list", length = ncol(res))
 for (graph_idk in seq_len(ncol(res))) {
@@ -115,7 +119,8 @@ for (graph_idk in seq_len(ncol(res))) {
 }
   
 # file_name <- paste0("LowHighWithinBetween","_") #study one
-file_name <- paste0("modularity","_") #study two
+# file_name <- paste0("modularity","_") #study two
+file_name <- paste0("average_strength","_") #study three
 
 ncol <- 3
   
