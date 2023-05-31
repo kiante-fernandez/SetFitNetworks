@@ -122,6 +122,10 @@ make_subgraphs <- function(g, C = 6, stat_range, nsubgraphs = 25, n_statistic = 
       } else if (n_statistic == "modularity") {
         rS[[graph_idk]] <- igraph::modularity(gt, V(gt)$snack_type)
         V(gt)$mod <- rS[[graph_idk]]
+      } else if (n_statistic == "average_strength") {
+        # TODO make this about strength
+        rS[[graph_idk]] <- mean(igraph::strength(gt))
+        V(gt)$strength <- rS[[graph_idk]]
       }
 
 
@@ -132,7 +136,9 @@ make_subgraphs <- function(g, C = 6, stat_range, nsubgraphs = 25, n_statistic = 
       if (dign_tic == interations) {
         temp <- diganostic_rS
         plt <- ggplot2::qplot(temp) + ggplot2::theme_classic()
-        warning("ERROR: could not find a graph within range, check graph")
+        warning("Warning: could not find a graph within range, check graph")
+        print(paste0("stuck at target value:",rT[[graph_idk]]))
+        
         # tryCatch(stop(e), error = function(e) e, finally = print("Hello"))
 
         return(list(temp, plt))
@@ -147,7 +153,7 @@ make_subgraphs <- function(g, C = 6, stat_range, nsubgraphs = 25, n_statistic = 
         next
       }
       r_diff <- abs(rS[[graph_idk]] - rT[[graph_idk]])
-      if (r_diff < epsilon && round(rS[[graph_idk]], 5) != 0) { #check if close and non-zero
+      if (r_diff < epsilon && round(rS[[graph_idk]], 5) != 0) { # check if close and non-zero
         break
       }
     }
@@ -164,7 +170,7 @@ nsubgraphs <- 100
 # list of names of each network statistic to calculate
 # network_stats <- c("assortment","edge_density","weighted_clustering_coefficient","average_degree","internal_density","diversity")
 # network_stats <- c("assortment","edge_density","weighted_clustering_coefficient")
-network_stats <- c("modularity")
+network_stats <- c("average_strength")
 
 
 # range of target value for each statistic
@@ -179,20 +185,23 @@ stat_ranges <- list(
 
 epsilons <- list(0.05, 0.05, 0.06, 0.005, 0.005, .15)
 
-stat_ranges <- list(c(-.5, 0.70)) #modularity range
+# stat_ranges <- list(c(-.5, 0.70)) # modularity range
+stat_ranges <- list(c(0, 0.4)) #  empirical range average strength
+
 subgraphs <- make_subgraphs(g, C,
   stat_range = stat_ranges[[1]],
   nsubgraphs = nsubgraphs,
-  n_statistic = "modularity",
-  epsilon = .079,
+  n_statistic = "edge_density",
+  epsilon = 0.06,
   interations = 4000
 )
+subgraphs[[2]]
+range(subgraphs[[1]])
 
 # check how many unique values of modularity we have
 length(unique(round(unlist(purrr::map(subgraphs, function(.) {
-  V(.)$mod[[1]]
-})), 4))) # 36
-
+  V(.)$strength[[1]]
+})), 4))) # 100 unique values
 
 # ?make_subgraphs
 # get image of all the sim subgraphs together
@@ -208,47 +217,51 @@ foods_in_image <- stringr::str_extract(foods_in_image, "\\d+")
 foods_in_image <- tibble::rowid_to_column(data.frame(Image = as.numeric(foods_in_image)))
 foods_in_image <- dplyr::left_join(FoodNames, foods_in_image, "Image")
 
-par(mfrow = c(3, 10)) # set the plotting area into a 1*2 array
+# par(mfrow = c(2, 5)) # set the plotting area into a 1*2 array
 
-network_stat_idx <- 1
+# network_stat_idx <- 1
 nsubgraphs <- 100
-epsilons <- list( .079)
+network_stats <- c("average_strength")
+epsilons <- list(0.009)
+stat_ranges <- list(c(0, 0.4))
+
 for (network_stat_idx in seq_len(length(network_stats))) {
   print(paste0("GENERATING SUBGRAPHS FOR: ", network_stats[[network_stat_idx]]))
 
-  subgraphs <- make_subgraphs(g, C, stat_range = stat_ranges[[network_stat_idx]], nsubgraphs = nsubgraphs, n_statistic = network_stats[[network_stat_idx]], epsilon = epsilons[[network_stat_idx]], interations = 4000)
+  subgraphs <- make_subgraphs(g, C, stat_range = stat_ranges[[network_stat_idx]], nsubgraphs = nsubgraphs, n_statistic = network_stats[[network_stat_idx]], epsilon = epsilons[[network_stat_idx]], interations = 20000)
   rT <- seq(from = stat_ranges[[network_stat_idx]][[1]], to = stat_ranges[[network_stat_idx]][[2]], length.out = nsubgraphs) # target value for statistic
 
+  # graph_idk =1
   for (graph_idk in 1:nsubgraphs) {
     l <- layout_in_circle(subgraphs[[graph_idk]])
     V(subgraphs[[graph_idk]])$color <- V(subgraphs[[graph_idk]])$snack_type
     E(subgraphs[[graph_idk]])$color[E(subgraphs[[graph_idk]])$weight > 0] <- "forestgreen"
     E(subgraphs[[graph_idk]])$color[E(subgraphs[[graph_idk]])$weight < 0] <- "red2"
 
-    # plot(subgraphs[[graph_idk]],
-    #   layout = l,
-    #   margin = .0,
-    #   vertex.label.color = "black",
-    #   vertex.label.cex = 1.2,
-    #   vertex.label.dist = .9,
-    #   vertex.size = 20,
-    #   vertex.label.family = "Times",
-    #   edge.curved = .01,
-    #   edge.width = abs(E(subgraphs[[graph_idk]])$weight) * 8,
-    #   main = paste0(network_stats[[network_stat_idx]], " = ", round(V(subgraphs[[graph_idk]])$mod[[1]],5))
-    # )
-    #with images
-    adj_temp <- igraph::as_adjacency_matrix(subgraphs[[graph_idk]], sparse = F, attr = "weight")
-    nodes_temp <- temp[foods_in_image$rowid[foods_in_image$Name %in% V(subgraphs[[graph_idk]])$name]]
-    
-    qgraph::qgraph(adj_temp,
-                   layout = l,
-                   palette = "ggplot2",
-                   labels = F,
-                   images = nodes_temp,
-                   edge.width = abs(E(subgraphs[[graph_idk]])$weight) * .7,
-                   title = paste0(network_stats[[network_stat_idx]], " = ", round(V(subgraphs[[graph_idk]])$mod[[1]],5))
+    plot(subgraphs[[graph_idk]],
+      layout = l,
+      margin = .0,
+      vertex.label.color = "black",
+      vertex.label.cex = 1.2,
+      vertex.label.dist = .9,
+      vertex.size = 20,
+      vertex.label.family = "Times",
+      edge.curved = .001,
+      edge.width = abs(E(subgraphs[[graph_idk]])$weight) * 8,
+      main = paste0(network_stats[[network_stat_idx]], " = ", round(V(subgraphs[[graph_idk]])$strength[[1]],5))
     )
+    # with images
+    # adj_temp <- igraph::as_adjacency_matrix(subgraphs[[graph_idk]], sparse = F, attr = "weight")
+    # nodes_temp <- temp[foods_in_image$rowid[foods_in_image$Name %in% V(subgraphs[[graph_idk]])$name]]
+
+    # qgraph::qgraph(adj_temp,
+    #   layout = l,
+    #   palette = "ggplot2",
+    #   labels = F,
+    #   images = nodes_temp,
+    #   edge.width = abs(E(subgraphs[[graph_idk]])$weight) * .7,
+    #   title = paste0(network_stats[[network_stat_idx]], " = ", round(V(subgraphs[[graph_idk]])$strength[[1]], 5))
+    # )
     dev.copy(png, filename = here("figures", paste0(network_stats[[network_stat_idx]], "_", graph_idk, "_", C, ".png")), width = 18, height = 12, units = "in", res = 300)
     dev.off()
   }
@@ -263,8 +276,8 @@ for (network_stat_idx in seq_len(length(network_stats))) {
   }
   # remove the temp
   res <- res[, -1]
-  #TO SAVE this must be on
-  save(subgraphs,res, file = here("data",   paste0(network_stats[[network_stat_idx]],"_",nsubgraphs,"_", C, ".RData")))
+  # TO SAVE this must be on
+  save(subgraphs, res, file = here("data", paste0(network_stats[[network_stat_idx]], "_", nsubgraphs, "_", C, ".RData")))
 }
 # now you can take the res results over to the generate_image_group.R
 
