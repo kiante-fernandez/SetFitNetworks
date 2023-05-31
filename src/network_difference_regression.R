@@ -41,6 +41,8 @@ library(modelsummary)
 library(kableExtra)
 library(gt)
 
+library(cmdstanr)
+
 #load helper functions
 source(here::here("src", "utils.R"))
 # source(here::here("src", "utils_plotting.R"))
@@ -281,14 +283,50 @@ for (net_idx in 1:length(net_stats)) {
   # #### data analysis
   print(paste0("############### CHOICE ###############"))
   
+  models_choice1 <- brm(choice ~ left_rating + right_rating + 
+                          (1 + left_rating + right_rating | subject_id), 
+                        data = df, family = "bernoulli", iter = 10000, 
+                        chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2))
+  
+  models_choice2 <- brm(choice ~ left_rating + left_net1 + right_rating +  right_net1 + 
+                          (1 + left_rating + right_rating +  left_net1 + right_net1 | subject_id),
+                        data = df_temp, family = "bernoulli", iter = 10000, 
+                        chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2))
+  models_choice3 <- brm(choice ~ left_rating + left_net1+ left_net2 + right_rating + right_net1 + zright_net2+
+                          (1 + left_rating + right_rating +  left_net2 + right_net2 + left_net1 + zright_net1 | subject_id),
+                        data = df_temp, family = "bernoulli", iter = 10000, 
+                        chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2))
+  
   df_temp = create_dataset(df, type = "choice")
   
-  models_choice <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) + 
-                  (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), 
+  models_choice1 <- brm(choice ~ zleft_rating + zright_rating + 
+                  (1 + zleft_rating + zright_rating | subject_id), 
                 data = df_temp, family = "bernoulli", iter = 10000, 
-                chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
-                file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_1_fit_choice03")))
+                chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2))
+  models_choice2 <- brm(choice ~ zleft_rating + zleft_net1 + zright_rating + zright_net1 + 
+                          (1 + zleft_rating + zright_rating +  zleft_net1 + zright_net1 | subject_id),
+                        data = df_temp, family = "bernoulli", iter = 10000, 
+                        chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2))
+  models_choice3 <- brm(choice ~ zleft_rating + zleft_net1+ zleft_net2 + zright_rating + zright_net1 + zright_net2+
+                          (1 + zleft_rating + zright_rating +  zleft_net2 + zright_net2 + zleft_net1 + zright_net1 | subject_id),
+                       data = df_temp, family = "bernoulli", iter = 10000, 
+                       chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2))
+  looR2<-loo_R2(models_choice1)
+  round(median(looR2), 2)
+  looR2<-loo_R2(models_choice2)
+  round(median(looR2), 2)
+  looR2<-loo_R2(models_choice3)
+  round(median(looR2), 2)
+  report::report(models_choice3)
   
+  #an additional four percent variance explained from PCA 2 alone. 
+  loo1 <- loo(models_choice1)
+  loo2 <- loo(models_choice2)
+  loo3 <- loo(models_choice3)
+  # loo1$estimates
+  # loo2$estimates
+  
+  loo_compare(loo1, loo2, loo3)
   # models_choice <- estimate_mlms(df, outcome = "choice")
   # models_choice <- estimate_brms(df, outcome = "choice") #bayes
   #
@@ -331,7 +369,7 @@ for (net_idx in 1:length(net_stats)) {
                      (vd + ov + nd1 + nd2  | subject_id), 
                    data = df_temp, iter = 10000, 
                    chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
-                   file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_1_fit_rt02V2")))
+                   file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_1_fit_rt02")))
   
   # print(performance::compare_performance(models_rt, rank = TRUE))
   # print(parameters::compare_models(models_rt,  style = "ci_p"))
@@ -360,7 +398,11 @@ for (net_idx in 1:length(net_stats)) {
 # knitr::kable(bayestestR::sexit(exp_1_fit_choice03), digits = 2)
 # bayestestR::sexit(exp_1_fit_rt02, significant = 0.01)
 #  bayestestR::sexit(exp_2_fit_choice04)
-bayestestR::sexit(models_rt)
+models_choice <- readRDS("~/Documents/SetFitNetworks/fits/exp_1_fit_choice02.rds")
+
+# bayestestR::sexit(pca1_exp_2_fit_choice03V2)
+# bayestestR::sexit(pca1_exp_2_fit_rt02)
+
 # #  
 # bayestestR::sexit(pca1_exp_1_fit_choice03)
 # bayestestR::sexit(pca1_exp_2_fit_choice03)

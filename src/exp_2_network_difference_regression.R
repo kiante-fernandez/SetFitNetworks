@@ -42,6 +42,8 @@ library(modelsummary)
 library(kableExtra)
 library(gt)
 
+library(cmdstanr)
+
 source(here::here("src", "utils.R"))
 
 ######
@@ -218,6 +220,7 @@ for (subject_idx in 1:75) {
   # print(temp_res)
 }
 # 23 subjects excluded from ratings model
+
 # 38 subjects excluded from fruit model
 # 44 subjects excluded from range model
 
@@ -260,7 +263,7 @@ res_netstats <- vector(mode = "list", length = length(net_stats))
 res_netstats2 <- vector(mode = "list", length = length(net_stats))
 
 # res_model_comparisons <- vector(mode = "list", length = length(net_stats))
-net_idx  = 8
+net_idx  = 6
 for (net_idx in 1:length(net_stats)) {
   # for each network statistic...
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
@@ -282,12 +285,12 @@ for (net_idx in 1:length(net_stats)) {
   # models_choice <- estimate_brms(df, outcome = "choice") #bayes versions
   
   df_temp = create_dataset(df, type = "choice")
-  
+  # zleft_sd + zright_sd you can add and it makes no difference
   models_choice <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) + zleft_sim + zright_sim +
                          (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), 
                        data = df_temp, family = "bernoulli", iter = 10000, 
                        chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
-                       file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_2_fit_choice03Full_sample")))
+                       file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_2_fit_choice03")))
   
   # # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC")))
   # # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("WAIC","LOOIC")))
@@ -324,13 +327,14 @@ for (net_idx in 1:length(net_stats)) {
   # models_rt <- estimate_mlms(df[df$correct == 1,], outcome = "rt") #only ocrrect
   
   # models_rt <- estimate_brms(df, outcome = "rt") #bayes versions
-  df_temp = create_dataset(df[df$correct == 1,], type = "correct/rt")
+  # df_temp = create_dataset(df[df$correct == 1,], type = "correct/rt")
+  df_temp = create_dataset(df, type = "correct/rt")
   
   models_rt <- brm(log(rt) ~ vd + ov + nd1 + nd2 + sd +
                      (vd + ov + nd1 + nd2 + sd | subject_id), 
                    data = df_temp, iter = 10000, 
                    chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
-                   file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_2_fit_rt02Full_sample")))
+                   file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_2_fit_rt02")))
   
   # print(performance::compare_performance(models_rt, rank = TRUE))
   # print(parameters::compare_models(models_rt,  style = "ci_p"))
@@ -452,3 +456,10 @@ for (net_idx in 1:length(net_stats)) {
 # fits2 %<-% estimate_brms(df = create_dataset(df, type = "correct/rt"), outcome = "rt")
 # bayestestR::describe_posterior(models_choice, test = c("pd", "ROPE"))
 
+# df_temp = create_dataset(df, type = "choice")
+# df_temp = create_dataset(df, type = "correct/rt")
+# 
+# hddm_data <- df_temp %>%
+#   mutate(rt = rt / 1000) %>%
+#   rename(subj_idx = subject_id, response = choice)
+# write.csv(hddm_data, here::here("data", "HDDM_data.csv"), row.names = FALSE)

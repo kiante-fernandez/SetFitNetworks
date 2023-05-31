@@ -172,8 +172,10 @@ calculate_net_stats <- function(g) {
     theme(
       axis.text = element_text(face = "bold"),
       text = element_text(size = 15),
-      axis.title = element_text(face = "bold")
+      axis.title = element_text(face = "bold"),
+      axis.text.x = element_text(angle = 45, hjust = 1)
     )
+  
   print(cor_p)
   return(net_degree)
 }
@@ -463,7 +465,7 @@ create_dataset <- function(df, type, standardized = TRUE) {
         on = scale(left_net1 + left_net1, center = standardized, scale = standardized),
         os = scale(left_sim + right_sim, center = standardized, scale = standardized)
       ) %>%
-      select(subject_id, correct, rt, vd, nd1, nd2, sd, ov, on, os)
+      select(subject_id, choice,correct, rt, vd, nd1, nd2, sd, ov, on, os)
   }
   return(model_dat)
 }

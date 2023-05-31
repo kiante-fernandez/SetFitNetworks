@@ -292,7 +292,12 @@ compares$pca1 <- pca1
 compares$pca2 <- pca2
 compares$pca3 <- pca3
 
-correlation::correlation(compares)
+rez <- summary(correlation::correlation(compares, method = "spearman", bayesian = TRUE))
+rez
+# x <- correlation::cor_sort(rez)
+# layers <- correlation::visualisation_recipe(x)
+# plot(layers)
+
 dat_pca <- compares[,c("mod","ed","st","c")]
 
 # dat_pca <- compares[,c("mod","ed","st","ec","c")]
@@ -318,7 +323,9 @@ summary(lm(subgraph_mean ~ PC1 + PC2 +  PC3, m_data))
 library(BayesFactor)
 library(bayestestR)
 library(see)
-result <- correlationBF(compares$subgraph_mean, compares$st)
+
+result <- correlationBF(rank(compares$subgraph_mean), rank(compares$st))
+result <- correlationBF((compares$subgraph_mean), (compares$st))
 describe_posterior(result, test = "p_direction")
 bayesfactor_models(result)
 samples = correlationBF(compares$subgraph_mean, compares$st,

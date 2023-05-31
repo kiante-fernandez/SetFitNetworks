@@ -171,7 +171,7 @@ organize_group_data <- function(experiment, weight = "degree") {
 
       #
       set_correlations_temp[[foo]] <- sum(apply(cor_snack_food[colnames(cor_snack_food) %in% res[[foo]], ], 2, mean, na.rm = T)[res[[foo]]])
-      set_sd_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$sds)
+      set_sd_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$precision)
       
       if (experiment == 1) {
         next

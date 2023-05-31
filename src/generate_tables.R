@@ -94,7 +94,7 @@ modelsummary::modelsummary(panels,
              statistic = "[{conf.low} {conf.high}]",
              coef_omit = "Intercept|.*subject_id",
              gof_map = NA,
-             # coef_map = cm,
+             coef_map = cm,
              mc.cores = 10,
              # output = file_name
              )
