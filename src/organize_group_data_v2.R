@@ -1,5 +1,5 @@
-# weight = "betweenness"
-experiment = 2
+weight = "betweenness"
+experiment = 3
 organize_group_data <- function(experiment, weight = "degree") {
   
   # which data set are we working with?
@@ -18,6 +18,7 @@ organize_group_data <- function(experiment, weight = "degree") {
   } else if (experiment == 2) {
     temp_files <- list.files(path = here::here("data", "exp_2"), pattern = ".json", full.names = T)
     network_stats <- "modularity"
+    sim_img_pattern <- "../../img/grid_stimuli/grid_6_modularity_"
     # load subgraphs
     load(file = here::here("data", "modularity_100_6.RData"))
     #if you exclude certain "non- significant graphs" which ones? (see subgraph_permutation_testing.R)
@@ -28,6 +29,17 @@ organize_group_data <- function(experiment, weight = "degree") {
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
     
   }
+  else if (experiment == 3) {
+    # temp_files <- list.files(path = here::here("data", "exp_3"), pattern = ".json", full.names = T)
+    #test path
+    temp_files <- list.files(path = here::here("data", "exp_3", "drive-20230606"), pattern = ".json", full.names = T)
+    network_stats <- "average_strength"
+    sim_img_pattern <- "../../img/grid_stimuli/grid_6_average_strength_"
+    
+    # load subgraphs
+    load(file = here::here("data", "average_strength_100_6.RData"))
+  }
+  
   # will get used to calculate network meausres
   G <- g
   E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
@@ -87,7 +99,7 @@ organize_group_data <- function(experiment, weight = "degree") {
       filter(screen_id == "similarity") %>%
       select(stimulus, response) %>% # think about RT
       mutate(
-        stimulus = stringr::str_remove(stimulus, pattern = "../../img/grid_stimuli/grid_6_modularity_"),
+        stimulus = stringr::str_remove(stimulus, pattern = sim_img_pattern),
         stimulus = as.numeric(stringr::str_remove(stimulus, pattern = ".jpg"))
       ) %>%
       unnest(response)
@@ -314,4 +326,3 @@ organize_group_data <- function(experiment, weight = "degree") {
   
   return(df)
 }
-
