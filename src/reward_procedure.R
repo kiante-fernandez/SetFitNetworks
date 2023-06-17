@@ -72,5 +72,7 @@ for (pp in seq_len(file_idx)) {
 reward_res <- do.call(rbind, reward_res)
 reward_res$number <- 1:nrow(reward_res)
 reward_res$paidYN <- "no"
-
-write_csv(reward_res, "data/simnet_payment_log.csv")
+#do not just save over copies
+if (!file.exists(here::here("data", "simnet_payment_log.csv"))) {
+  write_csv(reward_res, "data/simnet_payment_log.csv")
+  }
