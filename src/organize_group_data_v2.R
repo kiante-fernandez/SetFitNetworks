@@ -1,5 +1,5 @@
-weight = "betweenness"
-experiment = 3
+# weight = "betweenness"
+# experiment = 3
 organize_group_data <- function(experiment, weight = "degree") {
   
   # which data set are we working with?
@@ -32,7 +32,7 @@ organize_group_data <- function(experiment, weight = "degree") {
   else if (experiment == 3) {
     # temp_files <- list.files(path = here::here("data", "exp_3"), pattern = ".json", full.names = T)
     #test path
-    temp_files <- list.files(path = here::here("data", "exp_3", "drive-20230606"), pattern = ".json", full.names = T)
+    temp_files <- list.files(path = here::here("data", "exp_3", "drive-20230612"), pattern = ".json", full.names = T)
     network_stats <- "average_strength"
     sim_img_pattern <- "../../img/grid_stimuli/grid_6_average_strength_"
     

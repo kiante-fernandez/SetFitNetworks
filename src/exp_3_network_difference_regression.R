@@ -113,16 +113,11 @@ for (subject_idx in 1:length(unique(df$subject_id))) {
   #         geom_hline(yintercept = 9000, linetype = "dashed")+
   #         labs(title = paste0("subject: ",subject_idx)))
   
-  # temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating + choose_max + choose_min, family = binomial, data = temp_df))
-  # temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating + left_net + right_net + left_sim + right_sim + choose_max + choose_min, family = binomial, data = temp_df))
-  # temp_res <- broom::tidy(glm(choice ~ left_wtrating + right_wtrating + left_net + right_net + left_sim + right_sim + choose_max + choose_min, family = binomial, data = temp_df))
-  
-  # temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating + left_net + right_net + left_sim + right_sim, family = binomial, data = temp_df))
-  # temp_res <- broom::tidy(glm(choice ~ left_wtrating + right_wtrating + left_sim + right_sim, family = binomial, data = temp_df))
-  
-  
   # temp_res <- broom::tidy(glm(choice ~ left_fruit + right_fruit, family = binomial, data = temp_df))
   # temp_res <- broom::tidy(glm(choice ~ left_range + right_range, family = binomial, data = temp_df))
+  # temp_res <- broom::tidy(glm(choice ~  choose_max + choose_min, family = binomial, data = temp_df))
+  # temp_res <- broom::tidy(glm(choice ~  left_net_pca2 + right_net_pca2 + right_net_pca1 +  left_net_pca1, family = binomial, data = temp_df))
+  # temp_res <- broom::tidy(glm(choice ~  left_net_weighted_transitivity + right_net_weighted_transitivity , family = binomial, data = temp_df))
   
   # print(temp_res)
   
@@ -136,7 +131,7 @@ for (subject_idx in 1:length(unique(df$subject_id))) {
     # if ((temp_res[2, 5][[1]] > 0.1) & (temp_res[3, 5][[1]] > 0.1)) { # check p-value (prereg -- 0.05. check robustness across values)
     
     #'two-stage residual inclusion to test if people are using the choose min stratedgy
-    test <- broom::augment(glm(choice ~ left_rating + right_rating, family = binomial, data = temp_df)) %>% left_join(temp_df)
+    # test <- broom::augment(glm(choice ~ left_rating + right_rating, family = binomial, data = temp_df)) %>% left_join(temp_df)
     
     # temp_res <- broom::tidy(glm(choice ~ left_range + right_range, family = binomial, data = temp_df))
     # print(temp_res)
@@ -149,14 +144,16 @@ for (subject_idx in 1:length(unique(df$subject_id))) {
   } else {
     (p_values[[subject_idx]] <- NA)
   }
-  print(temp_res)
+  # print(temp_res)
 }
-# XX subjects excluded from ratings model
-# XX subjects excluded from fruit model
-# XX subjects excluded from range model
+# 8  subjects excluded from ratings model
+# 19 subjects excluded from fruit model
+# 31 subjects excluded from choose pca2 only model
+# 33 subjects excluded from range model
+# 52 subjects excluded from choose max/min model
 
 # print(p_values)
-# so far we have a XX% exclusion rate
+# so far we have a 8/53*100 % exclusion rate
 length(as.numeric(na.omit(p_values)))
 dput(as.numeric(na.omit(p_values)))
 
@@ -183,24 +180,27 @@ res_netstats <- vector(mode = "list", length = length(net_stats))
 res_netstats2 <- vector(mode = "list", length = length(net_stats))
 
 # res_model_comparisons <- vector(mode = "list", length = length(net_stats))
-net_idx  = 8
+net_idx  = 4
 for (net_idx in 1:length(net_stats)) {
   # for each network statistic...
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
   
   df$left_net1 <-   select(df,contains(net_stats[[net_idx]]))[[1]]
   df$right_net1 <-   select(df,contains(net_stats[[net_idx]]))[[2]]
-  
-  df$left_net2 <-   select(df,contains(net_stats[[9]]))[[1]] 
-  df$right_net2 <-   select(df,contains(net_stats[[9]]))[[2]]
+  #controling for edge density
+  df$left_net2 <-   select(df,contains(net_stats[[6]]))[[1]] 
+  df$right_net2 <-   select(df,contains(net_stats[[6]]))[[2]]
   
   #### data analysis (regressions)
   print(paste0("############### CHOICE ###############"))
-  models_choice <- estimate_mlms(df, outcome = "choice")
+  # models_choice <- estimate_mlms(df, outcome = "choice")
   # models_choice <- estimate_brms(df, outcome = "choice") #bayes versions
   
   df_temp = create_dataset(df, type = "choice")
-  # zleft_sd + zright_sd you can add and it makes no difference
+
+  models_choice <- glmer( choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) + zleft_sim + zright_sim+
+                           (zleft_rating+ zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+  summary(models_choice)
   models_choice <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) + zleft_sim + zright_sim +
                          (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), 
                        data = df_temp, family = "bernoulli", iter = 10000, 
@@ -244,6 +244,9 @@ for (net_idx in 1:length(net_stats)) {
   # models_rt <- estimate_brms(df, outcome = "rt") #bayes versions
   # df_temp = create_dataset(df[df$correct == 1,], type = "correct/rt")
   df_temp = create_dataset(df, type = "correct/rt")
+  
+  models_rt <- lmer(log(rt) ~ vd + ov + nd1 + nd2 + sd +
+                      (vd + ov + nd1 + nd2 | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
   
   models_rt <- brm(log(rt) ~ vd + ov + nd1 + nd2 + sd +
                      (vd + ov + nd1 + nd2 + sd | subject_id), 
