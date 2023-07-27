@@ -12,19 +12,16 @@ res_sig<- c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
 
-temp_files <- list.files(path = here::here("data", "exp_2"), pattern = ".json", full.names = T)
+temp_files <- list.files(path = here::here("data", "exp_3", "drive-20230627"), pattern = ".json", full.names = T)
 
-load(file = here::here("data", "modularity_100_6.RData"))
+load(file = here::here("data", "average_strength_100_6.RData"))
 
 source("exploratory_graph_analysis.R")
 
-# g <-graph_from_adjacency_matrix(net_sim_GPT3,"undirected",weighted = TRUE,diag = F)
-# clp <- cluster_fast_greedy(g)
-# V(g)$snack_type <- clp$membership
 net_degree <- calculate_net_stats(g)
 
 V(g)$name <- net_degree$Name
-  
+
 G <- g
 E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
 mem <- membership(cluster_leading_eigen(G))
@@ -32,7 +29,7 @@ mem <- membership(cluster_leading_eigen(G))
 # get mod scores
 # mod_res <- map(subgraphs, function(x) unique(V(x)$mod))
 mod_res <- map(subgraphs, function(x) {temp <- igraph::induced_subgraph(g, V(x)$name) 
-                                                                     as.numeric(modularity(temp, V(temp)$snack_type))})
+as.numeric(modularity(temp, V(temp)$snack_type))})
 mod_res <- do.call(rbind, mod_res)
 
 
@@ -58,6 +55,8 @@ eigen_cen <- map(subgraphs, function(x) {
 })
 eigen_cen <- do.call(rbind, eigen_cen)
 
+V(subgraphs[[100]])$strength
+
 strength_res <- map(subgraphs, function(x) mean(strength(igraph::induced_subgraph(g, V(x)$name))))
 strength_res <- do.call(rbind, strength_res)
 #did i mess up how to caculate strength
@@ -68,6 +67,7 @@ strength_res <- do.call(rbind, strength_res)
 # strength_res <- do.call(rbind, strength_res)
 
 degree_res <- map(subgraphs, function(x) mean(degree(igraph::induced_subgraph(g, V(x)$name),normalized = TRUE)))
+
 degree_res <- do.call(rbind, degree_res)
 
 pca1 <- map(subgraphs, function(x) {
@@ -105,11 +105,11 @@ con_res <- map(subgraphs, function(x) {
   conductance_temp <- clustAnalytics::conductance(g, mem)[2]
   as.numeric(conductance_temp)
   return(unlist(conductance_temp))
-  })
+})
 # data <- temp_files[[1]]
 similarity_ratings <- function(data) {
   set_values_temp <- vector(mode = "numeric", length = 100)
-
+  
   # load the  subjects data
   subject_temp <- jsonlite::parse_json(jsonlite::read_json(data), simplifyVector = T)
   # this gets the ratings in check
@@ -117,11 +117,11 @@ similarity_ratings <- function(data) {
     filter(screen_id == "similarity") %>%
     select(stimulus, response) %>% # think about RT
     mutate(
-      stimulus = stringr::str_remove(stimulus, pattern = "../../img/grid_stimuli/grid_6_modularity_"),
+      stimulus = stringr::str_remove(stimulus, pattern = "../../img/grid_stimuli/grid_6_average_strength_"),
       stimulus = as.numeric(stringr::str_remove(stimulus, pattern = ".jpg"))
     ) %>%
     unnest(response)
-
+  
   subject_value_temp <- subject_temp %>%
     filter(screen_id == "ratings") %>%
     select(stimulus, response) %>%
@@ -130,11 +130,11 @@ similarity_ratings <- function(data) {
       Image = as.numeric(stringr::str_remove(Image, pattern = ".jpg"))
     ) %>%
     dplyr::left_join(load_food_names()$foods_in_image, by = "Image")
-
+  
   for (foo in 1:100) {
     set_values_temp[[foo]] <- sum(do.call(rbind, subject_value_temp[subject_value_temp$Name %in% res[[foo]], ]$response))
   }
-
+  
   # normalize the ratings?
   subject_rating_temp$responsenormalized <- (subject_rating_temp$response - min(subject_rating_temp$response)) / diff(range(subject_rating_temp$response)) # xnormalized = (x - min(x)) / range(x)
   subject_rating_temp$modularity <- as.vector(mod_res)
@@ -143,14 +143,14 @@ similarity_ratings <- function(data) {
   subject_rating_temp$strength_res <- as.vector(strength_res)
   subject_rating_temp$eigen_cen <- as.vector(eigen_cen)
   subject_rating_temp$con_cen <- as.vector(unlist(con_res))
-
+  
   
   subject_rating_temp$pca1 <- as.vector(pca1)
   subject_rating_temp$pca2 <- as.vector(pca2)
   subject_rating_temp$pca3 <- as.vector(pca3)
   
   subject_rating_temp$ratings <- set_values_temp
-
+  
   subject_rating_temp$subject_id <- unique(subject_temp$subject_id)
   
   return(subject_rating_temp)
@@ -289,9 +289,9 @@ compares$c <- unlist(con_res)
 compares$pca1 <- pca1[,1]
 compares$pca2 <- pca2[,1]
 compares$pca3 <- pca3[,1]
-compares$experiment <- 2
+compares$experiment <- 3
 
-write_csv(compares, "data/ISDN_poster_sim_rating_exp2.csv")
+# write_csv(compares, "data/ISDN_poster_sim_rating_exp3.csv")
 
 rez <- summary(correlation::correlation(compares, method = "spearman", bayesian = TRUE))
 rez
@@ -544,41 +544,41 @@ net_degree <- net_degree%>%
 par(mfrow = c(1, 3)) # set the plotting area into a 1*3 array
 
 plot(subgraphs[[32]],
-  layout = layout.circle(subgraphs[[32]]),
-  margin = .0,
-  vertex.label.color = "black",
-  vertex.label.font = 2,
-  vertex.label.cex = 1.5,
-  vertex.label.dist = 2,
-  vertex.size = 20,
-  vertex.label.family = "Times",
-  main = paste0("Most Similar. Q = ", round(compares$mod[[32]], 3), " D = ", round(compares$ed[[32]], 3), " s = ", round(compares$st[[32]], 3), " c = ", round(compares$c[[32]], 3)),
-  edge.width = abs(E(subgraphs[[32]])$weight) * 10,
+     layout = layout.circle(subgraphs[[32]]),
+     margin = .0,
+     vertex.label.color = "black",
+     vertex.label.font = 2,
+     vertex.label.cex = 1.5,
+     vertex.label.dist = 2,
+     vertex.size = 20,
+     vertex.label.family = "Times",
+     main = paste0("Most Similar. Q = ", round(compares$mod[[32]], 3), " D = ", round(compares$ed[[32]], 3), " s = ", round(compares$st[[32]], 3), " c = ", round(compares$c[[32]], 3)),
+     edge.width = abs(E(subgraphs[[32]])$weight) * 10,
 )
 
 plot(subgraphs[[2]],
-  layout = layout.circle(subgraphs[[2]]),
-  margin = .0,
-  vertex.label.color = "black",
-  vertex.label.font = 2,
-  vertex.label.cex = 1.5,
-  vertex.label.dist = 2,
-  vertex.size = 20,
-  vertex.label.family = "Times",
-  main = paste0("Least Similar. Q = ", round(compares$mod[[2]], 3), " D = ", round(compares$ed[[2]], 3), " s = ", round(compares$st[[2]], 3), " c = ", round(compares$c[[2]], 3)),
-  edge.width = abs(E(subgraphs[[2]])$weight) * 10,
+     layout = layout.circle(subgraphs[[2]]),
+     margin = .0,
+     vertex.label.color = "black",
+     vertex.label.font = 2,
+     vertex.label.cex = 1.5,
+     vertex.label.dist = 2,
+     vertex.size = 20,
+     vertex.label.family = "Times",
+     main = paste0("Least Similar. Q = ", round(compares$mod[[2]], 3), " D = ", round(compares$ed[[2]], 3), " s = ", round(compares$st[[2]], 3), " c = ", round(compares$c[[2]], 3)),
+     edge.width = abs(E(subgraphs[[2]])$weight) * 10,
 )
 plot(subgraphs[[73]],
-  layout = layout.circle(subgraphs[[73]]),
-  margin = .0,
-  vertex.label.color = "black",
-  vertex.label.font = 2,
-  vertex.label.cex = 1.5,
-  vertex.label.dist = 2,
-  vertex.size = 20,
-  vertex.label.family = "Times",
-  main = paste0("Hightest Variance. Q = ", round(compares$mod[[73]], 3), " D = ", round(compares$ed[[73]], 3), " s = ", round(compares$st[[73]], 3), " c = ", round(compares$c[[73]], 3)),
-  edge.width = abs(E(subgraphs[[73]])$weight) * 10,
+     layout = layout.circle(subgraphs[[73]]),
+     margin = .0,
+     vertex.label.color = "black",
+     vertex.label.font = 2,
+     vertex.label.cex = 1.5,
+     vertex.label.dist = 2,
+     vertex.size = 20,
+     vertex.label.family = "Times",
+     main = paste0("Hightest Variance. Q = ", round(compares$mod[[73]], 3), " D = ", round(compares$ed[[73]], 3), " s = ", round(compares$st[[73]], 3), " c = ", round(compares$c[[73]], 3)),
+     edge.width = abs(E(subgraphs[[73]])$weight) * 10,
 )
 
 
@@ -629,7 +629,7 @@ res %>%
   )
 
 # Open pdf file
-pdf(file= "subgraphs.pdf" )
+pdf(file= "exp_3_subgraphs.pdf" )
 # create a 2X2 grid
 par( mfrow= c(2,2) )
 #the high sim 
@@ -646,7 +646,7 @@ plotting <- single_item_ratings %>%
             item_mean = mean(response),
             se = sqrt(var(response) / length(response))) %>% 
   left_join(net_degree)
-  
+
 
 p1 <- single_item_ratings %>%
   ggplot(aes(x = reorder(factor(Name),response) , y = response)) +
@@ -742,7 +742,7 @@ m2 <- lm(item_mean ~ scale(PCA1) + scale(PCA2) + scale(PCA3),test) #PCA test
 summary(m2)
 report::report(m2)
 
-test %>%dplyr::select(item_mean,sds,degree, strength,eigen,weighted_transitivity, closeness,betweenness,PCA1, PCA2, PCA3) %>% 
+test %>%dplyr::select(item_mean,degree, strength,eigen,weighted_transitivity, closeness,betweenness,PCA1, PCA2, PCA3) %>% 
   cor() %>% 
   ggcorrplot::ggcorrplot(type = "upper",
                          lab = TRUE)+
@@ -756,5 +756,3 @@ test %>%dplyr::select(item_mean,sds,degree, strength,eigen,weighted_transitivity
     axis.text.x = element_text(face="bold",size=10, angle=40, hjust= .9)
   )
 
-# library("factoextra")
-# fviz_eig(res.pca, addlabels = TRUE, ylim = c(0, 50))

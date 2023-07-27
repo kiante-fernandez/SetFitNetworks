@@ -35,7 +35,7 @@ library(patchwork) # The Composer of Plots
 
 library(brms) # Bayesian Regression Models using 'Stan'
 
-# library(modelsummary)
+library(modelsummary)
 library(kableExtra)
 library(gt)
 
@@ -153,15 +153,15 @@ for (subject_idx in 1:length(unique(df$subject_id))) {
 # 52 subjects excluded from choose max/min model
 
 # print(p_values)
-# so far we have a 8/53*100 % exclusion rate
 length(as.numeric(na.omit(p_values)))
+12/79*100
 dput(as.numeric(na.omit(p_values)))
 
 
 exlusions <- function(df) {
   # function for data exclusions following the preregistration specs
   temp <- df %>%
-    # filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
+    filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
     group_by(subject_id) %>% # response times (IQR exclusion)
     mutate(
       Q1 = quantile(rt, .25),
@@ -174,6 +174,10 @@ exlusions <- function(df) {
     filter(!rt >= 9000)
   return(temp)
 }
+
+for_save <- df %>% exlusions()
+write_csv(for_save, "data/ISDN_poster_exp3.csv")
+
 net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eigen", "edge_density", "modularity","pca1", "pca2")
 
 res_netstats <- vector(mode = "list", length = length(net_stats))
@@ -198,9 +202,9 @@ for (net_idx in 1:length(net_stats)) {
   
   df_temp = create_dataset(df, type = "choice")
 
-  models_choice <- glmer( choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) + zleft_sim + zright_sim+
-                           (zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
-  summary(models_choice)
+  # models_choice <- glmer( choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) + zleft_sim + zright_sim+
+                           # (zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+  # summary(models_choice)
   models_choice <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) + zleft_sim + zright_sim +
                          (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), 
                        data = df_temp, family = "bernoulli", iter = 10000, 
@@ -245,8 +249,8 @@ for (net_idx in 1:length(net_stats)) {
   # df_temp = create_dataset(df[df$correct == 1,], type = "correct/rt")
   df_temp = create_dataset(df, type = "correct/rt")
   
-  models_rt <- lmer(log(rt) ~ vd + ov + nd1 + nd2 + sd +
-                      (vd + ov + nd1 + nd2 | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+  # models_rt <- lmer(log(rt) ~ vd + ov + nd1 + nd2 + sd +
+                      # (vd + ov + nd1 + nd2 | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
   
   models_rt <- brm(log(rt) ~ vd + ov + nd1 + nd2 + sd +
                      (vd + ov + nd1 + nd2 + sd | subject_id), 
@@ -324,9 +328,9 @@ for (net_idx in 1:length(net_stats)) {
   
 }
 
-# bayestestR::sexit(models_choice)
-# bayestestR::sexit(models_rt)
-
-
-plot(ggeffects::ggpredict(models_choice, terms = c("zleft_net2[all]" ,"zleft_rating[-1, 0, 1]")))
+bayestestR::sexit(models_choice)
+bayestestR::sexit(models_rt)
+# ppc_choice <- brms::posterior_predict(models_choice)
+# plot(models_choice)
+# plot(ggeffects::ggpredict(models_choice, terms = c("zleft_net2[-1, 0, 1]" ,"zleft_rating[-1, 0, 1]")))
 

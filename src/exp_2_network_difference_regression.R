@@ -236,9 +236,9 @@ dput(as.numeric(na.omit(p_values)))
 exlusions <- function(df) {
   # function for data exclusions following the preregistration specs
   temp <- df %>%
-    filter(subject_id != 35) %>%
+    # filter(subject_id != 35) %>%
     # filter(!subject_id %in% c(17, 29, 35, 37)) %>% #comment out for no exclusions (subejct 13?)
-    # filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
+    filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
     group_by(subject_id) %>% # response times (IQR exclusion)
     mutate(
       Q1 = quantile(rt, .25),
@@ -251,6 +251,8 @@ exlusions <- function(df) {
     filter(!rt >= 9000)
   return(temp)
 }
+for_save <- df %>% exlusions()
+write_csv(for_save, "data/ISDN_poster_exp2.csv")
 # net_stats <- c("strength", "eigen", "edge_density", "modularity")
 # net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity", "conductance","weighted_clustering_coefficient")
 net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eigen", "edge_density", "modularity","pca1", "pca2")

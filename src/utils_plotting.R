@@ -27,9 +27,9 @@ source(here::here("src", "organize_group_data_v2.R"))
 # df <- organize_group_data(experiment = 2, net_stat = "modularity")
 df <- organize_group_data(experiment = 1)
 
-# net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
+net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
 
-# net_idx = 8
+net_idx = 5
 
 df$left_net <-   select(df,contains(net_stats[[net_idx]]))[[1]]
 df$right_net <-   select(df,contains(net_stats[[net_idx]]))[[2]]
@@ -1145,5 +1145,95 @@ plt_data %>%
             show.legend = FALSE, check_overlap = FALSE)
 
 
+#####ISDN poster plot
+# library(tidyverse)
 
+ISDN_poster_sim_rating_exp2 <- read_csv("data/ISDN_poster_sim_rating_exp2.csv")
+ISDN_poster_sim_rating_exp3 <- read_csv("data/ISDN_poster_sim_rating_exp3.csv")
+
+
+poster_plot_data <- rbind(ISDN_poster_sim_rating_exp2, ISDN_poster_sim_rating_exp3)
+
+poster_plot_data$study <- factor(poster_plot_data$experiment)
+
+ggplot(poster_plot_data, aes(st, subgraph_mean, group = study, color = study)) +
+  theme_classic() +
+  geom_pointrange(aes(ymin = subgraph_mean - se, ymax = subgraph_mean + se,shape = study), size = .7) +
+  geom_smooth(aes(linetype = study, fill = study), method = "lm", se = T, size = 1.8) +
+  labs(x = "Subgraph Connectedness", y = "Similarity") +
+  theme(
+    axis.text = element_text(face = "bold"),
+    text = element_text(size = 30),
+    axis.title = element_text(face = "bold")
+  )+ 
+  scale_color_brewer(palette = "Set1")+
+  scale_fill_brewer(palette = "Set1") 
+
+
+ISDN_poster_exp1 <- read_csv("data/ISDN_poster_exp1.csv")
+ISDN_poster_exp2 <- read_csv("data/ISDN_poster_exp2.csv")
+ISDN_poster_exp3 <- read_csv("data/ISDN_poster_exp3.csv")
+
+ISDN_poster_exp1$subject_id <- ISDN_poster_exp1$subject_id + 100
+ISDN_poster_exp2$subject_id <- ISDN_poster_exp2$subject_id + 200
+ISDN_poster_exp3$subject_id <- ISDN_poster_exp3$subject_id + 300
+
+ISDN_poster_exp1$study <- 1
+ISDN_poster_exp2$study <- 2
+ISDN_poster_exp3$study <- 3
+
+cols_select <- c("study","left", "right", "subject_id", "rt", "choice", "network_statistic", 
+                 "left_rating", "right_rating", "left_wtrating", "right_wtrating", 
+                 "left_net_degree", "right_net_degree", "left_net_strength", "right_net_strength", 
+                 "left_net_eigen", "right_net_eigen", "left_net_betweenness", 
+                 "right_net_betweenness", "left_net_closeness", "right_net_closeness", 
+                 "left_net_weighted_transitivity", "right_net_weighted_transitivity", 
+                 "left_net_edge_density", "right_net_edge_density", "left_net_modularity", 
+                 "right_net_modularity", "left_net_conductance", "right_net_conductance", 
+                 "left_net_pca1", "right_net_pca1", "left_net_pca2", "right_net_pca2" )
+
+poster_plot_data <- rbind(ISDN_poster_exp1[,cols_select], ISDN_poster_exp2[,cols_select], ISDN_poster_exp3[,cols_select])
+
+poster_plot_data$study <- factor(poster_plot_data$study)
+
+poster_plot_data$study  <- relevel(poster_plot_data$study , ref = "2")
+poster_plot_data$study  <- relevel(poster_plot_data$study , ref = "3")
+poster_plot_data$study  <- relevel(poster_plot_data$study , ref = "2")
+
+
+poster_plot_data %>%
+  filter(subject_id != 235) %>% 
+  group_by(subject_id) %>%
+  mutate(
+    nd = left_net_weighted_transitivity - right_net_weighted_transitivity
+  ) %>%
+  mutate(
+    binned_net_diff = as.numeric(cut_number(nd, 7)) - 4,
+  ) %>%
+  group_by(binned_net_diff, study) %>%
+  mutate(
+    n = n(),
+    m_left = mean(choice),
+    se = sqrt(var(choice) / length(choice))
+  ) %>%
+  ungroup() %>%
+  ggplot(aes(x = binned_net_diff, y = m_left, fill = study, group = study)) +
+  geom_point(aes(fill = study, color = study, group = study, shape = study),size = 5)+
+  # geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se, color = experiment), size = 1.1) +
+  geom_ribbon(aes(ymin = m_left - se, ymax = m_left + se), alpha = .6)+
+  theme_classic() +
+  geom_line(aes(color = study),size = 1) +
+  geom_hline(yintercept = .5, linetype = "dashed", size = .25) +
+  geom_vline(xintercept = 0, linetype = "dashed", size = .25) +
+  scale_color_brewer(palette = "Set1") +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0.25, .75)) +
+  labs(
+    y = "Probability of Choosing Left",
+    x = "Connectedness Difference (L-R)",
+  ) +
+  theme(text = element_text(size = 20),
+        legend.position = c(0.25, 0.85),
+        axis.text = element_text(face="bold"),
+        axis.title = element_text(face="bold"))
 

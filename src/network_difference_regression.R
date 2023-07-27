@@ -41,7 +41,7 @@ library(modelsummary)
 library(kableExtra)
 library(gt)
 
-library(cmdstanr)
+# library(cmdstanr)
 
 #load helper functions
 source(here::here("src", "utils.R"))
@@ -254,6 +254,9 @@ exlusions <- function(df) {
     filter(!rt >= 9000)
   return(temp)
 }
+
+for_save <- df %>% exlusions()
+write_csv(for_save, "data/ISDN_poster_exp1.csv")
 
 # net_stats <- c("strength", "eigen", "edge_density", "modularity")
 net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eigen", "edge_density", "modularity","pca1", "pca2")

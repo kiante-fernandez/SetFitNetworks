@@ -6,6 +6,7 @@ organize_group_data <- function(experiment, weight = "degree") {
   if (experiment == 1) {
     temp_files <- list.files(path = here::here("data", "pilot_30"), pattern = ".json", full.names = T)
     network_stats <- "LowHighWithinBetween"
+    sim_img_pattern <- "../../img/grid_stimuli/grid_6_LowHighWithinBetween_"
     # load subgraphs
     load(file = here::here("data", "LowHighWithinBetween.RData"))
     #if you exclude certain "non- significant graphs" which ones? (see subgraph_permutation_testing.R)
@@ -32,7 +33,7 @@ organize_group_data <- function(experiment, weight = "degree") {
   else if (experiment == 3) {
     # temp_files <- list.files(path = here::here("data", "exp_3"), pattern = ".json", full.names = T)
     #test path
-    temp_files <- list.files(path = here::here("data", "exp_3", "drive-20230612"), pattern = ".json", full.names = T)
+    temp_files <- list.files(path = here::here("data", "exp_3", "drive-20230627"), pattern = ".json", full.names = T)
     network_stats <- "average_strength"
     sim_img_pattern <- "../../img/grid_stimuli/grid_6_average_strength_"
     
