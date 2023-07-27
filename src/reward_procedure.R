@@ -3,7 +3,7 @@
 # the script returns a csv with all the information to proceed with payment
 library(tidyverse)
 
-temp_files <- list.files(path = here::here("data", "exp_3", "drive-20230612"), pattern = ".json", full.names = T)
+temp_files <- list.files(path = here::here("data", "exp_3", "drive-20230627"), pattern = ".json", full.names = T)
 network_stats <- "average_strength"
 sim_img_pattern <- "../../img/grid_stimuli/grid_6_average_strength_"
 
@@ -63,16 +63,43 @@ for (pp in seq_len(file_idx)) {
   print(paste0("######## subject: ", pp, " #######"))
   subject_temp <- jsonlite::parse_json(jsonlite::read_json(temp_files[[pp]]), simplifyVector = T)
   reward_res[[pp]] <- check_reward(subject_temp)
+  
 
   if (reward_res[[pp]]$choice_bonus == TRUE) {
     reward_res[[pp]]$food_to_ship <- get_random_food(subject_temp)
   }
+  #calculate hourly payment
+  reward_res[[pp]]$payment_amount <- subject_temp %>%
+    filter(trial_type == "fullscreen") %>%
+    select(time_elapsed) %>%
+    mutate(diff_row = lead(time_elapsed) - time_elapsed) %>%
+    head(1) %>%
+    select(diff_row) %>%
+    mutate(payment_amount = (diff_row / 3600000) * 15) %>%
+    select(payment_amount) %>% as.numeric()
+  
 }
 
 reward_res <- do.call(rbind, reward_res)
-reward_res$number <- 1:nrow(reward_res)
+reward_res$subject_number <- 1:nrow(reward_res)
 reward_res$paidYN <- "no"
+reward_res$payment_amount <- if_else(reward_res$choice_bonus == T, reward_res$payment_amount + 3, reward_res$payment_amount )
+reward_res$payment_date <- Sys.Date()
 #do not just save over copies
 if (!file.exists(here::here("data", "simnet_payment_log.csv"))) {
   write_csv(reward_res, "data/simnet_payment_log.csv")
-  }
+  # write_csv(reward_res, "data/simnet_payment_log_p2.csv")
+  
+} else
+{
+  temp_res <- readr::read_csv("data/simnet_payment_log.csv")
+  subject_paid <- temp_res$subject_id[temp_res$paidYN == "yes"]
+}
+reward_res$paidYN <- if_else(reward_res$subject_id %in% subject_paid, "yes", "no")
+reward_res <- reward_res %>% arrange(paidYN)
+
+# write_csv(reward_res, "data/simnet_payment_log_p2.csv")
+
+
+
+

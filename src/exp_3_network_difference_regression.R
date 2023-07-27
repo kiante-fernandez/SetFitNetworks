@@ -161,7 +161,7 @@ dput(as.numeric(na.omit(p_values)))
 exlusions <- function(df) {
   # function for data exclusions following the preregistration specs
   temp <- df %>%
-    filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
+    # filter(!subject_id %in% as.numeric(na.omit(p_values))) %>%
     group_by(subject_id) %>% # response times (IQR exclusion)
     mutate(
       Q1 = quantile(rt, .25),
@@ -180,7 +180,7 @@ res_netstats <- vector(mode = "list", length = length(net_stats))
 res_netstats2 <- vector(mode = "list", length = length(net_stats))
 
 # res_model_comparisons <- vector(mode = "list", length = length(net_stats))
-net_idx  = 4
+net_idx  = 8
 for (net_idx in 1:length(net_stats)) {
   # for each network statistic...
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
@@ -188,8 +188,8 @@ for (net_idx in 1:length(net_stats)) {
   df$left_net1 <-   select(df,contains(net_stats[[net_idx]]))[[1]]
   df$right_net1 <-   select(df,contains(net_stats[[net_idx]]))[[2]]
   #controling for edge density
-  df$left_net2 <-   select(df,contains(net_stats[[6]]))[[1]] 
-  df$right_net2 <-   select(df,contains(net_stats[[6]]))[[2]]
+  df$left_net2 <-   select(df,contains(net_stats[[9]]))[[1]] 
+  df$right_net2 <-   select(df,contains(net_stats[[9]]))[[2]]
   
   #### data analysis (regressions)
   print(paste0("############### CHOICE ###############"))
@@ -199,7 +199,7 @@ for (net_idx in 1:length(net_stats)) {
   df_temp = create_dataset(df, type = "choice")
 
   models_choice <- glmer( choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) + zleft_sim + zright_sim+
-                           (zleft_rating+ zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+                           (zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
   summary(models_choice)
   models_choice <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) + zleft_sim + zright_sim +
                          (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), 
@@ -326,4 +326,7 @@ for (net_idx in 1:length(net_stats)) {
 
 # bayestestR::sexit(models_choice)
 # bayestestR::sexit(models_rt)
+
+
+plot(ggeffects::ggpredict(models_choice, terms = c("zleft_net2[all]" ,"zleft_rating[-1, 0, 1]")))
 
