@@ -26,6 +26,7 @@
 source(here::here("src", "organize_group_data_v2.R"))
 # df <- organize_group_data(experiment = 2, net_stat = "modularity")
 df <- organize_group_data(experiment = 1)
+# df <- organize_group_data(experiment = 3)
 
 net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
 
@@ -1041,31 +1042,44 @@ library(ggeffects)
 library(rstantools)
 pca1_exp_1_fit_choice03 <- readRDS("~/Documents/SetFitNetworks/fits/pca1_exp_1_fit_choice03.rds")
 pca1_exp_2_fit_choice03 <- readRDS("~/Documents/SetFitNetworks/fits/pca1_exp_2_fit_choice03.rds")
+pca1_exp_3_fit_choice03 <- readRDS("~/Documents/SetFitNetworks/fits/pca1_exp_3_fit_choice03.rds")
 
 plot_model(pca1_exp_1_fit_choice03, type = "pred", terms = c("zleft_net1[-1,1]","zleft_net2[-1,1]", "zleft_rating [0]", "zleft_rating [0]"))
 plot(ggeffects::ggpredict(pca1_exp_1_fit_choice03, terms = c("zleft_net2[all]", "zleft_rating [0]", "zright_rating [0]")))
 plot(ggeffects::ggpredict(pca1_exp_2_fit_choice03, terms = c("zleft_net2[all]", "zleft_rating [0]", "zright_rating [0]")))
+plot(ggeffects::ggpredict(pca1_exp_3_fit_choice03, terms = c("zleft_net2[all]", "zleft_rating [0]", "zright_rating [0]")))
 
 plot(ggeffects::ggpredict(pca1_exp_1_fit_choice03, terms = c("zleft_net1[all]", "zleft_rating [0]", "zright_rating [0]")))
 plot(ggeffects::ggpredict(pca1_exp_2_fit_choice03, terms = c("zleft_net1[all]", "zleft_rating [0]", "zright_rating [0]")))
+plot(ggeffects::ggpredict(pca1_exp_3_fit_choice03, terms = c("zleft_net1[all]", "zleft_rating [0]", "zright_rating [0]")))
 
 
 plot_model(pca1_exp_1_fit_choice03, type = "pred", terms = c("zleft_net2[all]", "zleft_rating [0]", "zright_rating [0]"))
 plot_model(pca1_exp_1_fit_choice03, type = "pred", terms = c("zleft_net1[all]", "zleft_rating [0]", "zright_rating [0]"))
+
 # tes <- posterior_predict(pca1_exp_1_fit_choice03)
 
 plot_model(pca1_exp_2_fit_choice03, type = "pred", terms = c("zleft_rating [all]","zleft_net1[-1,1]","zleft_net2[-1,1]"))
+plot_model(pca1_exp_3_fit_choice03, type = "pred", terms = c("zleft_rating [all]","zleft_net1[-1,1]","zleft_net2[-1,1]"))
+
+plot_model(pca1_exp_3_fit_choice03, type = "pred", terms = c("zleft_rating [all]","zleft_net2[-2,0,2]"))
+plot_model(pca1_exp_3_fit_choice03, type = "pred", terms = c("zright_rating [all]","zright_net2[-2,0,2]"))
+
 
 test <- plot_models(pca1_exp_1_fit_choice03,
                     pca1_exp_2_fit_choice03,
+                    pca1_exp_3_fit_choice03,
                     transform = NULL,
                     show.values = TRUE,
                     show.p = FALSE,
-                    m.labels = c("Experiment one", "Experiment two"),
+                    m.labels = c("Experiment one", "Experiment two", "Experiment three"),
                     ci.lvl = 0.95)
 
 pd <- position_dodge(1)
 plt_data <- test$data
+plt_data <- plt_data[plt_data$term != "b_zleft_sim",]
+plt_data <- plt_data[plt_data$term != "b_zright_sim",]
+plt_data$term <- factor(plt_data$term)
 dput(levels(plt_data$term))
 levels(plt_data$term) <- c("right rating × PCA2", "right rating × PCA1", 
                            "left rating × PCA2", "left rating × PCA1", "right PCA2", 
@@ -1099,6 +1113,7 @@ plt_data %>%
 
 pca1_exp_1_fit_rt02 <- readRDS("~/Documents/SetFitNetworks/fits/pca1_exp_1_fit_rt02.rds")
 pca1_exp_2_fit_rt02 <- readRDS("~/Documents/SetFitNetworks/fits/pca1_exp_2_fit_rt02.rds")
+pca1_exp_3_fit_rt02 <- readRDS("~/Documents/SetFitNetworks/fits/pca1_exp_3_fit_rt02.rds")
 
 plot(ggeffects::ggpredict(pca1_exp_1_fit_rt02, terms = c("nd2[-2:2]", "vd [0]")))
 plot(ggeffects::ggpredict(pca1_exp_1_fit_rt02, terms = c("nd1[-2:2]", "vd [0]")))
@@ -1108,15 +1123,18 @@ ggeffects::ggpredict(pca1_exp_1_fit_rt02, terms = c("nd1[all]", "vd [0]"))
 
 test <- plot_models(pca1_exp_1_fit_rt02,
                     pca1_exp_2_fit_rt02,
+                    pca1_exp_3_fit_rt02,
                     transform = NULL,
                     show.values = TRUE,
                     show.p = FALSE,
-                    m.labels = c("Experiment one", "Experiment two"),
+                    m.labels = c("Experiment one", "Experiment two","Experiment three"),
                     ci.lvl = 0.95)
 
 pd <- position_dodge(1)
 plt_data <- test$data
 dput(levels(plt_data$term))
+plt_data <- plt_data[plt_data$term != "b_sd",]
+plt_data$term <- factor(plt_data$term)
 levels(plt_data$term) <- c("PCA2 Difference", "PCA1 Difference", 
                            "Overall Value", "Value Difference", "intercept")
 plt_data %>% 
