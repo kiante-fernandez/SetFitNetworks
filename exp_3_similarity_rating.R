@@ -273,11 +273,12 @@ summary(lm(responsenormalized ~ strength_res, data = res))
 compares <- res %>%
   group_by(stimulus) %>%
   summarise(
-    subgraph_mean = mean(responsenormalized),
-    se = sqrt(var(responsenormalized) / length(responsenormalized)),
-    subgraph_sd = sd(responsenormalized),
+    subgraph_mean = mean(response),
+    se = sqrt(var(response) / length(response)),
+    subgraph_sd = sd(response),
     # rating_mean = mean(ratings),
   )
+
 
 compares$mod <- mod_res[,1]
 compares$ed <- edge_dens[,1]
@@ -608,13 +609,13 @@ plot_subgraph <- function(n){
 }
 
 res %>%
-  dplyr::select(responsenormalized, ratings, subject_id, stimulus) %>%
+  dplyr::select(response, ratings, subject_id, stimulus) %>%
   group_by(stimulus) %>%
   summarise(
     rating_mean = mean(ratings),
     rating_se = sqrt(var(ratings) / length(ratings)),
-    sim_mean = mean(responsenormalized),
-    sim_se = sqrt(var(responsenormalized) / length(responsenormalized))
+    sim_mean = mean(response),
+    sim_se = sqrt(var(response) / length(response))
   ) %>%
   ggplot(aes(rating_mean, sim_mean)) +
   geom_point() +
