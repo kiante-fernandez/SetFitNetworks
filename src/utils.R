@@ -617,3 +617,17 @@ generate_table <- function(ms, type, net_stat, save = F) {
   }
   return(table_temp)
 }
+
+extract_edge_list <- function(g, filename = NULL) {
+  # Get edge list and weights
+  edge_list <- igraph::get.edgelist(g)
+  weights <- E(g)$weight
+  # Combine edge list with weights
+  edge_list_weights <- as.data.frame(cbind(edge_list, weights))
+  colnames(edge_list_weights) <- c("start_node", "end_node", "weight")
+  edge_list_weights$weight <- as.numeric(edge_list_weights$weight)
+  if (!is.null(filename)) {
+    write.csv(edge_list_weights, "edge_list.csv", row.names = FALSE)
+  }
+}
+
