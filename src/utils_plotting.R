@@ -22,7 +22,7 @@
 # 2023/01/09      Kianté  Fernandez                     coded up version one
 
 #TODO you need to make functions out of these plotting commands
-
+library(tidyverse)
 source(here::here("src", "organize_group_data_v2.R"))
 # df <- organize_group_data(experiment = 2, net_stat = "modularity")
 df <- organize_group_data(experiment = 1)
@@ -1074,7 +1074,8 @@ test <- plot_models(pca1_exp_1_fit_choice03,
                     show.p = FALSE,
                     m.labels = c("Experiment one", "Experiment two", "Experiment three"),
                     ci.lvl = 0.95)
-
+write.csv(test$data, here::here("data","internal_meta_analysis_choice.csv"), row.names=FALSE)
+     
 pd <- position_dodge(1)
 plt_data <- test$data
 plt_data <- plt_data[plt_data$term != "b_zleft_sim",]
@@ -1218,15 +1219,23 @@ poster_plot_data$study  <- relevel(poster_plot_data$study , ref = "2")
 poster_plot_data$study  <- relevel(poster_plot_data$study , ref = "3")
 poster_plot_data$study  <- relevel(poster_plot_data$study , ref = "2")
 
+midRound <- function(x, base){
+  base*round(x/base)
+}
+
 
 poster_plot_data %>%
   filter(subject_id != 235) %>% 
+  filter(subject_id != 228) %>% 
+  filter(subject_id != 375) %>% 
   group_by(subject_id) %>%
   mutate(
-    nd = left_net_weighted_transitivity - right_net_weighted_transitivity
+    # nd = left_net_weighted_transitivity - right_net_weighted_transitivity,
+    nd = left_net_pca2 - right_net_pca2
   ) %>%
   mutate(
-    binned_net_diff = as.numeric(cut_number(nd, 7)) - 4,
+    # binned_net_diff = as.numeric(cut_number(nd, 7)) - 4,
+    binned_net_diff = midRound(nd, 6)
   ) %>%
   group_by(binned_net_diff, study) %>%
   mutate(
@@ -1234,6 +1243,48 @@ poster_plot_data %>%
     m_left = mean(choice),
     se = sqrt(var(choice) / length(choice))
   ) %>%
+  ungroup() %>% 
+  ggplot(aes(x = binned_net_diff, y = m_left, fill = study, group = study)) +
+  geom_point(aes(fill = study, color = study, group = study, shape = study),size = 5)+
+  # geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se, color = experiment), size = 1.1) +
+  geom_ribbon(aes(ymin = m_left - se, ymax = m_left + se), alpha = .6)+
+  theme_classic() +
+  geom_line(aes(color = study),size = 1) +
+  geom_hline(yintercept = .5, linetype = "dashed", size = .25) +
+  geom_vline(xintercept = 0, linetype = "dashed", size = .25) +
+  scale_color_brewer(palette = "Set1") +
+  scale_fill_brewer(palette = "Set1") +
+  # scale_y_continuous(limits = c(0.25, .75)) +
+  labs(
+    y = "Probability of Choosing Left",
+    x = "Connectedness Difference (L-R)",
+  ) +
+  theme(text = element_text(size = 20),
+        legend.position = c(0.25, 0.85),
+        axis.text = element_text(face="bold"),
+        axis.title = element_text(face="bold"))
+
+midRound <- function(x, base){
+  base*round(x/base)
+}
+
+poster_plot_data %>%
+  filter(subject_id != 235) %>% 
+  filter(subject_id != 113) %>% 
+  group_by(subject_id) %>%
+  mutate(
+    vd = left_rating - right_rating
+  ) %>%
+  mutate(
+    # binned_net_diff = as.numeric(cut_number(vd, 9)) - 5,
+    binned_net_diff = midRound(vd, 70)
+  ) %>%
+  group_by(binned_net_diff, study) %>%
+  mutate(
+    n = n(),
+    m_left = mean(choice),
+    se = sqrt(var(choice) / length(choice))
+  ) %>% View
   ungroup() %>%
   ggplot(aes(x = binned_net_diff, y = m_left, fill = study, group = study)) +
   geom_point(aes(fill = study, color = study, group = study, shape = study),size = 5)+
@@ -1245,13 +1296,14 @@ poster_plot_data %>%
   geom_vline(xintercept = 0, linetype = "dashed", size = .25) +
   scale_color_brewer(palette = "Set1") +
   scale_fill_brewer(palette = "Set1") +
-  scale_y_continuous(limits = c(0.25, .75)) +
+  # scale_y_continuous(limits = c(0.15, .9)) +
   labs(
     y = "Probability of Choosing Left",
-    x = "Connectedness Difference (L-R)",
+    x = "Set-Value Difference (L-R)",
   ) +
   theme(text = element_text(size = 20),
         legend.position = c(0.25, 0.85),
         axis.text = element_text(face="bold"),
         axis.title = element_text(face="bold"))
+
 
