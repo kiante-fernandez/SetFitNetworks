@@ -1188,10 +1188,9 @@ ggplot(poster_plot_data, aes(st, subgraph_mean, group = study, color = study)) +
   scale_color_brewer(palette = "Set1")+
   scale_fill_brewer(palette = "Set1") 
 
-
-ISDN_poster_exp1 <- read_csv("data/ISDN_poster_exp1.csv")
-ISDN_poster_exp2 <- read_csv("data/ISDN_poster_exp2.csv")
-ISDN_poster_exp3 <- read_csv("data/ISDN_poster_exp3.csv")
+ISDN_poster_exp1 <- readr::read_csv("data/ISDN_poster_exp1.csv")
+ISDN_poster_exp2 <- readr::read_csv("data/ISDN_poster_exp2.csv")
+ISDN_poster_exp3 <- readr::read_csv("data/ISDN_poster_exp3.csv")
 
 ISDN_poster_exp1$subject_id <- ISDN_poster_exp1$subject_id + 100
 ISDN_poster_exp2$subject_id <- ISDN_poster_exp2$subject_id + 200
