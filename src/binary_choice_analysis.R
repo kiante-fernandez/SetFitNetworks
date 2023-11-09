@@ -1,4 +1,4 @@
-# binary_choice_analysis.R - 2AFC analysis of previous datasets 
+# binary_choice_analysis.R - 2AFC analysis of previous datasets
 # the reliablity and stability of the graph
 #
 # Copyright (C) 2023 Kianté Fernandez, <kiantefernan@gmail.com>
@@ -22,72 +22,74 @@
 # ====         ================                       ======================
 # 08/10/23      Kianté  Fernandez                       wrote code
 
-# Libraries
+# Load necessary libraries
 library(here)
-library(tidyverse) # Easily Install and Load the 'Tidyverse'
-library(purrr) # Functional Programming Tools
-library(lme4) # Linear Mixed-Effects Models using 'Eigen' and S4
-library(lmerTest) # Tests in Linear Mixed Effects Models
-library(patchwork) # The Composer of Plots
+library(tidyverse)
+library(purrr)
+library(lme4)
+library(lmerTest)
+library(patchwork)
 
-# library(brms) # Bayesian Regression Models using 'Stan'
+# Uncomment below if needed
+# library(brms)
 # library(cmdstanr)
 
-#load data
+# Load data
 Lee_Hare_2023_choice_data_exp2 <- read_csv("data/Lee_Hare_2023_OSF/Lee_Hare_2023_choice_data_exp2.csv")
 
-######
-# calculate a bunch of network measures to look at relationship to stuff
-
+# Source functions for network analysis
 source("exploratory_graph_analysis.R")
 source(here::here("src", "utils.R"))
 
+# Calculate network statistics
 net_degree <- calculate_net_stats(g)
 
-df <- Lee_Hare_2023_choice_data_exp2 %>% 
-  mutate(rt = rt*1000) %>%
-  rowwise() %>% 
-  mutate(name_left = net_degree$Name[net_degree$Image == item_number_left], 
-         name_right = net_degree$Name[net_degree$Image == item_number_right],
-         PCA1_left = net_degree$PCA1[net_degree$Image == item_number_left], 
-         PCA1_right = net_degree$PCA1[net_degree$Image == item_number_right],
-         PCA2_left = net_degree$PCA2[net_degree$Image == item_number_left], 
-         PCA2_right = net_degree$PCA2[net_degree$Image == item_number_right],
-         choice = if_else(choice == 1, 0, 1) #flip the choice to choose left rather than choose right
-         )
+# Prepare and mutate data
+df <- Lee_Hare_2023_choice_data_exp2 %>%
+  mutate(rt = rt * 1000) %>%
+  rowwise() %>%
+  mutate(
+    name_left = net_degree$Name[net_degree$Image == item_number_left],
+    name_right = net_degree$Name[net_degree$Image == item_number_right],
+    PCA1_left = net_degree$PCA1[net_degree$Image == item_number_left],
+    PCA1_right = net_degree$PCA1[net_degree$Image == item_number_right],
+    PCA2_left = net_degree$PCA2[net_degree$Image == item_number_left],
+    PCA2_right = net_degree$PCA2[net_degree$Image == item_number_right],
+    choice = if_else(choice == 1, 0, 1) # Reverse choice coding
+  )
 
-### check for response time exclusions (before or after choice?)
-rt_exclude_pct <- vector(mode = "numeric", length = length(unique(df$subject_id)))
-# subject_idx = 2
+# Response time exclusions
+rt_exclude_pct <- vector("numeric", length(unique(df$subject_id)))
 for (subject_idx in 1:length(unique(df$subject_id))) {
   temp_df <- df %>%
-    ungroup() %>% 
+    ungroup() %>%
     filter(subject_id == subject_idx) %>%
     mutate(
       Q1 = quantile(rt, .25),
       Q3 = quantile(rt, .75),
       IQR = IQR(rt)
-    ) %>% 
+    ) %>%
     filter(rt > (Q1 - 2 * IQR) & rt < (Q3 + 2 * IQR)) %>%
-    filter(!rt <= 250) %>% # response times cutoffs
-    filter(!rt >= 9000) %>%
+    filter(rt > 250 & rt < 9000) %>% # Apply response time cutoffs
     summarise(pct_excluded = (30 - n()) / 30)
-  
+
   rt_exclude_pct[[subject_idx]] <- temp_df$pct_excluded
-  
+
+  # Warning for high exclusion rates
   if (temp_df$pct_excluded > 0.40) {
-    print(paste0("######## subject: ", subject_idx, " #######"))
-    print(paste0("######## percent trials excluded: ", temp_df$pct_excluded, " #######"))
+    cat("######## subject:", subject_idx, "#######\n")
+    cat("######## percent trials excluded:", temp_df$pct_excluded, "#######\n")
   }
 }
 
+# Calculate mean exclusion percentage
 mean(rt_exclude_pct)
 
-exlusions <- function(df) {
-  # function for data exclusions following the preregistration specs
-  temp <- df %>%
-    filter(!subject_id %in% as.numeric(c(1,6,17,19,27,28,32,37,38,42,44,45,46,51,56,71,73,74,86,91,92))) %>%
-    group_by(subject_id) %>% # response times (IQR exclusion)
+# Function for data exclusions
+exclusions <- function(df) {
+  df %>%
+    filter(!subject_id %in% c(1, 6, 17, 19, 27, 28, 32, 37, 38, 42, 44, 45, 46, 51, 56, 71, 73, 74, 86, 91, 92)) %>%
+    group_by(subject_id) %>%
     mutate(
       Q1 = quantile(rt, .25),
       Q3 = quantile(rt, .75),
@@ -95,15 +97,14 @@ exlusions <- function(df) {
     ) %>%
     filter(rt > (Q1 - 2 * IQR) & rt < (Q3 + 2 * IQR)) %>%
     ungroup() %>%
-    filter(!rt <= 250) %>% # response times cutoffs
-    filter(!rt >= 9000)
-  return(temp)
+    filter(rt > 250 & rt < 9000) # Apply response time cutoffs
 }
 
-standardized = TRUE
+# Prepare data for model
+standardized <- TRUE
 
-for_model <- df %>% exlusions() %>% 
-  exlusions() %>%
+for_model <- df %>%
+  exclusions() %>%
   group_by(subject_id) %>%
   mutate(
     zleft_rating = scale(item_value_left, center = standardized, scale = standardized),
@@ -112,16 +113,30 @@ for_model <- df %>% exlusions() %>%
     zright_net1 = scale(PCA1_right, center = standardized, scale = standardized),
     zleft_net2 = scale(PCA2_left, center = standardized, scale = standardized),
     zright_net2 = scale(PCA2_right, center = standardized, scale = standardized),
+    nd1 = scale(abs(PCA1_left - PCA1_right), center = standardized, scale = standardized),
+    nd2 = scale(abs(PCA2_left - PCA2_right), center = standardized, scale = standardized),
+    vd = scale(abs(item_value_left - item_value_right), center = standardized, scale = standardized),
+    ov = scale(item_value_left + item_value_right, center = standardized, scale = standardized)
   ) %>%
   ungroup() %>%
-  select(subject_id, trial, choice, zleft_rating, zright_rating, zleft_net1, zright_net1, zleft_net2, zright_net2)
+  select(subject_id, trial, choice, rt, zleft_rating, zright_rating, zleft_net1, zright_net1, zleft_net2, zright_net2, vd, nd1, nd2, ov)
 
-models_choice <- glmer(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) + 
-                         (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id),
-                       data = for_model,  family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
+# Model for choice
+models_choice <- glmer(
+  choice ~ zleft_rating * (zleft_net1 + zleft_net2) + zright_rating * (zright_net1 + zright_net2) +
+    (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 + zleft_net2 + zright_net2 | subject_id),
+  data = for_model,
+  family = binomial(link = "logit"),
+  control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7))
+)
 
+# Model for response time
+models_rt <- lmer(
+  log(rt) ~ vd + ov + nd1 + nd2 + (vd + ov + nd1 + nd2 | subject_id),
+  data = for_model,
+  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
+)
+
+# Output model summaries
 summary(models_choice)
-report::report(models_choice)
-plot(ggeffects::ggpredict(models_choice, terms = c("zleft_rating[all]")))
-
-
+summary(models_rt)
