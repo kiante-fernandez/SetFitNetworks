@@ -36,9 +36,10 @@ if (!file.exists(here("data", "fernandez_rating_network_graph.RData"))) {
   # load the data
   fernandez_2022_rating1 <- readr::read_csv(here("data","fernandez_2022_rating_exp1.csv"), col_names = T, show_col_types = F)
   fernandez_2022_rating2 <- readr::read_csv(here("data","fernandez_2022_rating_exp2.csv"), col_names = T, show_col_types = F)
+  # fernandez_2022_rating3 <- readr::read_csv(here("data","fernandez_2022_rating_exp3.csv"), col_names = T, show_col_types = F)
   
   #take both sets of rating data from study one and two and combine them
-  fernandez_2022_rating_combineded <- rbind(fernandez_2022_rating1,fernandez_2022_rating2)
+  fernandez_2022_rating_combineded <- rbind(fernandez_2022_rating1,fernandez_2022_rating2,fernandez_2022_rating3)
   
   # number of observations
   n <- nrow(fernandez_2022_rating_combineded)

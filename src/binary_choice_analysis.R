@@ -36,6 +36,7 @@ library(patchwork)
 
 # Load data
 Lee_Hare_2023_choice_data_exp2 <- read_csv("data/Lee_Hare_2023_OSF/Lee_Hare_2023_choice_data_exp2.csv")
+Lee_Holyoak_2023A_choice_data_exp2_5 <- read_csv("data/lee_2021_exp2_5.csv")
 
 # Source functions for network analysis
 source("exploratory_graph_analysis.R")
@@ -43,6 +44,19 @@ source(here::here("src", "utils.R"))
 
 # Calculate network statistics
 net_degree <- calculate_net_stats(g)
+
+##%######################################################%##
+#                                                          #
+####               Lee, D. G., & Hare, T.               ####
+####  A. (2023). Value certainty and choice confidence  ####
+####          are multidimensional constructs           ####
+####            that guide decision-making.             ####
+####                Cognitive, Affective,               ####
+####                    & Behavioral                    ####
+####                   Neuroscience.                    ####
+####     https://doi.org/10.3758/s13415-022-01054-4     ####
+#                                                          #
+##%######################################################%##
 
 # Prepare and mutate data
 df <- Lee_Hare_2023_choice_data_exp2 %>%
@@ -140,3 +154,33 @@ models_rt <- lmer(
 # Output model summaries
 summary(models_choice)
 summary(models_rt)
+
+
+##%######################################################%##
+#                                                          #
+####      Lee, D. G., & Holyoak, K. J. Coherence       ####
+####          shifts in attribute evaluations.          ####
+####                  Decision, 8(4),                  ####
+####      257. https://doi.org/10.1037/dec0000151       ####
+#                                                          #
+##%######################################################%##
+
+# Source functions for network analysis
+# source("fernandez_rating_network.R") #load the other network
+
+# Calculate network statistics
+# net_degree <- calculate_net_stats(g)
+
+# Prepare and mutate data
+df2 <- Lee_Holyoak_2023A_choice_data_exp2_5 %>%
+  mutate(rt = rt * 1000) %>%
+  rowwise() %>%
+  mutate(
+    name_left = net_degree$Name[net_degree$Image == item_number_left],
+    name_right = net_degree$Name[net_degree$Image == item_number_right],
+    PCA1_left = net_degree$PCA1[net_degree$Image == item_number_left],
+    PCA1_right = net_degree$PCA1[net_degree$Image == item_number_right],
+    PCA2_left = net_degree$PCA2[net_degree$Image == item_number_left],
+    PCA2_right = net_degree$PCA2[net_degree$Image == item_number_right]
+  )
+
