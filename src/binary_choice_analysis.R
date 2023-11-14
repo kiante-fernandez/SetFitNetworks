@@ -35,15 +35,15 @@ library(patchwork)
 # library(cmdstanr)
 
 # Load data
-Lee_Hare_2023_choice_data_exp2 <- read_csv("data/Lee_Hare_2023_OSF/Lee_Hare_2023_choice_data_exp2.csv")
+# Lee_Hare_2023_choice_data_exp2 <- read_csv("data/Lee_Hare_2023_OSF/Lee_Hare_2023_choice_data_exp2.csv")
 Lee_Holyoak_2023A_choice_data_exp2_5 <- read_csv("data/lee_2021_exp2_5.csv")
 
 # Source functions for network analysis
-source("exploratory_graph_analysis.R")
+# source("exploratory_graph_analysis.R")
 source(here::here("src", "utils.R"))
 
 # Calculate network statistics
-net_degree <- calculate_net_stats(g)
+# net_degree <- calculate_net_stats(g)
 
 ##%######################################################%##
 #                                                          #
@@ -102,7 +102,7 @@ mean(rt_exclude_pct)
 # Function for data exclusions
 exclusions <- function(df) {
   df %>%
-    filter(!subject_id %in% c(1, 6, 17, 19, 27, 28, 32, 37, 38, 42, 44, 45, 46, 51, 56, 71, 73, 74, 86, 91, 92)) %>%
+    # filter(!subject_id %in% c(1, 6, 17, 19, 27, 28, 32, 37, 38, 42, 44, 45, 46, 51, 56, 71, 73, 74, 86, 91, 92)) %>%
     group_by(subject_id) %>%
     mutate(
       Q1 = quantile(rt, .25),
@@ -166,21 +166,78 @@ summary(models_rt)
 ##%######################################################%##
 
 # Source functions for network analysis
-# source("fernandez_rating_network.R") #load the other network
+source("fernandez_rating_network.R") #load the other network
 
 # Calculate network statistics
-# net_degree <- calculate_net_stats(g)
+net_degree <- calculate_net_stats(g)
 
 # Prepare and mutate data
 df2 <- Lee_Holyoak_2023A_choice_data_exp2_5 %>%
   mutate(rt = rt * 1000) %>%
   rowwise() %>%
   mutate(
-    name_left = net_degree$Name[net_degree$Image == item_number_left],
-    name_right = net_degree$Name[net_degree$Image == item_number_right],
-    PCA1_left = net_degree$PCA1[net_degree$Image == item_number_left],
-    PCA1_right = net_degree$PCA1[net_degree$Image == item_number_right],
-    PCA2_left = net_degree$PCA2[net_degree$Image == item_number_left],
-    PCA2_right = net_degree$PCA2[net_degree$Image == item_number_right]
+    name_left = net_degree$Name[net_degree$Image == item_name_left],
+    name_right = net_degree$Name[net_degree$Image == item_name_right],
+    PCA1_left = net_degree$PCA1[net_degree$Image == item_name_left],
+    PCA1_right = net_degree$PCA1[net_degree$Image == item_name_right],
+    PCA2_left = net_degree$PCA2[net_degree$Image == item_name_left],
+    PCA2_right = net_degree$PCA2[net_degree$Image == item_name_right],
+    weighted_transitivity_left = net_degree$weighted_transitivity[net_degree$Image == item_name_left],
+    weighted_transitivity_right = net_degree$weighted_transitivity[net_degree$Image == item_name_right],
+    degree_left = net_degree$degree[net_degree$Image == item_name_left],
+    degree_right = net_degree$degree[net_degree$Image == item_name_right],
+    strength_left = net_degree$strength[net_degree$Image == item_name_left],
+    strength_right = net_degree$strength[net_degree$Image == item_name_right],
+    closeness_left = net_degree$closeness[net_degree$Image == item_name_left],
+    closeness_right = net_degree$closeness[net_degree$Image == item_name_right],
+    choice = if_else(response == 1, 0, 1) # Reverse choice coding
   )
+
+for_model <- df2 %>%
+  exclusions() %>%
+  group_by(subject_id) %>%
+  mutate(
+    zleft_rating = scale(item_value_left, center = standardized, scale = standardized),
+    zright_rating = scale(item_value_right, center = standardized, scale = standardized),
+    zleft_net1 = scale(weighted_transitivity_left, center = standardized, scale = standardized),
+    zright_net1 = scale(weighted_transitivity_right, center = standardized, scale = standardized),
+    zleft_net2 = scale(strength_left, center = standardized, scale = standardized),
+    zright_net2 = scale(strength_right, center = standardized, scale = standardized),
+    nd1 = scale(abs(strength_left - strength_right), center = standardized, scale = standardized),
+    nd2 = scale(abs(weighted_transitivity_left - weighted_transitivity_right), center = standardized, scale = standardized),
+    vd = scale(abs(item_value_left - item_value_right), center = standardized, scale = standardized),
+    ov = scale(item_value_left + item_value_right, center = standardized, scale = standardized)
+  ) %>%
+  ungroup() %>%
+  select(experiment, subject_id, choice, rt, zleft_rating, zright_rating, zleft_net1, zright_net1, zleft_net2, zright_net2, vd, nd1, nd2, ov, )
+
+# Model for choice
+models_choice <- glmer(
+  choice ~ zleft_rating * (zleft_net1 + zleft_net2) + zright_rating * (zright_net1 + zright_net2) +
+    (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 + zleft_net2 + zright_net2 | subject_id),
+  data = for_model,
+  family = binomial(link = "logit"),
+  control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7))
+)
+
+# Model for response time
+models_rt <- lmer(
+  log(rt) ~ vd + ov + nd1 + nd2 + (vd + ov + nd1 + nd2 | subject_id),
+  data = for_model,
+  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
+)
+
+# Output model summaries
+summary(models_choice)
+summary(models_rt)
+
+# plot(ggeffects::ggpredict(models_choice, terms = c("")))
+# plot(ggeffects::ggpredict(models_rt, terms = c("nd1")))
+#effect of:
+
+#RT:
+#degree
+
+
+
 

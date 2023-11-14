@@ -49,7 +49,7 @@ if (!file.exists(here("data", "fernandez_rating_network_graph.RData"))) {
   
   # run community detection procedure
   ega_res <- EGAnet::bootEGA(fernandez_2022_rating_combineded,
-                             iter = 1000,
+                             iter = 3000,
                              n = n,
                              model = "glasso",
                              algorithm = "walktrap",
