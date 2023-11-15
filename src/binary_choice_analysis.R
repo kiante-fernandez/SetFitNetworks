@@ -30,20 +30,25 @@ library(lme4)
 library(lmerTest)
 library(patchwork)
 
+library(sjPlot)
+library(magrittr)
+library(ggeffects)
+library(rstantools)
+
 # Uncomment below if needed
-# library(brms)
-# library(cmdstanr)
+library(brms)
+library(cmdstanr)
 
 # Load data
-# Lee_Hare_2023_choice_data_exp2 <- read_csv("data/Lee_Hare_2023_OSF/Lee_Hare_2023_choice_data_exp2.csv")
-Lee_Holyoak_2023A_choice_data_exp2_5 <- read_csv("data/lee_2021_exp2_5.csv")
+Lee_Hare_2023_choice_data_exp2 <- read_csv("data/Lee_Hare_2023_OSF/Lee_Hare_2023_choice_data_exp2.csv")
+Lee_Holyoak_2021_choice_data_exp2_5 <- read_csv("data/lee_2021_exp2_5.csv")
 
 # Source functions for network analysis
-# source("exploratory_graph_analysis.R")
+source("exploratory_graph_analysis.R")
 source(here::here("src", "utils.R"))
 
 # Calculate network statistics
-# net_degree <- calculate_net_stats(g)
+net_degree <- calculate_net_stats(g)
 
 ##%######################################################%##
 #                                                          #
@@ -73,31 +78,31 @@ df <- Lee_Hare_2023_choice_data_exp2 %>%
   )
 
 # Response time exclusions
-rt_exclude_pct <- vector("numeric", length(unique(df$subject_id)))
-for (subject_idx in 1:length(unique(df$subject_id))) {
-  temp_df <- df %>%
-    ungroup() %>%
-    filter(subject_id == subject_idx) %>%
-    mutate(
-      Q1 = quantile(rt, .25),
-      Q3 = quantile(rt, .75),
-      IQR = IQR(rt)
-    ) %>%
-    filter(rt > (Q1 - 2 * IQR) & rt < (Q3 + 2 * IQR)) %>%
-    filter(rt > 250 & rt < 9000) %>% # Apply response time cutoffs
-    summarise(pct_excluded = (30 - n()) / 30)
-
-  rt_exclude_pct[[subject_idx]] <- temp_df$pct_excluded
-
-  # Warning for high exclusion rates
-  if (temp_df$pct_excluded > 0.40) {
-    cat("######## subject:", subject_idx, "#######\n")
-    cat("######## percent trials excluded:", temp_df$pct_excluded, "#######\n")
-  }
-}
+# rt_exclude_pct <- vector("numeric", length(unique(df$subject_id)))
+# for (subject_idx in 1:length(unique(df$subject_id))) {
+#   temp_df <- df %>%
+#     ungroup() %>%
+#     filter(subject_id == subject_idx) %>%
+#     mutate(
+#       Q1 = quantile(rt, .25),
+#       Q3 = quantile(rt, .75),
+#       IQR = IQR(rt)
+#     ) %>%
+#     filter(rt > (Q1 - 2 * IQR) & rt < (Q3 + 2 * IQR)) %>%
+#     filter(rt > 250 & rt < 9000) %>% # Apply response time cutoffs
+#     summarise(pct_excluded = (30 - n()) / 30)
+# 
+#   rt_exclude_pct[[subject_idx]] <- temp_df$pct_excluded
+# 
+#   # Warning for high exclusion rates
+#   if (temp_df$pct_excluded > 0.40) {
+#     cat("######## subject:", subject_idx, "#######\n")
+#     cat("######## percent trials excluded:", temp_df$pct_excluded, "#######\n")
+#   }
+# }
 
 # Calculate mean exclusion percentage
-mean(rt_exclude_pct)
+# mean(rt_exclude_pct)
 
 # Function for data exclusions
 exclusions <- function(df) {
@@ -136,25 +141,34 @@ for_model <- df %>%
   select(subject_id, trial, choice, rt, zleft_rating, zright_rating, zleft_net1, zright_net1, zleft_net2, zright_net2, vd, nd1, nd2, ov)
 
 # Model for choice
-models_choice <- glmer(
-  choice ~ zleft_rating * (zleft_net1 + zleft_net2) + zright_rating * (zright_net1 + zright_net2) +
-    (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 + zleft_net2 + zright_net2 | subject_id),
-  data = for_model,
-  family = binomial(link = "logit"),
-  control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7))
-)
+# models_choice <- glmer(
+#   choice ~ zleft_rating * (zleft_net1 + zleft_net2) + zright_rating * (zright_net1 + zright_net2) +
+#     (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 + zleft_net2 + zright_net2 | subject_id),
+#   data = for_model,
+#   family = binomial(link = "logit"),
+#   control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7))
+# )
+# # Model for response time
+# models_rt <- lmer(
+#   log(rt) ~ vd + ov + nd1 + nd2 + (vd + ov + nd1 + nd2 | subject_id),
+#   data = for_model,
+#   control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
+# )
 
-# Model for response time
-models_rt <- lmer(
-  log(rt) ~ vd + ov + nd1 + nd2 + (vd + ov + nd1 + nd2 | subject_id),
-  data = for_model,
-  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
-)
+models_choice1 <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) +
+                       (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), 
+                     data = for_model, family = "bernoulli", iter = 10000, 
+                     chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
+                     file = here::here("fits", paste0("PCA", "_Lee_Hare_2023_choice_data_exp2_fit_choice03")))
+models_rt1 <- brm(log(rt) ~ vd + ov + nd1 + nd2 +
+                   (vd + ov + nd1 + nd2 | subject_id), 
+                 data = for_model, iter = 10000, 
+                 chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
+                 file = here::here("fits", paste0("PCA", "_Lee_Hare_2023_choice_data_exp2_fit_rt02")))
 
 # Output model summaries
-summary(models_choice)
-summary(models_rt)
-
+summary(models_choice1)
+summary(models_rt1)
 
 ##%######################################################%##
 #                                                          #
@@ -165,14 +179,31 @@ summary(models_rt)
 #                                                          #
 ##%######################################################%##
 
-# Source functions for network analysis
-source("fernandez_rating_network.R") #load the other network
 
 # Calculate network statistics
+
+dat_pca1 <- net_degree[,c("degree","strength","eigen","weighted_transitivity","closeness","betweenness")]
+rownames(dat_pca1) <- net_degree$Name
+pca_res <- prcomp(dat_pca1, center = TRUE, scale. = TRUE)
+
+# Source functions for network new association network
+source("fernandez_rating_network.R") #load the other network
+
 net_degree <- calculate_net_stats(g)
+dat_pca2 <- net_degree[,c("degree","strength","eigen","weighted_transitivity","closeness","betweenness")]
+#do projection
+project.b = predict(pca_res, dat_pca2)
+#replace the scores with the projection scores. 
+# net_degree$PCA1 <-  pca_res$x[,1] * -1 #change the scale w/ linear transformation
+net_degree$PCA1 <-  project.b[,1]
+net_degree$PCA2 <- project.b[,2]
+net_degree$PCA3 <- project.b[,3]
+net_degree$PCA4 <-  project.b[,4]
+net_degree$PCA5 <- project.b[,5]
+net_degree$PCA6 <- project.b[,6]
 
 # Prepare and mutate data
-df2 <- Lee_Holyoak_2023A_choice_data_exp2_5 %>%
+df2 <- Lee_Holyoak_2021_choice_data_exp2_5 %>%
   mutate(rt = rt * 1000) %>%
   rowwise() %>%
   mutate(
@@ -199,12 +230,12 @@ for_model <- df2 %>%
   mutate(
     zleft_rating = scale(item_value_left, center = standardized, scale = standardized),
     zright_rating = scale(item_value_right, center = standardized, scale = standardized),
-    zleft_net1 = scale(weighted_transitivity_left, center = standardized, scale = standardized),
-    zright_net1 = scale(weighted_transitivity_right, center = standardized, scale = standardized),
-    zleft_net2 = scale(strength_left, center = standardized, scale = standardized),
-    zright_net2 = scale(strength_right, center = standardized, scale = standardized),
-    nd1 = scale(abs(strength_left - strength_right), center = standardized, scale = standardized),
-    nd2 = scale(abs(weighted_transitivity_left - weighted_transitivity_right), center = standardized, scale = standardized),
+    zleft_net1 = scale(PCA1_left, center = standardized, scale = standardized),
+    zright_net1 = scale(PCA1_right, center = standardized, scale = standardized),
+    zleft_net2 = scale(PCA2_left, center = standardized, scale = standardized),
+    zright_net2 = scale(PCA2_right, center = standardized, scale = standardized),
+    nd1 = scale(abs(PCA1_left - PCA1_right), center = standardized, scale = standardized),
+    nd2 = scale(abs(PCA2_left - PCA2_right), center = standardized, scale = standardized),
     vd = scale(abs(item_value_left - item_value_right), center = standardized, scale = standardized),
     ov = scale(item_value_left + item_value_right, center = standardized, scale = standardized)
   ) %>%
@@ -212,32 +243,124 @@ for_model <- df2 %>%
   select(experiment, subject_id, choice, rt, zleft_rating, zright_rating, zleft_net1, zright_net1, zleft_net2, zright_net2, vd, nd1, nd2, ov, )
 
 # Model for choice
-models_choice <- glmer(
-  choice ~ zleft_rating * (zleft_net1 + zleft_net2) + zright_rating * (zright_net1 + zright_net2) +
-    (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 + zleft_net2 + zright_net2 | subject_id),
-  data = for_model,
-  family = binomial(link = "logit"),
-  control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7))
-)
-
+# models_choice <- glmer(
+#   choice ~ zleft_rating * (zleft_net1 + zleft_net2) + zright_rating * (zright_net1 + zright_net2) +
+#     (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 + zleft_net2 + zright_net2 | subject_id),
+#   data = for_model,
+#   family = binomial(link = "logit"),
+#   control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7))
+# )
+models_choice2 <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) +
+                       (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), 
+                     data = for_model, family = "bernoulli", iter = 10000, 
+                     chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
+                     file = here::here("fits", paste0("PCA", "_Lee_Holyoak_2021_choice_data_exp2_5_fit_choice03")))
+models_rt2 <- brm(log(rt) ~ vd + ov + nd1 + nd2 +
+                   (vd + ov + nd1 + nd2 | subject_id), 
+                 data = for_model, iter = 10000, 
+                 chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
+                 file = here::here("fits", paste0("PCA", "_Lee_Holyoak_2021_choice_data_exp2_5_fit_rt02")))
 # Model for response time
-models_rt <- lmer(
-  log(rt) ~ vd + ov + nd1 + nd2 + (vd + ov + nd1 + nd2 | subject_id),
-  data = for_model,
-  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
-)
+# models_rt <- lmer(
+#   log(rt) ~ vd + ov + nd1 + nd2 + (vd + ov + nd1 + nd2 | subject_id),
+#   data = for_model,
+#   control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
+# )
 
 # Output model summaries
-summary(models_choice)
-summary(models_rt)
+# summary(models_choice2)
+# summary(models_rt2)
 
-# plot(ggeffects::ggpredict(models_choice, terms = c("")))
-# plot(ggeffects::ggpredict(models_rt, terms = c("nd1")))
-#effect of:
+pca_Lee_Hare_2023_fit_choice03 <- readRDS("~/Documents/SetFitNetworks/fits/PCA_Lee_Hare_2023_choice_data_exp2_fit_choice03.rds")
+pca_Lee_Holyoak_2021_fit_choice03 <- readRDS("~/Documents/SetFitNetworks/fits/PCA_Lee_Holyoak_2021_choice_data_exp2_5_fit_choice03.rds")
 
-#RT:
-#degree
+test <- plot_models(pca_Lee_Hare_2023_fit_choice03,
+                    pca_Lee_Holyoak_2021_fit_choice03,
+                    transform = NULL,
+                    show.values = TRUE,
+                    show.p = FALSE,
+                    m.labels = c("Lee & Hare 2023", "Lee & Holyoak 2021"),
+                    ci.lvl = 0.95)
+# write.csv(test$data, here::here("data","internal_meta_analysis_choice.csv"), row.names=FALSE)
+
+pd <- position_dodge(1)
+plt_data <- test$data
+plt_data$term <- factor(plt_data$term)
+dput(levels(plt_data$term))
+levels(plt_data$term) <- c("right rating × PCA2", "right rating × PCA1", 
+                           "left rating × PCA2", "left rating × PCA1", "right PCA2", 
+                           "right PCA1", "right liking rating", "left PCA2", "left PCA1", 
+                           "left liking rating", "intercept")
+plt_data %>% 
+  dplyr::filter(term != "intercept") %>% 
+  dplyr::mutate(estimate =  round(estimate, 2),
+                conf.low = round(conf.low, 2),
+                conf.high = round(conf.high, 2)) %>% 
+  ggplot(aes(y = forcats::fct_reorder(term, estimate), color = group)) +
+  theme_classic()+
+  geom_point(aes(x=estimate), shape=15, size=2,position = pd) +
+  geom_linerange(aes(xmin=conf.low, xmax=conf.high), position = pd, size=.7)+
+  geom_vline(xintercept = 0, linetype = "dashed", linewidth = .4)+
+  scale_color_brewer(palette = "Set2")+
+  labs(
+    y = "terms",
+    x = "estimate",
+    color = ""
+  )+
+  theme(axis.text = element_text(face="bold"),
+        text = element_text(size = 15),
+        axis.title = element_text(face="bold")
+  )+
+  geom_text(aes( label = paste0(estimate, " [", conf.low,",",conf.high, "]"), 
+                 x = estimate, y = term, group = group, color = group), 
+            position = pd, vjust = -0.7,size=3,
+            show.legend = FALSE, check_overlap = FALSE)
+
+pca_Lee_Hare_2023_fit_rt02 <- readRDS("~/Documents/SetFitNetworks/fits/PCA_Lee_Hare_2023_choice_data_exp2_fit_rt02.rds")
+pca_Lee_Holyoak_2021_fit_rt2 <- readRDS("~/Documents/SetFitNetworks/fits/PCA_Lee_Holyoak_2021_choice_data_exp2_5_fit_rt02.rds")
+
+test <- plot_models(pca_Lee_Hare_2023_fit_rt02,
+                    pca_Lee_Holyoak_2021_fit_rt2,
+                    transform = NULL,
+                    show.values = TRUE,
+                    show.p = FALSE,
+                    m.labels = c("Lee & Hare 2023", "Lee & Holyoak 2021"),
+                    ci.lvl = 0.95)
+
+pd <- position_dodge(1)
+plt_data <- test$data
+dput(levels(plt_data$term))
+plt_data$term <- factor(plt_data$term)
+levels(plt_data$term) <- c("PCA2 Difference", "PCA1 Difference", 
+                           "Overall Value", "Value Difference", "intercept")
+plt_data %>% 
+  dplyr::filter(term != "intercept") %>% 
+  dplyr::mutate(estimate =  round(estimate, 2),
+                conf.low = round(conf.low, 2),
+                conf.high = round(conf.high, 2)) %>% 
+  ggplot(aes(y = forcats::fct_reorder(term, estimate), color = group)) +
+  theme_classic()+
+  geom_point(aes(x=estimate), shape=15, size=2,position = pd) +
+  geom_linerange(aes(xmin=conf.low, xmax=conf.high), position = pd, size=.7)+
+  geom_vline(xintercept = 0, linetype = "dashed", linewidth = .4)+
+  scale_color_brewer(palette = "Set2")+
+  labs(
+    y = "terms",
+    x = "estimate",
+    color = ""
+  )+
+  theme(axis.text = element_text(face="bold"),
+        text = element_text(size = 15),
+        axis.title = element_text(face="bold")
+  )+
+  geom_text(aes( label = paste0(estimate, " [", conf.low,",",conf.high, "]"), 
+                 x = estimate, y = term, group = group, color = group), 
+            position = pd, vjust = -0.7,size=3,
+            show.legend = FALSE, check_overlap = FALSE)
 
 
-
+bayestestR::sexit(pca_Lee_Hare_2023_fit_choice03)
+bayestestR::sexit(pca_Lee_Holyoak_2021_fit_choice03)
+bayestestR::sexit(pca_Lee_Hare_2023_fit_rt02)
+bayestestR::sexit(pca_Lee_Holyoak_2021_fit_rt2)
 
