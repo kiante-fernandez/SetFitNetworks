@@ -21,6 +21,7 @@
 # Date            Programmers                         Descriptions of Change
 # ====         ================                       ======================
 # 08/10/23      Kianté  Fernandez                       wrote code
+# 08/12/06      Kianté  Fernandez                       added interaction
 
 # Load necessary libraries
 library(here)
@@ -33,11 +34,11 @@ library(patchwork)
 library(sjPlot)
 library(magrittr)
 library(ggeffects)
-library(rstantools)
 
 # Uncomment below if needed
-library(brms)
-library(cmdstanr)
+# library(brms)
+# library(rstantools)
+# library(cmdstanr)
 
 # Load data
 
@@ -61,7 +62,7 @@ set_exp1$study <- 1
 set_exp2$study <- 2
 set_exp3$study <- 3
 
-cols_select <- c("study","left", "right", "subject_id", "rt", "choice", "network_statistic", 
+cols_select <- c("study","left", "right", "subject_id", "rt", "choice",
                  "left_rating", "right_rating","left_net_pca1", "right_net_pca1", "left_net_pca2", "right_net_pca2" )
 
 set_df <- rbind(set_exp1[,cols_select], set_exp2[,cols_select], set_exp3[,cols_select])
@@ -95,10 +96,10 @@ df <- Lee_Hare_2023_choice_data_exp2 %>%
   mutate(
     name_left = net_degree$Name[net_degree$Image == item_number_left],
     name_right = net_degree$Name[net_degree$Image == item_number_right],
-    PCA1_left = net_degree$PCA1[net_degree$Image == item_number_left],
-    PCA1_right = net_degree$PCA1[net_degree$Image == item_number_right],
-    PCA2_left = net_degree$PCA2[net_degree$Image == item_number_left],
-    PCA2_right = net_degree$PCA2[net_degree$Image == item_number_right],
+    left_net_pca1 = net_degree$PCA1[net_degree$Image == item_number_left],
+    right_net_pca1 = net_degree$PCA1[net_degree$Image == item_number_right],
+    left_net_pca2 = net_degree$PCA2[net_degree$Image == item_number_left],
+    right_net_pca2 = net_degree$PCA2[net_degree$Image == item_number_right],
     choice = if_else(choice == 1, 0, 1) # Reverse choice coding
   )
 
