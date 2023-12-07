@@ -36,9 +36,9 @@ library(magrittr)
 library(ggeffects)
 
 # Uncomment below if needed
-# library(brms)
-# library(rstantools)
-# library(cmdstanr)
+library(brms)
+library(rstantools)
+library(cmdstanr)
 
 # Load data
 
@@ -68,7 +68,9 @@ cols_select <- c("study","left", "right", "subject_id", "rt", "choice",
 set_df <- rbind(set_exp1[,cols_select], set_exp2[,cols_select], set_exp3[,cols_select])
 set_df$choice_type = "set"
 
-
+set_df <- set_df %>% select(subject_id, rt, choice, choice_type, left_rating, right_rating,
+                            left_net_pca1, right_net_pca1, 
+                            left_net_pca2, right_net_pca2)
 # Source functions for network analysis
 source("exploratory_graph_analysis.R")
 source(here::here("src", "utils.R"))
@@ -90,7 +92,7 @@ net_degree <- calculate_net_stats(g)
 ##%######################################################%##
 
 # Prepare and mutate data
-df <- Lee_Hare_2023_choice_data_exp2 %>%
+binary_df <- Lee_Hare_2023_choice_data_exp2 %>%
   mutate(rt = rt * 1000) %>%
   rowwise() %>%
   mutate(
@@ -100,9 +102,15 @@ df <- Lee_Hare_2023_choice_data_exp2 %>%
     right_net_pca1 = net_degree$PCA1[net_degree$Image == item_number_right],
     left_net_pca2 = net_degree$PCA2[net_degree$Image == item_number_left],
     right_net_pca2 = net_degree$PCA2[net_degree$Image == item_number_right],
-    choice = if_else(choice == 1, 0, 1) # Reverse choice coding
-  )
+    choice = if_else(choice == 1, 0, 1), # Reverse choice coding
+    left_rating = item_value_left,
+    right_rating= item_value_right
+  ) %>% 
+  select(subject_id, rt, choice, choice_type, left_rating, right_rating,
+         left_net_pca1, right_net_pca1, 
+         left_net_pca2, right_net_pca2)
 
+full_df <- rbind(binary_df, set_df)
 # Response time exclusions
 # rt_exclude_pct <- vector("numeric", length(unique(df$subject_id)))
 # for (subject_idx in 1:length(unique(df$subject_id))) {
@@ -148,23 +156,24 @@ exclusions <- function(df) {
 # Prepare data for model
 standardized <- TRUE
 
-for_model <- df %>%
+full_df$choice_type <- factor(full_df$choice_type)
+for_model <- full_df %>%
   exclusions() %>%
   group_by(subject_id) %>%
   mutate(
-    zleft_rating = scale(item_value_left, center = standardized, scale = standardized),
-    zright_rating = scale(item_value_right, center = standardized, scale = standardized),
-    zleft_net1 = scale(PCA1_left, center = standardized, scale = standardized),
-    zright_net1 = scale(PCA1_right, center = standardized, scale = standardized),
-    zleft_net2 = scale(PCA2_left, center = standardized, scale = standardized),
-    zright_net2 = scale(PCA2_right, center = standardized, scale = standardized),
-    nd1 = scale(abs(PCA1_left - PCA1_right), center = standardized, scale = standardized),
-    nd2 = scale(abs(PCA2_left - PCA2_right), center = standardized, scale = standardized),
-    vd = scale(abs(item_value_left - item_value_right), center = standardized, scale = standardized),
-    ov = scale(item_value_left + item_value_right, center = standardized, scale = standardized)
+    zleft_rating = scale(left_rating, center = standardized, scale = standardized),
+    zright_rating = scale(right_rating, center = standardized, scale = standardized),
+    zleft_net1 = scale(left_net_pca1, center = standardized, scale = standardized),
+    zright_net1 = scale(right_net_pca1, center = standardized, scale = standardized),
+    zleft_net2 = scale(left_net_pca2, center = standardized, scale = standardized),
+    zright_net2 = scale(right_net_pca2, center = standardized, scale = standardized),
+    nd1 = scale(abs(left_net_pca1 - right_net_pca1), center = standardized, scale = standardized),
+    nd2 = scale(abs(left_net_pca2 - right_net_pca2), center = standardized, scale = standardized),
+    vd = scale(abs(left_rating - right_rating), center = standardized, scale = standardized),
+    ov = scale(left_rating + right_rating, center = standardized, scale = standardized)
   ) %>%
   ungroup() %>%
-  select(subject_id, trial, choice, rt, zleft_rating, zright_rating, zleft_net1, zright_net1, zleft_net2, zright_net2, vd, nd1, nd2, ov)
+  select(choice_type, subject_id, choice, rt, zleft_rating, zright_rating, zleft_net1, zright_net1, zleft_net2, zright_net2, vd, nd1, nd2, ov)
 
 # Model for choice
 # models_choice <- glmer(
@@ -182,20 +191,88 @@ for_model <- df %>%
 # )
 
 models_choice1 <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) +
+                                  choice_type*zleft_rating + choice_type*zright_rating + 
+                                  choice_type*zleft_net1 + choice_type*zleft_net2+
+                                  choice_type*zright_net1 + choice_type*zright_net2+
                        (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), 
                      data = for_model, family = "bernoulli", iter = 10000, 
                      chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
-                     file = here::here("fits", paste0("PCA", "_Lee_Hare_2023_choice_data_exp2_fit_choice03")))
-models_rt1 <- brm(log(rt) ~ vd + ov + nd1 + nd2 +
+                     file = here::here("fits", paste0("PCA", "_Lee_Hare_2023_choice_data_exp2_fit_choice04")))
+
+models_rt1 <- brm(log(rt) ~ choice_type*(vd + ov + nd1 + nd2) +
                    (vd + ov + nd1 + nd2 | subject_id), 
                  data = for_model, iter = 10000, 
                  chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
-                 file = here::here("fits", paste0("PCA", "_Lee_Hare_2023_choice_data_exp2_fit_rt02")))
+                 file = here::here("fits", paste0("PCA", "_Lee_Hare_2023_choice_data_exp2_fit_rt03")))
 
 # Output model summaries
 summary(models_choice1)
 summary(models_rt1)
 
+# bayestestR::sexit(models_choice1)
+bayestestR::sexit(models_rt1)
+plot(ggeffects::ggpredict(models_rt1, 
+                          terms = c("vd[all]", "choice_type")))
+plot(ggeffects::ggpredict(models_rt1, 
+                          terms = c("ov[all]", "choice_type")))
+plot(ggeffects::ggpredict(models_rt1, 
+                          terms = c("nd1[all]", "choice_type")))
+plot(ggeffects::ggpredict(models_rt1, 
+                          terms = c("nd2[all]", "choice_type")))
+plot(ggeffects::ggpredict(models_choice1, 
+                          terms = c("zleft_rating[all]", "choice_type")))+
+  theme_classic()+
+  # scale_y_continuous(limits = c(.25, .8))+
+  geom_vline(xintercept = 0, linetype = "dashed")+
+  geom_hline(yintercept = 0.5, linetype = "dashed")+
+  labs(
+    title = "",
+    y = "Probability of Choosing Left",
+    x = "left item-rating",
+    color = "Choice type"
+  ) +
+  theme(text = element_text(size = 15),
+        legend.position = c(0.25, 0.85),
+        axis.text = element_text(face="bold"),
+        axis.title = element_text(face="bold"))
+
+# plot(ggeffects::ggpredict(models_choice1, 
+#                           terms = c("zleft_net1[all]", "choice_type")))
+plot(ggeffects::ggpredict(models_choice1, 
+                          terms = c("zleft_net2[all]", "choice_type")))+
+  theme_classic()+
+  scale_y_continuous(limits = c(.25, .8))+
+  geom_vline(xintercept = 0, linetype = "dashed")+
+  geom_hline(yintercept = 0.5, linetype = "dashed")+
+  labs(
+    title = "",
+    y = "Probability of Choosing Left",
+    x = "left item-score",
+    color = "Choice type"
+  ) +
+  theme(text = element_text(size = 15),
+        legend.position = c(0.85, 0.85),
+        axis.text = element_text(face="bold"),
+        axis.title = element_text(face="bold"))
+
+plot(ggeffects::ggpredict(models_choice1, 
+                          terms = c("zright_net2[all]", "choice_type")))+
+  theme_classic()+
+  scale_y_continuous(limits = c(.25, .8))+
+  geom_vline(xintercept = 0, linetype = "dashed")+
+  geom_hline(yintercept = 0.5, linetype = "dashed")+
+  labs(
+    title = "",
+    y = "Probability of Choosing Left",
+    x = "right item-score",
+    color = "Choice type"
+  ) +
+  theme(text = element_text(size = 15),
+        legend.position = c(0.85, 0.85),
+        axis.text = element_text(face="bold"),
+        axis.title = element_text(face="bold"))
+  
+  
 ##%######################################################%##
 #                                                          #
 ####      Lee, D. G., & Holyoak, K. J. Coherence       ####
