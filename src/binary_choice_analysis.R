@@ -40,8 +40,33 @@ library(brms)
 library(cmdstanr)
 
 # Load data
+
+##binary data
 Lee_Hare_2023_choice_data_exp2 <- read_csv("data/Lee_Hare_2023_OSF/Lee_Hare_2023_choice_data_exp2.csv")
 Lee_Holyoak_2021_choice_data_exp2_5 <- read_csv("data/lee_2021_exp2_5.csv")
+
+Lee_Hare_2023_choice_data_exp2$choice_type = "binary"
+Lee_Holyoak_2021_choice_data_exp2_5$choice_type = "binary"
+
+#set data 
+set_exp1 <- readr::read_csv("data/ISDN_poster_exp1.csv")
+set_exp2 <- readr::read_csv("data/ISDN_poster_exp2.csv")
+set_exp3 <- readr::read_csv("data/ISDN_poster_exp3.csv")
+
+set_exp1$subject_id <- set_exp1$subject_id + 100
+set_exp2$subject_id <- set_exp2$subject_id + 200
+set_exp3$subject_id <- set_exp3$subject_id + 300
+
+set_exp1$study <- 1
+set_exp2$study <- 2
+set_exp3$study <- 3
+
+cols_select <- c("study","left", "right", "subject_id", "rt", "choice", "network_statistic", 
+                 "left_rating", "right_rating","left_net_pca1", "right_net_pca1", "left_net_pca2", "right_net_pca2" )
+
+set_df <- rbind(set_exp1[,cols_select], set_exp2[,cols_select], set_exp3[,cols_select])
+set_df$choice_type = "set"
+
 
 # Source functions for network analysis
 source("exploratory_graph_analysis.R")
