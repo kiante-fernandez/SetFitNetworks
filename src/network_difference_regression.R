@@ -41,7 +41,7 @@ library(modelsummary)
 library(kableExtra)
 library(gt)
 
-# library(cmdstanr)
+library(cmdstanr)
 
 #load helper functions
 source(here::here("src", "utils.R"))
@@ -256,10 +256,10 @@ exlusions <- function(df) {
 }
 
 for_save <- df %>% exlusions()
-write_csv(for_save, "data/ISDN_poster_exp1.csv")
+# write_csv(for_save, "data/ISDN_poster_exp1.csv")
 
 # net_stats <- c("strength", "eigen", "edge_density", "modularity")
-net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eigen", "edge_density", "modularity","pca1", "pca2")
+net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eigen", "edge_density", "modularity","pca1", "pca2", "set_pca1", "set_pca2")
 
 # net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity")
 
@@ -268,7 +268,7 @@ net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eig
 # net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
 
 res_netstats <- vector(mode = "list", length = length(net_stats))
-net_idx = 1
+net_idx = 10
 for (net_idx in 1:length(net_stats)) {
   # if (net_idx %in% c(6)) {
   #   next
@@ -304,15 +304,15 @@ for (net_idx in 1:length(net_stats)) {
   df_temp = create_dataset(df, type = "choice")
   
   models_choice1 <- brm(choice ~ zleft_rating + zright_rating + 
-                  (1 + zleft_rating + zright_rating | subject_id), 
+                  (1 | subject_id), 
                 data = df_temp, family = "bernoulli", iter = 10000, 
                 chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2))
   models_choice2 <- brm(choice ~ zleft_rating + zleft_net1 + zright_rating + zright_net1 + 
-                          (1 + zleft_rating + zright_rating +  zleft_net1 + zright_net1 | subject_id),
+                          (1 | subject_id),
                         data = df_temp, family = "bernoulli", iter = 10000, 
                         chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2))
   models_choice3 <- brm(choice ~ zleft_rating + zleft_net1+ zleft_net2 + zright_rating + zright_net1 + zright_net2+
-                          (1 + zleft_rating + zright_rating +  zleft_net2 + zright_net2 + zleft_net1 + zright_net1 | subject_id),
+                          (1 | subject_id),
                        data = df_temp, family = "bernoulli", iter = 10000, 
                        chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2))
   looR2<-loo_R2(models_choice1)
@@ -333,7 +333,9 @@ for (net_idx in 1:length(net_stats)) {
   loo_compare(loo1, loo2, loo3)
   # models_choice <- estimate_mlms(df_temp, outcome = "choice")
   # models_choice <- estimate_brms(df, outcome = "choice") #bayes
-  #
+  
+  # plot(ggeffects::ggpredict(models_choice3, terms = c("zleft_net2[all]")))
+  
   # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC")))
   # # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("WAIC","LOOIC"))) #bayes
   #
