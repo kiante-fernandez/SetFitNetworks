@@ -264,10 +264,11 @@ net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eig
 # net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity")
 
 # net_stats <- c("edge_density", "modularity", "pca1", "pca2")
+
 # net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
 
 res_netstats <- vector(mode = "list", length = length(net_stats))
-net_idx = 8
+net_idx = 1
 for (net_idx in 1:length(net_stats)) {
   # if (net_idx %in% c(6)) {
   #   next
@@ -330,7 +331,7 @@ for (net_idx in 1:length(net_stats)) {
   # loo2$estimates
   
   loo_compare(loo1, loo2, loo3)
-  # models_choice <- estimate_mlms(df, outcome = "choice")
+  # models_choice <- estimate_mlms(df_temp, outcome = "choice")
   # models_choice <- estimate_brms(df, outcome = "choice") #bayes
   #
   # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC")))

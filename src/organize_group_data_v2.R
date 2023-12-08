@@ -105,13 +105,51 @@ organize_group_data <- function(experiment, weight = "degree") {
       ) %>%
       unnest(response)
     # foo = 1
+    
+    get_subgraph_pc <- function(subgraphs){
+      #extract relevant stats on subgraph
+      strength_res <-do.call(rbind,  map(subgraphs, function(x) mean(strength(igraph::induced_subgraph(g, V(x)$name)))))
+      ed_res <-do.call(rbind,  map(subgraphs, function(x) edge_density(igraph::induced_subgraph(g, V(x)$name))))
+      mod_res <-do.call(rbind,  map(subgraphs, function(x)       as.numeric(modularity(igraph::induced_subgraph(g, V(x)$name), V(igraph::induced_subgraph(g, V(x)$name))$snack_type))))
+      con_res <- do.call(rbind,  map(subgraphs, function(x){
+        tempsg <- igraph::induced_subgraph(g, V(x)$name)
+        mem[names(mem)] <- 1
+        mem[names(mem) %in% V(tempsg)$name] <- 2
+        conductance_temp <- clustAnalytics::conductance(g, mem)[2]
+        as.numeric(conductance_temp)
+      }))
+      set_level <- data.frame(cbind(strength_res,ed_res,mod_res, con_res))
+      names(set_level) <- c("average_strength", "edge_density", "modularity", "conductance")
+
+      pca_res <- prcomp(set_level, center = TRUE, scale. = TRUE)
+      print(pca_res)
+      
+      set_level$PCA1 <-  pca_res$x[,1]
+      set_level$PCA2 <- pca_res$x[,2]
+      set_level$PCA3 <- pca_res$x[,3]
+      
+      # set_level %>% 
+      #   cor() %>% 
+      #   ggcorrplot::ggcorrplot(type = "upper",
+      #                          lab = TRUE)+
+      #   theme_classic()+
+      #   labs(x = "", y = "") +
+      #   theme(
+      #     axis.text = element_text(face = "bold"),
+      #     text = element_text(size = 15),
+      #     axis.title = element_text(face = "bold"),
+      #     axis.text.x = element_text(angle = 45, hjust = 1)
+      #   )
+      return(set_level)
+    }
+    set_level_scores <- get_subgraph_pc(subgraphs)
+    
     for (foo in 1:100) {
       # select which stat to calculate
       
       # this section calculates each of the subgraph stats based on the induced
       # subgraph rather than the larger network. To get node importance
       # measures at the level of the entire graph, this code would need to change
-      
       # pull out a candidate sub graph
       size <- net_degree[net_degree$Name %in% res[[foo]], ]$Item
       subgraph <- igraph::induced_subgraph(g, size)
@@ -125,7 +163,10 @@ organize_group_data <- function(experiment, weight = "degree") {
       } else {set_fruit_temp[[foo]] <- 0}
 
       set_degree_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$degree)
-      set_strength_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$strength)
+      # set_strength_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$strength)
+      #set-level Average Strength within subgraph
+      set_strength_temp[[foo]] <- mean(igraph::strength(subgraph))
+      
       # set_weighted_transitivity_temp[[foo]] <- NetworkToolbox::clustcoeff(adj_temp, weighted = T)$CC
       # ifelse(is.nan(set_weighted_transitivity_temp[[foo]]), set_weighted_transitivity_temp[[foo]] <- 0, set_weighted_transitivity_temp[[foo]] <- set_weighted_transitivity_temp[[foo]])
       set_weighted_transitivity_temp[[foo]] <-sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$weighted_transitivity)
