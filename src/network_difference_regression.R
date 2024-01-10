@@ -27,8 +27,8 @@ library(purrr) # Functional Programming Tools
 library(tidyverse) # Easily Install and Load the 'Tidyverse'
 library(jsonlite) # A Simple and Robust JSON Parser and Generator for R
 
-library(lme4) # Linear Mixed-Effects Models using 'Eigen' and S4
-library(lmerTest) # Tests in Linear Mixed Effects Models
+# library(lme4) # Linear Mixed-Effects Models using 'Eigen' and S4
+# library(lmerTest) # Tests in Linear Mixed Effects Models
 
 library(gghalves) # Compose Half-Half Plots Using Your Favorite Geoms
 library(ggforce) # Accelerating 'ggplot2'
@@ -256,7 +256,7 @@ exlusions <- function(df) {
 }
 
 for_save <- df %>% exlusions()
-# write_csv(for_save, "data/ISDN_poster_exp1.csv")
+write_csv(for_save, "data/ISDN_poster_exp1.csv")
 
 # net_stats <- c("strength", "eigen", "edge_density", "modularity")
 net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eigen", "edge_density", "modularity","pca1", "pca2", "set_pca1", "set_pca2")
@@ -333,9 +333,9 @@ for (net_idx in 1:length(net_stats)) {
   loo_compare(loo1, loo2, loo3)
   # models_choice <- estimate_mlms(df_temp, outcome = "choice")
   # models_choice <- estimate_brms(df, outcome = "choice") #bayes
-  
-  # plot(ggeffects::ggpredict(models_choice3, terms = c("zleft_net2[all]")))
-  
+  # library(tidybayes)
+  plot(ggeffects::ggpredict(models_choice3, terms = c("zleft_net2[all]"))) 
+
   # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC")))
   # # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("WAIC","LOOIC"))) #bayes
   #
@@ -371,6 +371,11 @@ for (net_idx in 1:length(net_stats)) {
   
   df_temp = create_dataset(df, type = "correct/rt")
 
+  models_rt <- brm(log(rt) ~ vd + ov + nd1 + nd2 +
+                     (vd + ov + nd1 + nd2  | subject_id), 
+                   data = df_temp, iter = 10000, 
+                   chains = 4, cores = 4)
+  
   models_rt <- brm(log(rt) ~ vd + ov + nd1 + nd2 +
                      (vd + ov + nd1 + nd2  | subject_id), 
                    data = df_temp, iter = 10000, 
