@@ -71,20 +71,23 @@ organize_group_data <- function(experiment, weight = "degree") {
     set_values_MAX_temp <- vector(mode = "numeric", length = 100)
     set_values_MIN_temp <- vector(mode = "numeric", length = 100)
     set_network_temp <- vector(mode = "numeric", length = 100)
-    #micro
+    #item_score
     set_degree_temp <- vector(mode = "numeric", length = 100)
     set_strength_temp <- vector(mode = "numeric", length = 100)
     set_eigen_temp <- vector(mode = "numeric", length = 100)
     set_weighted_transitivity_temp <- vector(mode = "numeric", length = 100)
     set_closeness_temp <- vector(mode = "numeric", length = 100)
     set_betweenness_temp <- vector(mode = "numeric", length = 100)
-    #meso
+    #set-score
     set_edge_density_temp <- vector(mode = "numeric", length = 100)
     set_modularity_temp <- vector(mode = "numeric", length = 100)
     set_conductance_temp <- vector(mode = "numeric", length = 100)
 
     set_pca1_temp <- vector(mode = "numeric", length = 100)
     set_pca2_temp <- vector(mode = "numeric", length = 100)
+    
+    set_level_pca1_temp <- vector(mode = "numeric", length = 100)
+    set_level_pca2_temp <- vector(mode = "numeric", length = 100)
     
     set_cluster_temp <- vector(mode = "numeric", length = 100)
     set_correlations_temp <- vector(mode = "numeric", length = 100)
@@ -122,7 +125,7 @@ organize_group_data <- function(experiment, weight = "degree") {
       names(set_level) <- c("average_strength", "edge_density", "modularity", "conductance")
 
       pca_res <- prcomp(set_level, center = TRUE, scale. = TRUE)
-      print(pca_res)
+      # print(pca_res)
       
       set_level$PCA1 <-  pca_res$x[,1]
       set_level$PCA2 <- pca_res$x[,2]
@@ -165,7 +168,11 @@ organize_group_data <- function(experiment, weight = "degree") {
       set_degree_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$degree)
       # set_strength_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$strength)
       #set-level Average Strength within subgraph
-      set_strength_temp[[foo]] <- mean(igraph::strength(subgraph))
+      set_strength_temp[[foo]] <- set_level_scores[foo, "average_strength"]
+      #until you make correct names test pca wiht strength name
+      # set_strength_temp[[foo]] <- set_level_scores[foo, "PCA1"]
+      # set_strength_temp[[foo]] <- set_level_scores[foo, "PCA2"]
+      # set_strength_temp[[foo]] <- set_level_scores[foo, "PCA3"]
       
       # set_weighted_transitivity_temp[[foo]] <- NetworkToolbox::clustcoeff(adj_temp, weighted = T)$CC
       # ifelse(is.nan(set_weighted_transitivity_temp[[foo]]), set_weighted_transitivity_temp[[foo]] <- 0, set_weighted_transitivity_temp[[foo]] <- set_weighted_transitivity_temp[[foo]])
@@ -175,21 +182,21 @@ organize_group_data <- function(experiment, weight = "degree") {
       set_closeness_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$closeness)
       set_betweenness_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$betweenness)
         
-      set_edge_density_temp[[foo]] <- as.numeric(edge_density(subgraph))
-      set_modularity_temp[[foo]] <- as.numeric(modularity(subgraph, V(subgraph)$snack_type))
+      set_edge_density_temp[[foo]] <- set_level_scores[foo, "edge_density"]
+      set_modularity_temp[[foo]] <- set_level_scores[foo, "modularity"]
         # for testing the permutation method
         # if (res_sig[[foo]] == 0){
         #   set_network_temp[[foo]] <- 0
         #   }
-      mem[names(mem)] <- 1
-      mem[names(mem) %in% V(subgraphs[[foo]])$name] <- 2
-      conductance_temp <- clustAnalytics::conductance(g, mem)[2]
-      set_conductance_temp[[foo]] <- as.numeric(conductance_temp)
+      set_conductance_temp[[foo]] <- set_level_scores[foo, "conductance"]
       
       set_pca1_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$PCA1)
       set_pca2_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$PCA2)
       # set_pca3_temp[[foo]] <- sum(graph_stats[graph_stats$Name %in% res[[foo]], ]$PCA3)
       
+      set_level_pca1_temp[[foo]] <- set_level_scores[foo, "PCA1"]
+      set_level_pca2_temp[[foo]] <- set_level_scores[foo, "PCA2"]
+
       # calculated the weighted value of the set
       x <- do.call(rbind, subject_rating_temp[subject_rating_temp$Name %in% res[[foo]], ]$response)
       
@@ -275,6 +282,11 @@ organize_group_data <- function(experiment, weight = "degree") {
     xxxx$left_net_pca2 <- NULL
     xxxx$right_net_pca2 <- NULL
     
+    xxxx$left_net_set_pca1 <- NULL
+    xxxx$right_net_set_pca1 <- NULL
+    xxxx$left_net_set_pca2 <- NULL
+    xxxx$right_net_set_pca2 <- NULL
+    
     xxxx$left_sim <- NULL
     xxxx$right_sim <- NULL
     xxxx$left_correlation <- NULL
@@ -319,6 +331,11 @@ organize_group_data <- function(experiment, weight = "degree") {
       xxxx$left_net_pca2[[foo]] <- as.numeric(set_pca2_temp[xxxx$left[[foo]]])
       xxxx$right_net_pca2[[foo]] <- as.numeric(set_pca2_temp[xxxx$right[[foo]]])
       
+      xxxx$left_net_set_pca1[[foo]] <- as.numeric(set_level_pca1_temp[xxxx$left[[foo]]])
+      xxxx$right_net_set_pca1[[foo]] <- as.numeric(set_level_pca1_temp[xxxx$right[[foo]]])
+      xxxx$left_net_set_pca2[[foo]] <- as.numeric(set_level_pca2_temp[xxxx$left[[foo]]])
+      xxxx$right_net_set_pca2[[foo]] <- as.numeric(set_level_pca2_temp[xxxx$right[[foo]]])
+      
       xxxx$left_sim[[foo]] <- as.numeric(set_similarity_temp[xxxx$left[[foo]]])
       xxxx$right_sim[[foo]] <- as.numeric(set_similarity_temp[xxxx$right[[foo]]])
       xxxx$left_correlation[[foo]] <- as.numeric(set_correlations_temp[xxxx$left[[foo]]])
@@ -353,6 +370,8 @@ organize_group_data <- function(experiment, weight = "degree") {
       left_net_conductance,right_net_conductance,
       left_net_pca1,right_net_pca1,
       left_net_pca2,right_net_pca2,
+      left_net_set_pca1,right_net_set_pca1,
+      left_net_set_pca2,right_net_set_pca2,
       left_sim, right_sim,
       left_correlation, right_correlation, left_sd, right_sd,
       left_MAX, right_MAX, left_MIN, right_MIN,

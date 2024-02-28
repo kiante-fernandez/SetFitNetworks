@@ -1208,7 +1208,8 @@ cols_select <- c("study","left", "right", "subject_id", "rt", "choice", "network
                  "left_net_weighted_transitivity", "right_net_weighted_transitivity", 
                  "left_net_edge_density", "right_net_edge_density", "left_net_modularity", 
                  "right_net_modularity", "left_net_conductance", "right_net_conductance", 
-                 "left_net_pca1", "right_net_pca1", "left_net_pca2", "right_net_pca2" )
+                 "left_net_pca1", "right_net_pca1", "left_net_pca2", "right_net_pca2",
+                 "left_net_set_pca1","right_net_set_pca1","left_net_set_pca2","right_net_set_pca2")
 
 poster_plot_data <- rbind(ISDN_poster_exp1[,cols_select], ISDN_poster_exp2[,cols_select], ISDN_poster_exp3[,cols_select])
 
@@ -1224,9 +1225,44 @@ midRound <- function(x, base){
 
 
 poster_plot_data %>%
-  filter(subject_id != 235) %>% 
-  filter(subject_id != 228) %>% 
-  filter(subject_id != 375) %>% 
+  group_by(subject_id) %>%
+  mutate(
+    vd = left_rating - right_rating
+  ) %>%
+  mutate(
+    binned_net_diff = midRound(vd, 80)
+  ) %>%
+  filter(binned_net_diff < 350) %>%  #for clear plotting of effect
+  filter(binned_net_diff > -350) %>%  #for clear plotting of effect
+  group_by(binned_net_diff, study) %>%
+  mutate(
+    n = n(),
+    m_left = mean(choice),
+    se = sqrt(var(choice) / length(choice))
+  ) %>%
+  ungroup() %>% 
+  ggplot(aes(x = binned_net_diff, y = m_left, fill = study, group = study)) +
+  geom_hline(yintercept = .5, size = .25) +
+  geom_vline(xintercept = 0, size = .25) +
+  geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se, color = study), size = 1.3) +
+  theme_classic() +
+  geom_line(aes(color = study),size = .8) +
+  scale_color_brewer(palette = "Set1") +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1)) +
+  labs(
+    y = "P(Left Choosen)",
+    x = "Left Set-Liking - Right Set-Liking"
+  ) +
+  theme(text = element_text(size = 20),
+        legend.position = NULL,
+        axis.text = element_text(face="bold"),
+        axis.title = element_text(face="bold"))
+
+poster_plot_data %>%
+  # filter(subject_id != 235) %>% 
+  # filter(subject_id != 228) %>% 
+  # filter(subject_id != 375) %>% 
   group_by(subject_id) %>%
   mutate(
     # nd = left_net_weighted_transitivity - right_net_weighted_transitivity,
@@ -1234,7 +1270,7 @@ poster_plot_data %>%
   ) %>%
   mutate(
     # binned_net_diff = as.numeric(cut_number(nd, 7)) - 4,
-    binned_net_diff = midRound(nd, 6)
+    binned_net_diff = midRound(nd, 7)
   ) %>%
   group_by(binned_net_diff, study) %>%
   mutate(
@@ -1244,65 +1280,174 @@ poster_plot_data %>%
   ) %>%
   ungroup() %>% 
   ggplot(aes(x = binned_net_diff, y = m_left, fill = study, group = study)) +
-  geom_point(aes(fill = study, color = study, group = study, shape = study),size = 5)+
-  # geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se, color = experiment), size = 1.1) +
-  geom_ribbon(aes(ymin = m_left - se, ymax = m_left + se), alpha = .6)+
+  geom_hline(yintercept = .5, size = .25) +
+  geom_vline(xintercept = 0, size = .25) +
+  # geom_point(aes(fill = study, color = study, group = study, shape = study),size = 5)+
+  geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se, color = study), size = 1.1) +
+  # geom_ribbon(aes(ymin = m_left - se, ymax = m_left + se), alpha = .6)+
   theme_classic() +
   geom_line(aes(color = study),size = 1) +
-  geom_hline(yintercept = .5, linetype = "dashed", size = .25) +
-  geom_vline(xintercept = 0, linetype = "dashed", size = .25) +
   scale_color_brewer(palette = "Set1") +
   scale_fill_brewer(palette = "Set1") +
-  # scale_y_continuous(limits = c(0.25, .75)) +
+  scale_y_continuous(limits = c(0.20, .9)) +
   labs(
-    y = "Probability of Choosing Left",
-    x = "Connectedness Difference (L-R)",
+    y = "P(Left Choosen)",
+    x = "Left Item-Score - Right Item-Score"
   ) +
   theme(text = element_text(size = 20),
-        legend.position = c(0.25, 0.85),
+        legend.position = NULL,
         axis.text = element_text(face="bold"),
         axis.title = element_text(face="bold"))
 
-midRound <- function(x, base){
-  base*round(x/base)
-}
-
 poster_plot_data %>%
-  filter(subject_id != 235) %>% 
-  filter(subject_id != 113) %>% 
+  # filter(subject_id != 235) %>% 
+  # filter(subject_id != 113) %>% 
   group_by(subject_id) %>%
   mutate(
-    vd = left_rating - right_rating
+    vd = left_net_set_pca1 - right_net_set_pca1
   ) %>%
   mutate(
-    # binned_net_diff = as.numeric(cut_number(vd, 9)) - 5,
-    binned_net_diff = midRound(vd, 70)
+    binned_net_diff = midRound(vd, 3)
   ) %>%
   group_by(binned_net_diff, study) %>%
   mutate(
     n = n(),
     m_left = mean(choice),
     se = sqrt(var(choice) / length(choice))
-  ) %>% View
+  ) %>% 
   ungroup() %>%
   ggplot(aes(x = binned_net_diff, y = m_left, fill = study, group = study)) +
-  geom_point(aes(fill = study, color = study, group = study, shape = study),size = 5)+
-  # geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se, color = experiment), size = 1.1) +
-  geom_ribbon(aes(ymin = m_left - se, ymax = m_left + se), alpha = .6)+
+  # geom_point(aes(fill = study, color = study, group = study, shape = study),size = 5)+
+  geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se, color = study), size = 1.1) +
+  geom_hline(yintercept = .5, size = .25) +
+  geom_vline(xintercept = 0, size = .25) +
+  # geom_errorbar(aes(ymin = m_left - se, ymax = m_left + se), alpha = .6)+
   theme_classic() +
   geom_line(aes(color = study),size = 1) +
-  geom_hline(yintercept = .5, linetype = "dashed", size = .25) +
-  geom_vline(xintercept = 0, linetype = "dashed", size = .25) +
+  # geom_hline(yintercept = .5, linetype = "dashed", size = .25) +
+  # geom_vline(xintercept = 0, linetype = "dashed", size = .25) +
   scale_color_brewer(palette = "Set1") +
   scale_fill_brewer(palette = "Set1") +
-  # scale_y_continuous(limits = c(0.15, .9)) +
+  scale_y_continuous(limits = c(0.20, .9)) +
   labs(
-    y = "Probability of Choosing Left",
-    x = "Set-Value Difference (L-R)",
+    y = "P(Left Choosen)",
+    x = "Left Set-Score - Right Set-Score"
   ) +
   theme(text = element_text(size = 20),
-        legend.position = c(0.25, 0.85),
+        legend.position = NULL,
         axis.text = element_text(face="bold"),
         axis.title = element_text(face="bold"))
 
 
+poster_plot_data %>%
+  group_by(subject_id) %>%
+  mutate(
+    vd = abs(left_rating - right_rating)
+  ) %>% 
+  mutate(vd = midRound(vd, 60)) %>%
+  filter(vd < 350) %>%  #for clear plotting of effect
+  group_by(vd, study) %>%
+  mutate(
+    n = n(),
+    rt = rt/1000,
+    m_rt = mean(rt),
+    se = sqrt(var(rt) / length(rt))
+  ) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = vd, y = m_rt, color = study, group = study)) +
+  geom_pointrange(aes(ymin = m_rt - se, ymax = m_rt + se), size = 1.5) +
+  theme_classic() +
+  scale_color_brewer(palette = "Set1") +
+  labs(
+    y = "Response Time(s)",
+    x = "|Left Set-Liking - Right Set-Liking|",
+  )+
+  theme(axis.text = element_text(face="bold"),
+        text = element_text(size = 15),
+        axis.title = element_text(face="bold")
+  ) + geom_smooth(method = "lm", se = FALSE, linetype = "dashed", size = 1)
+  # scale_y_continuous(limits = c(1.9, 3.4))
+
+poster_plot_data %>%
+  group_by(subject_id) %>%
+  mutate(
+    nd = abs(left_net_pca2 - right_net_pca2)
+  ) %>% 
+  mutate(nd = midRound(nd, 2)) %>%
+  filter(nd <= 13) %>%  #for clear plotting of effect
+  group_by(nd, study) %>%
+  mutate(
+    n = n(),
+    rt = rt/1000,
+    m_rt = mean(rt),
+    se = sqrt(var(rt) / length(rt))
+  ) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = nd, y = m_rt, color = study, group = study)) +
+  geom_pointrange(aes(ymin = m_rt - se, ymax = m_rt + se), size = 1.5) +
+  theme_classic() +
+  scale_color_brewer(palette = "Set1") +
+  labs(
+    y = "Response Time(s)",
+    x = "|Left Item-Score - Right Item-Score|",
+  )+
+  theme(axis.text = element_text(face="bold"),
+        text = element_text(size = 15),
+        axis.title = element_text(face="bold")
+  ) + geom_smooth(method = "lm", se = FALSE, linetype = "dashed", size = 1)+
+  scale_y_continuous(limits = c(1.9, 3.4))
+  
+
+poster_plot_data %>%
+  group_by(subject_id) %>%
+  mutate(
+    nd = abs(left_net_set_pca1 - right_net_set_pca1)
+  ) %>% 
+  mutate(nd = midRound(nd, 1)) %>%
+  filter(nd < 6) %>%  #for clear plotting of effect
+  group_by(nd, study) %>%
+  mutate(
+    n = n(),
+    rt = rt/1000,
+    m_rt = mean(rt),
+    se = sqrt(var(rt) / length(rt))
+  ) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = nd, y = m_rt, color = study, group = study)) +
+  geom_pointrange(aes(ymin = m_rt - se, ymax = m_rt + se), size = 1.5) +
+  theme_classic() +
+  scale_color_brewer(palette = "Set1") +
+  labs(
+    y = "Response Time(s)",
+    x = "|Left Set-Score - Right Set-Score|",
+  )+
+  theme(axis.text = element_text(face="bold"),
+        text = element_text(size = 15),
+        axis.title = element_text(face="bold")
+  ) + geom_smooth(method = "lm", se = FALSE, linetype = "dashed", size = 1)+
+  scale_y_continuous(limits = c(1.9, 3.4))
+
+# # Create a combined data frame with both vd and nd, and their corresponding response times (rt)
+# combined_data <- poster_plot_data %>%
+#   mutate(
+#     nd = abs(left_net_pca2 - right_net_pca2),
+#     vd = abs(left_rating - right_rating),
+#     rt_inverted = rt / 1000  # Inverting response times
+#   )
+# ggplot(combined_data, aes(x = nd, y = vd, z = rt_inverted)) +
+#   stat_density_2d(aes(fill = ..level..), geom = "polygon") +
+#   scale_fill_gradient(low = "blue", high = "red", 
+#                       name = "Response Time\n(Slower ← → Faster)") +  # Adjusted label
+#   labs(
+#     x = "|Left Set-Score - Right Set-Score|",
+#     y = "|Left Set-Liking - Right Set-Liking|"
+#   ) +
+#   theme_classic() +
+#   theme(
+#     axis.text = element_text(face="bold"),
+#     text = element_text(size = 15),
+#     axis.title = element_text(face="bold")
+#   )
+  
+  
+  
