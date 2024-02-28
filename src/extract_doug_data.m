@@ -56,7 +56,7 @@ for exp_idk = 2:5
                 temp6(sub_idx,:) = experiment2.item{1,sub_idx}.RT_rating1;
                 temp7(sub_idx,:) = experiment2.item{1,sub_idx}.RT_rating2;
                 temp8(sub_idx,:) = experiment2.item{1,sub_idx}.RT_rating3;
-
+                
             end
             
         case 3
@@ -69,7 +69,7 @@ for exp_idk = 2:5
             temp6 = zeros(nSubs ,size(experiment3.itemSet,1));
             temp7 = zeros(nSubs ,size(experiment3.itemSet,1));
             temp8 = zeros(nSubs ,size(experiment3.itemSet,1));
-
+            
             for sub_idx = 1:nSubs
                 temp(sub_idx,:) =  experiment3.item{1,sub_idx}.rating1;
                 temp2(sub_idx,:) = experiment3.item{1,sub_idx}.rating2;
@@ -92,7 +92,7 @@ for exp_idk = 2:5
             temp6 = zeros(nSubs ,size(experiment4.itemSet,1));
             temp7 = zeros(nSubs ,size(experiment4.itemSet,1));
             temp8 = zeros(nSubs ,size(experiment4.itemSet,1));
-
+            
             for sub_idx = 1:nSubs
                 temp(sub_idx,:) =  experiment4.item{1,sub_idx}.rating1;
                 temp2(sub_idx,:) = experiment4.item{1,sub_idx}.rating2;
@@ -115,7 +115,7 @@ for exp_idk = 2:5
             temp6 = zeros(nSubs ,size(experiment5.itemSet,1));
             temp7 = zeros(nSubs ,size(experiment5.itemSet,1));
             temp8 = zeros(nSubs ,size(experiment5.itemSet,1));
-
+            
             for sub_idx = 1:nSubs
                 temp(sub_idx,:) =  experiment5.item{1,sub_idx}.rating1;
                 temp2(sub_idx,:) = experiment5.item{1,sub_idx}.rating2;
@@ -131,7 +131,7 @@ for exp_idk = 2:5
     rating1_data =  [rating1_data; temp] ;
     rating2_data =  [rating2_data; temp2] ;
     rating3_data =  [rating3_data; temp5] ;
-
+    
     nutrition1_data = [nutrition1_data; temp3] ;
     pleasure1_data = [pleasure1_data; temp4] ;
     
@@ -262,35 +262,29 @@ for exp_idk = 1:4
     
     exp_temp = repmat(exp_idk + 1, 30, 1);
     
+    %    s = 1
     % code Left option as best option
     for s=1:nSubs
-        
+        %        i = 1
         for i=1:length(choice{s}.choice)
-            if choice{s}.ratingL1(i)>choice{s}.ratingR1(i)
-                tmp=[choice{s}.ratingL1(i) choice{s}.ratingR1(i) choice{s}.pleasureL1(i) choice{s}.pleasureR1(i) choice{s}.nutritionL1(i) choice{s}.nutritionR1(i) choice{s}.ratingL2(i) choice{s}.ratingR2(i) choice{s}.pleasureL2(i) choice{s}.pleasureR2(i) choice{s}.nutritionL2(i) choice{s}.nutritionR2(i)];
-                choice{s}.ratingL1(i)=tmp(2);
-                choice{s}.ratingR1(i)=tmp(1);
-                choice{s}.pleasureL1(i)=tmp(4);
-                choice{s}.pleasureR1(i)=tmp(3);
-                choice{s}.nutritionL1(i)=tmp(6);
-                choice{s}.nutritionR1(i)=tmp(5);
-                choice{s}.ratingL2(i)=tmp(8);
-                choice{s}.ratingR2(i)=tmp(7);
-                choice{s}.pleasureL2(i)=tmp(10);
-                choice{s}.pleasureR2(i)=tmp(9);
-                choice{s}.nutritionL2(i)=tmp(12);
-                choice{s}.nutritionR2(i)=tmp(11);
-                choice{s}.choice(i)=abs(choice{s}.choice(i)-1);
-                choice{s}.rDiff1(i)=-choice{s}.rDiff1(i);
-                choice{s}.pDiff1(i)=-choice{s}.pDiff1(i);
-                choice{s}.nDiff1(i)=-choice{s}.nDiff1(i);
-                choice{s}.rDiff2(i)=-choice{s}.rDiff2(i);
-                choice{s}.pDiff2(i)=-choice{s}.pDiff2(i);
-                choice{s}.nDiff2(i)=-choice{s}.nDiff2(i);
-            end
+            %             if choice{s}.ratingL1(i)>choice{s}.ratingR1(i)
+            tmp=[choice{s}.ratingL1(i) choice{s}.ratingR1(i) choice{s}.pleasureL1(i) choice{s}.pleasureR1(i) choice{s}.nutritionL1(i) choice{s}.nutritionR1(i) choice{s}.ratingL2(i) choice{s}.ratingR2(i) choice{s}.pleasureL2(i) choice{s}.pleasureR2(i) choice{s}.nutritionL2(i) choice{s}.nutritionR2(i)];
+            choice{s}.ratingL1(i)=tmp(1);
+            choice{s}.ratingR1(i)=tmp(2);
+            choice{s}.pleasureL1(i)=tmp(3);
+            choice{s}.pleasureR1(i)=tmp(4);
+            choice{s}.nutritionL1(i)=tmp(5);
+            choice{s}.nutritionR1(i)=tmp(6);
+            choice{s}.ratingL2(i)=tmp(7);
+            choice{s}.ratingR2(i)=tmp(8);
+            choice{s}.pleasureL2(i)=tmp(9);
+            choice{s}.pleasureR2(i)=tmp(10);
+            choice{s}.nutritionL2(i)=tmp(11);
+            choice{s}.nutritionR2(i)=tmp(12);
+            choice{s}.choice(i)= choice{s}.choice(i);
         end
         subject_temp = repmat(s + exp_idk * 100, 30, 1);
-        temp = [subject_temp exp_temp choice{1,s}.itemL' choice{1,s}.itemR' choice{1,s}.ratingL1' choice{1,s}.ratingR1' choice{1,s}.rDiff1' choice{1,s}.choice' choice{1,s}.RT'];
+        temp = [subject_temp exp_temp choice{1,s}.itemL' choice{1,s}.itemR' choice{1,s}.ratingL1' choice{1,s}.ratingR1' choice{1,s}.choice' choice{1,s}.RT'];
         choice_data =   [choice_data ; temp];
     end
     
@@ -298,7 +292,14 @@ for exp_idk = 1:4
     clear choice item itemSet nChoices nItems nSubs subID
 end
 
-csvwrite('/Users/kiantefernandez/Documents/OSU/SetFitNetworks/data/lee_2021_exp2_5.csv',choice_data);
+% Convert the array to a table
+choice_table = array2table(choice_data, ...
+    'VariableNames', {'subject_id','experiment','item_number_left', 'item_number_right', 'item_value_left', 'item_value_right', 'choice','rt'});
+
+% Save the table to a CSV file
+writetable(choice_table, '/Users/kiantefernandez/Documents/OSU/SetFitNetworks/data/lee_2021_exp2_5v2.csv');
+
+%csvwrite('/Users/kiantefernandez/Documents/OSU/SetFitNetworks/data/lee_2021_exp2_5v2.csv',choice_data);
 
 
 
@@ -314,5 +315,5 @@ ratings = zeros(nSubs,size(itemSet,1));
 for sub_idx = 1:nSubs
     ratings(sub_idx,:) = item{1,sub_idx}.value;
 end
-% 
+%
 csvwrite('/Users/kiantefernandez/Documents/OSU/SetFitNetworks/data/lee_2023_valuerating1.csv',ratings);
