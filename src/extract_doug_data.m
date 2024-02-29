@@ -1,147 +1,69 @@
+
 %Preparing data for analysis in R
 %Lee, D. G., & Holyoak, K. J. Coherence shifts in attribute evaluations.
 %Decision, 8(4), 257. https://doi.org/10.1037/dec0000151
 
 %how many subjects does the dataset have?
-total_subjects = [experiment1.nSubs,experiment2.nSubs,experiment3.nSubs,experiment4.nSubs,experiment5.nSubs]
-sum(total_subjects) %325 subjects
 
-nSubs = total_subjects(1)
+% Calculate the total number of subjects across all experiments
+total_subjects = [experiment1.nSubs, experiment2.nSubs, experiment3.nSubs, experiment4.nSubs, experiment5.nSubs];
+total_number_of_subjects = sum(total_subjects); % 325 subjects
 
-ratings = zeros(nSubs,size(experiment1.itemSet,1));
+% Preallocate matrices for storing data from experiments 2 to 5
+rating1_data = zeros(0, size(experiment2.itemSet, 1));
+rating2_data = zeros(0, size(experiment2.itemSet, 1));
+rating3_data = zeros(0, size(experiment2.itemSet, 1));
+nutrition1_data = zeros(0, size(experiment2.itemSet, 1));
+pleasure1_data = zeros(0, size(experiment2.itemSet, 1));
+rating1_RT_data = zeros(0, size(experiment2.itemSet, 1));
+rating2_RT_data = zeros(0, size(experiment2.itemSet, 1));
+rating3_RT_data = zeros(0, size(experiment2.itemSet, 1));
+all_subjectIDs = []; % Initialize array for storing all subject IDs
 
-
-for sub_idx = 1:nSubs
-    ratings(sub_idx,:) = experiment1.item{1,sub_idx}.rating1;
-end
-
-total_subjects = [experiment1.nSubs,experiment2.nSubs,experiment3.nSubs,experiment4.nSubs,experiment5.nSubs];
-
-rating1_data = zeros(0,size(experiment2.itemSet,1));
-rating2_data = zeros(0,size(experiment2.itemSet,1));
-rating3_data = zeros(0,size(experiment2.itemSet,1));
-
-nutrition1_data =  zeros(0,size(experiment2.itemSet,1));
-%nutrition2_data =  zeros(0,size(experiment2.itemSet,1));
-
-pleasure1_data =  zeros(0,size(experiment2.itemSet,1));
-%pleasure2_data =  zeros(0,size(experiment2.itemSet,1));
-
-rating1_RT_data = zeros(0,size(experiment2.itemSet,1));
-rating2_RT_data = zeros(0,size(experiment2.itemSet,1));
-rating3_RT_data = zeros(0,size(experiment2.itemSet,1));
-
+% Loop through experiments 2 to 5 to collect data
 for exp_idk = 2:5
     nSubs = total_subjects(exp_idk);
-    switch exp_idk
+    temp = zeros(nSubs, size(experiment2.itemSet, 1));
+    temp2 = temp;
+    temp3 = temp;
+    temp4 = temp;
+    temp5 = temp;
+    temp6 = temp;
+    temp7 = temp;
+    temp8 = temp;
+
+    for sub_idx = 1:nSubs
+        item = eval(sprintf('experiment%d.item', exp_idk));
+        temp(sub_idx, :) = item{1, sub_idx}.rating1;
+        temp2(sub_idx, :) = item{1, sub_idx}.rating2;
+        temp3(sub_idx, :) = item{1, sub_idx}.nutrition1;
+        temp4(sub_idx, :) = item{1, sub_idx}.pleasure1;
+        temp5(sub_idx, :) = item{1, sub_idx}.rating3;
+        temp6(sub_idx, :) = item{1, sub_idx}.RT_rating1;
+        temp7(sub_idx, :) = item{1, sub_idx}.RT_rating2;
+        temp8(sub_idx, :) = item{1, sub_idx}.RT_rating3;
         
-        case 2
-            temp =  zeros(nSubs ,size(experiment2.itemSet,1));
-            temp2 = zeros(nSubs ,size(experiment2.itemSet,1));
-            temp3 = zeros(nSubs ,size(experiment2.itemSet,1));
-            temp4 = zeros(nSubs ,size(experiment2.itemSet,1));
-            temp5 = zeros(nSubs ,size(experiment2.itemSet,1));
-            
-            temp6 = zeros(nSubs ,size(experiment2.itemSet,1));
-            temp7 = zeros(nSubs ,size(experiment2.itemSet,1));
-            temp8 = zeros(nSubs ,size(experiment2.itemSet,1));
-            
-            for sub_idx = 1:nSubs
-                temp(sub_idx,:) =  experiment2.item{1,sub_idx}.rating1;
-                temp2(sub_idx,:) = experiment2.item{1,sub_idx}.rating2;
-                temp3(sub_idx,:) = experiment2.item{1,sub_idx}.nutrition1;
-                temp4(sub_idx,:) = experiment2.item{1,sub_idx}.pleasure1;
-                temp5(sub_idx,:) = experiment2.item{1,sub_idx}.rating3;
-                
-                temp6(sub_idx,:) = experiment2.item{1,sub_idx}.RT_rating1;
-                temp7(sub_idx,:) = experiment2.item{1,sub_idx}.RT_rating2;
-                temp8(sub_idx,:) = experiment2.item{1,sub_idx}.RT_rating3;
-                
-            end
-            
-        case 3
-            temp =  zeros(nSubs ,size(experiment3.itemSet,1));
-            temp2 = zeros(nSubs ,size(experiment3.itemSet,1));
-            temp3 = zeros(nSubs ,size(experiment3.itemSet,1));
-            temp4 = zeros(nSubs ,size(experiment3.itemSet,1));
-            temp5 = zeros(nSubs ,size(experiment2.itemSet,1));
-            
-            temp6 = zeros(nSubs ,size(experiment3.itemSet,1));
-            temp7 = zeros(nSubs ,size(experiment3.itemSet,1));
-            temp8 = zeros(nSubs ,size(experiment3.itemSet,1));
-            
-            for sub_idx = 1:nSubs
-                temp(sub_idx,:) =  experiment3.item{1,sub_idx}.rating1;
-                temp2(sub_idx,:) = experiment3.item{1,sub_idx}.rating2;
-                temp3(sub_idx,:) = experiment3.item{1,sub_idx}.nutrition1;
-                temp4(sub_idx,:) = experiment3.item{1,sub_idx}.pleasure1;
-                temp5(sub_idx,:) = experiment3.item{1,sub_idx}.rating3;
-                
-                temp6(sub_idx,:) = experiment3.item{1,sub_idx}.RT_rating1;
-                temp7(sub_idx,:) = experiment3.item{1,sub_idx}.RT_rating2;
-                temp8(sub_idx,:) = experiment3.item{1,sub_idx}.RT_rating3;
-            end
-            
-        case 4
-            temp =  zeros(nSubs ,size(experiment4.itemSet,1));
-            temp2 = zeros(nSubs ,size(experiment4.itemSet,1));
-            temp3 = zeros(nSubs ,size(experiment4.itemSet,1));
-            temp4 = zeros(nSubs ,size(experiment4.itemSet,1));
-            temp5 = zeros(nSubs ,size(experiment4.itemSet,1));
-            
-            temp6 = zeros(nSubs ,size(experiment4.itemSet,1));
-            temp7 = zeros(nSubs ,size(experiment4.itemSet,1));
-            temp8 = zeros(nSubs ,size(experiment4.itemSet,1));
-            
-            for sub_idx = 1:nSubs
-                temp(sub_idx,:) =  experiment4.item{1,sub_idx}.rating1;
-                temp2(sub_idx,:) = experiment4.item{1,sub_idx}.rating2;
-                temp3(sub_idx,:) = experiment4.item{1,sub_idx}.nutrition1;
-                temp4(sub_idx,:) = experiment4.item{1,sub_idx}.pleasure1;
-                temp5(sub_idx,:) = experiment4.item{1,sub_idx}.rating3;
-                
-                temp6(sub_idx,:) = experiment4.item{1,sub_idx}.RT_rating1;
-                temp7(sub_idx,:) = experiment4.item{1,sub_idx}.RT_rating2;
-                temp8(sub_idx,:) = experiment4.item{1,sub_idx}.RT_rating3;
-            end
-            
-        case 5
-            temp =  zeros(nSubs ,size(experiment5.itemSet,1));
-            temp2 = zeros(nSubs ,size(experiment5.itemSet,1));
-            temp3 = zeros(nSubs ,size(experiment5.itemSet,1));
-            temp4 = zeros(nSubs ,size(experiment5.itemSet,1));
-            temp5 = zeros(nSubs ,size(experiment5.itemSet,1));
-            
-            temp6 = zeros(nSubs ,size(experiment5.itemSet,1));
-            temp7 = zeros(nSubs ,size(experiment5.itemSet,1));
-            temp8 = zeros(nSubs ,size(experiment5.itemSet,1));
-            
-            for sub_idx = 1:nSubs
-                temp(sub_idx,:) =  experiment5.item{1,sub_idx}.rating1;
-                temp2(sub_idx,:) = experiment5.item{1,sub_idx}.rating2;
-                temp3(sub_idx,:) = experiment5.item{1,sub_idx}.nutrition1;
-                temp4(sub_idx,:) = experiment5.item{1,sub_idx}.pleasure1;
-                temp5(sub_idx,:) = experiment5.item{1,sub_idx}.rating3;
-                
-                temp6(sub_idx,:) = experiment5.item{1,sub_idx}.RT_rating1;
-                temp7(sub_idx,:) = experiment5.item{1,sub_idx}.RT_rating2;
-                temp8(sub_idx,:) = experiment5.item{1,sub_idx}.RT_rating3;
-            end
+        all_subjectIDs = [all_subjectIDs; sub_idx + exp_idk * 100]; % Assign unique subject ID
     end
-    rating1_data =  [rating1_data; temp] ;
-    rating2_data =  [rating2_data; temp2] ;
-    rating3_data =  [rating3_data; temp5] ;
     
-    nutrition1_data = [nutrition1_data; temp3] ;
-    pleasure1_data = [pleasure1_data; temp4] ;
-    
-    rating1_RT_data =  [rating1_RT_data; temp6] ;
-    rating2_RT_data =  [rating2_RT_data; temp7] ;
-    rating3_RT_data =  [rating3_RT_data; temp8] ;
-    
+    % Aggregate data
+    rating1_data = [rating1_data; temp];
+    rating2_data = [rating2_data; temp2];
+    rating3_data = [rating3_data; temp5];
+    nutrition1_data = [nutrition1_data; temp3];
+    pleasure1_data = [pleasure1_data; temp4];
+    rating1_RT_data = [rating1_RT_data; temp6];
+    rating2_RT_data = [rating2_RT_data; temp7];
+    rating3_RT_data = [rating3_RT_data; temp8];
 end
 
-csvwrite('/Users/kiantefernandez/Documents/OSU/SetFitNetworks/data/lee_2021_rating1.csv',rating1_data);
+% Subtract 100 from all the subject IDs
+all_subjectIDs = all_subjectIDs - 100;
+
+% test = [all_subjectIDs rating1_data]
+% csvwrite('/Users/kiantefernandez/Documents/OSU/SetFitNetworks/data/lee_2021_rating_SubIDs.csv',test);
+
+csvwrite('/Users/kiantefernandez/Documents/OSU/SetFitNetworks/data/lee_2021_rating_SubIDs.csv',rating1_data);
 csvwrite('/Users/kiantefernandez/Documents/OSU/SetFitNetworks/data/lee_2021_rating2.csv',rating2_data);
 csvwrite('/Users/kiantefernandez/Documents/OSU/SetFitNetworks/data/lee_2021_rating3.csv',rating3_data);
 
@@ -317,3 +239,54 @@ for sub_idx = 1:nSubs
 end
 %
 csvwrite('/Users/kiantefernandez/Documents/OSU/SetFitNetworks/data/lee_2023_valuerating1.csv',ratings);
+
+
+
+%%
+%% Extract choice proportions
+clear all;
+
+% Load dataset
+load('Lee_Holyoak_2021.mat');
+
+% Array to store total number of subjects in each experiment
+total_subjects = [experiment1.nSubs, experiment2.nSubs, experiment3.nSubs, experiment4.nSubs, experiment5.nSubs];
+
+% Array of experiments to process, excluding experiment1
+experiments = {experiment2, experiment3, experiment4, experiment5};
+
+% Initialize matrix to store choice data
+choice_data = zeros(0, experiment2.nChoices);
+
+% Iterate over experiments 2 to 5
+for exp_idk = 1:4
+    
+    % Load data for the current experiment
+    current_experiment = experiments{exp_idk};
+    nSubs = current_experiment.nSubs;
+    
+    % Temporary variable to store experiment index for all subjects
+    exp_temp = repmat(exp_idk + 1, 30, 1);
+    
+    % Iterate over subjects
+    for s = 1:nSubs
+        % Iterate over choices for each subject        
+        % Temporary variable to store subject IDs with adjusted numbering
+        subject_temp = repmat(s + exp_idk * 100, 30, 1);
+        
+        % Concatenate subject data for the current experiment
+        temp = [subject_temp, exp_temp, current_experiment.choice{s}.itemL', current_experiment.choice{s}.itemR', ...
+                current_experiment.choice{s}.ratingL1', current_experiment.choice{s}.ratingR1', ...
+                current_experiment.choice{s}.choice', current_experiment.choice{s}.RT'];
+        
+        % Append current subject data to the overall choice data matrix
+        choice_data = [choice_data; temp];
+    end
+end
+
+% Convert the choice data matrix to a table with appropriate variable names
+choice_table = array2table(choice_data, ...
+    'VariableNames', {'subject_id', 'experiment', 'item_number_left', 'item_number_right', 'item_value_left', 'item_value_right', 'choice', 'rt'});
+
+% Save the table to a CSV file
+writetable(choice_table, '/Users/kiantefernandez/Documents/OSU/SetFitNetworks/data/lee_2021_exp2_5v2.csv');
