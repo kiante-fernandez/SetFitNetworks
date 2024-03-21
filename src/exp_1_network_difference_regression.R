@@ -27,9 +27,6 @@ library(purrr) # Functional Programming Tools
 library(tidyverse) # Easily Install and Load the 'Tidyverse'
 library(jsonlite) # A Simple and Robust JSON Parser and Generator for R
 
-# library(lme4) # Linear Mixed-Effects Models using 'Eigen' and S4
-# library(lmerTest) # Tests in Linear Mixed Effects Models
-
 library(gghalves) # Compose Half-Half Plots Using Your Favorite Geoms
 library(ggforce) # Accelerating 'ggplot2'
 library(ggdist) # Visualizations of Distributions and Uncertainty
@@ -45,55 +42,6 @@ library(cmdstanr)
 
 #load helper functions
 source(here::here("src", "utils.R"))
-# source(here::here("src", "utils_plotting.R"))
-
-estimate_mlms <- function(df, outcome = "choice") {
-  # estimate the mixed effect regressions using lme4 package
-  if (outcome == "choice") {
-    df_temp = create_dataset(df, type = "choice")
-    # base model
-    model1  = glmer(choice ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
-    # add network difference
-    model2 <- glmer(choice ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
-    
-    model3 <- glmer(choice ~ (zleft_rating*zleft_net) + (zright_rating*zright_net) + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
-    
-    model4 <- glmer(choice ~ (zleft_rating*zleft_net) +  (zright_rating*zright_net) + zleft_sd + zright_sd + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7)))
-    
-    return(list(model1, model2, model3, model4)) 
-    
-  } else if (outcome == "correct") {
-    # base model
-    df_temp = create_dataset(df, type = "correct/rt")
-    model1 <- glmer(correct ~ vd + ov + (1| subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-    # add network difference
-    model2 <- glmer(correct ~ vd + ov + nd + (1 | subject_id), data = df_temp, family = binomial(link = "logit"), control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-    return(list(model1, model2)) 
-    
-  } else if (outcome == "rt") {
-    df_temp = create_dataset(df, type = "correct/rt")
-
-    # df = df[df$correct == 1,] #check only correct
-    
-    # base model
-    model1 <- lmer(log(rt) ~ vd + ov + (1 + vd + ov| subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-    # # add network difference
-    model2 <- lmer(log(rt) ~ vd + ov + nd + (1 + vd + ov | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))    # add overall network
-    # 
-    return(list(model1, model2))
-    
-    # model1  = lmer(log(rt) ~ zleft_rating + zright_rating + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-    # # add network difference
-    # model2 <- lmer(log(rt) ~ zleft_rating + zright_rating + zleft_net + zright_net + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-    # 
-    # model3 <- lmer(log(rt) ~ (zleft_rating*zleft_net) + (zright_rating*zright_net) + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-    # 
-    # model4 <- lmer(log(rt) ~ (zleft_rating*zleft_net) +  (zright_rating*zright_net) + zleft_sd + zright_sd + (1 + zleft_rating + zright_rating | subject_id), data = df_temp, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
-    # 
-    # return(list(model1, model2, model3, model4)) 
-    
-  }
-}
 
 estimate_brms <- function(df, outcome = "choice") {
   #
@@ -193,7 +141,9 @@ mean(rt_exclude_pct)
 
 ## value difference exclusion
 p_values <- vector(mode = "numeric", length = 30)
+set_strategy_winner <- vector(mode = "numeric", length = 30)
 
+subject_idx = 1
 for (subject_idx in 1:30) {
   
   temp_df <- df %>%
@@ -208,7 +158,9 @@ for (subject_idx in 1:30) {
     filter(!rt <= 300) %>% # response times cutoffs
     filter(!rt >= 9000) %>%
     mutate(vd = left_rating - right_rating) %>%
-    mutate(sd = left_sim - right_sim)
+    mutate(sd = left_sim - right_sim) %>% 
+    mutate(left_range =  left_MAX - left_MIN,
+           right_range =  right_MAX - right_MIN)
   
   if (subject_idx %in% c(9, 13, 30)) { # remove that break on the choose min /max bc they always follow (each still have sig vd)
     p_values[[subject_idx]] <- NA
@@ -218,7 +170,20 @@ for (subject_idx in 1:30) {
   # temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating + left_net + right_net + choose_max + choose_min, family = binomial, data = temp_df))
   temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating  + choose_max + choose_min, family = binomial, data = temp_df))
   
-  # temp_res <- broom::tidy(glm(choice ~ left_rating + right_rating + left_net + right_net, family = binomial, data = temp_df))
+  temp_res0 <- glm(choice ~ left_rating + right_rating, family = binomial, data = temp_df)
+  # 1.	Selecting the set with maximum
+  temp_res1 <- glm(choice ~ choose_max, family = binomial, data = temp_df)
+  # 2.	Selecting the set without the minimum
+  temp_res2 <- glm(choice ~ choose_min, family = binomial, data = temp_df)
+  # 3.	Selecting the set with range
+  temp_res3 <- glm(choice ~ left_range + right_range, family = binomial, data = temp_df)
+  # 4.	Selecting the set more fruit
+  temp_res4 <- glm(choice ~ left_fruit + right_fruit, family = binomial, data = temp_df)
+  
+  xx <-performance::compare_performance(temp_res0, temp_res1,temp_res2,temp_res3,temp_res4, rank = TRUE, metrics = c("AIC","AICc","BIC","RMSE","R2"))
+  print(paste0("############### Subject data:",subject_idx,"  ###############"))
+  print(xx[,c(1,8)])
+  set_strategy_winner[[subject_idx]] <- xx[1,1]
   
   temp_res$p.value <- round(temp_res$p.value, 2)
   
@@ -256,19 +221,13 @@ exlusions <- function(df) {
 }
 
 for_save <- df %>% exlusions()
-write_csv(for_save, "data/ISDN_poster_exp1.csv")
+# write_csv(for_save, "data/ISDN_poster_exp1.csv")
 
 # net_stats <- c("strength", "eigen", "edge_density", "modularity")
 net_stats <- c("strength","betweenness","closeness","weighted_transitivity","eigen", "edge_density", "modularity","pca1", "pca2", "set_pca1", "set_pca2")
 
-# net_stats <- c("strength","eigen","efficiency", "edge_density", "modularity")
-
-# net_stats <- c("edge_density", "modularity", "pca1", "pca2")
-
-# net_stats <- c("weighted_transitivity", "modularity", "conductance", "pca1", "pca2")
-
 res_netstats <- vector(mode = "list", length = length(net_stats))
-net_idx = 10
+# net_idx = 1
 for (net_idx in 1:length(net_stats)) {
   # if (net_idx %in% c(6)) {
   #   next
@@ -287,54 +246,61 @@ for (net_idx in 1:length(net_stats)) {
   # #### data analysis
   print(paste0("############### CHOICE ###############"))
   
-  models_choice1 <- brm(choice ~ left_rating + right_rating + 
-                          (1 + left_rating + right_rating | subject_id), 
-                        data = df, family = "bernoulli", iter = 10000, 
-                        chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2))
-  
-  models_choice2 <- brm(choice ~ left_rating + left_net1 + right_rating +  right_net1 + 
-                          (1 + left_rating + right_rating +  left_net1 + right_net1 | subject_id),
-                        data = df_temp, family = "bernoulli", iter = 10000, 
-                        chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2))
-  models_choice3 <- brm(choice ~ left_rating + left_net1+ left_net2 + right_rating + right_net1 + zright_net2+
-                          (1 + left_rating + right_rating +  left_net2 + right_net2 + left_net1 + zright_net1 | subject_id),
-                        data = df_temp, family = "bernoulli", iter = 10000, 
-                        chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2))
-  
   df_temp = create_dataset(df, type = "choice")
+  # models_choice <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) +
+  #                        (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), 
+  #                      data = df_temp, family = "bernoulli", iter = 10000, 
+  #                      chains = 4, cores = 4,
+  #                      file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_1_fit_choice03")))
+  # models_choice <- brm(choice ~ zleft_rating*(zleft_net1) + zright_rating*(zright_net1) +
+  #                        (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1| subject_id), 
+  #                      data = df_temp, family = "bernoulli", iter = 10000, 
+  #                      chains = 4, cores = 4,
+  #                      file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_1_fit_choice03")),
+  #                      file_refit =   getOption("brms.file_refit", "always"))
   
-  models_choice1 <- brm(choice ~ zleft_rating + zright_rating + 
-                  (1 | subject_id), 
-                data = df_temp, family = "bernoulli", iter = 10000, 
-                chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2))
-  models_choice2 <- brm(choice ~ zleft_rating + zleft_net1 + zright_rating + zright_net1 + 
-                          (1 | subject_id),
-                        data = df_temp, family = "bernoulli", iter = 10000, 
-                        chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2))
-  models_choice3 <- brm(choice ~ zleft_rating + zleft_net1+ zleft_net2 + zright_rating + zright_net1 + zright_net2+
-                          (1 | subject_id),
-                       data = df_temp, family = "bernoulli", iter = 10000, 
-                       chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2))
-  looR2<-loo_R2(models_choice1)
-  round(median(looR2), 2)
-  looR2<-loo_R2(models_choice2)
-  round(median(looR2), 2)
-  looR2<-loo_R2(models_choice3)
-  round(median(looR2), 2)
-  report::report(models_choice3)
+  # models_choice1 <- brm(choice ~ zleft_rating + zright_rating +
+  #                 (1 + zleft_rating + zright_rating| subject_id),
+  #               data = df_temp, family = "bernoulli", iter = 10000,
+  #               chains = 4, cores = 4, backend = "cmdstanr")
+  # models_choice2 <- brm(choice ~ zleft_rating*zleft_net1 + zright_rating*zright_net1 +
+  #                         (1 + zleft_rating + zleft_net1 + zright_rating + zright_net1| subject_id),
+  #                       data = df_temp, family = "bernoulli", iter = 10000,
+  #                       chains = 4, cores = 4)
+  # models_choice3 <- brm(choice ~ zleft_rating*zleft_net2 + zright_rating*zright_net2 +
+  #                         (1 + zleft_rating + zleft_net2 + zright_rating + zright_net2| subject_id),
+  #                       data = df_temp, family = "bernoulli", iter = 10000,
+  #                       chains = 4, cores = 4)
+  # models_choice3 <- brm(choice ~ zleft_rating + zleft_net1+ zleft_net2 + zright_rating + zright_net1 + zright_net2+
+  #                         (1 + zleft_rating + zleft_net1+ zleft_net2 + zright_rating + zright_net1 + zright_net2| subject_id),
+  #                      data = df_temp, family = "bernoulli", iter = 10000,
+  #                      chains = 4, cores = 4, backend = "cmdstanr")
+  # looR21<-loo_R2(models_choice1)
+  # round(median(looR21), 3)
+  # looR22<-loo_R2(models_choice2)
+  # round(median(looR22), 3)
+  # looR23<-loo_R2(models_choice3)
+  # round(median(looR23), 3)
+  # brms::bayes_R2(models_choice1)
+  # brms::bayes_R2(models_choice2)
+  # brms::bayes_R2(models_choice3)
+  
+  # looR2<-loo_R2(models_choice3)
+  # round(median(looR2), 2)
+  # report::report(models_choice3)
   
   #an additional four percent variance explained from PCA 2 alone. 
-  loo1 <- loo(models_choice1)
-  loo2 <- loo(models_choice2)
-  loo3 <- loo(models_choice3)
+  # loo1 <- loo(models_choice1)
+  # loo2 <- loo(models_choice2)
+  # loo3 <- loo(models_choice3)
   # loo1$estimates
   # loo2$estimates
   
-  loo_compare(loo1, loo2, loo3)
+  # loo_compare(loo1, loo2, loo3)
   # models_choice <- estimate_mlms(df_temp, outcome = "choice")
   # models_choice <- estimate_brms(df, outcome = "choice") #bayes
   # library(tidybayes)
-  plot(ggeffects::ggpredict(models_choice3, terms = c("zleft_net2[all]"))) 
+  # plot(ggeffects::ggpredict(models_choice3, terms = c("zleft_net2[all]"))) 
 
   # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("AIC", "BIC")))
   # # print(performance::compare_performance(models_choice, rank = TRUE, metrics = c("WAIC","LOOIC"))) #bayes
@@ -370,53 +336,34 @@ for (net_idx in 1:length(net_stats)) {
   # models_rt <- estimate_brms(df, outcome = "rt") #bayes versions
   
   df_temp = create_dataset(df, type = "correct/rt")
-
-  models_rt <- brm(log(rt) ~ vd + ov + nd1 + nd2 +
-                     (vd + ov + nd1 + nd2  | subject_id), 
+  
+  # models_rt <- brm(log(rt) ~ vd + ov + nd1 + nd2 +
+  #                    (vd + ov + nd1 + nd2  | subject_id), 
+  #                  data = df_temp, iter = 10000, 
+  #                  chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
+  #                  file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_1_fit_rt02")))
+  
+  models_rt <- brm(log(rt) ~ vd + ov + nd1 +
+                     (vd + ov + nd1  | subject_id), 
                    data = df_temp, iter = 10000, 
-                   chains = 4, cores = 4)
+                   chains = 4, cores = 4, backend = "cmdstanr",
+                   file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_1_fit_rt02")),
+                   file_refit =   getOption("brms.file_refit", "always"))
   
-  models_rt <- brm(log(rt) ~ vd + ov + nd1 + nd2 +
-                     (vd + ov + nd1 + nd2  | subject_id), 
-                   data = df_temp, iter = 10000, 
-                   chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
-                   file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_1_fit_rt02")))
+  # print(paste0("############### ", net_stats[[net_idx]], " ###############"))
+  # bayestestR::sexit(models_choice)
+  # bayestestR::sexit(models_rt)
   
-  # print(performance::compare_performance(models_rt, rank = TRUE))
-  # print(parameters::compare_models(models_rt,  style = "ci_p"))
-  # # print(parameters::compare_models(models_choice))
-  # 
-  # mp <- modelplot(models_rt, coef_omit = "Interc") +
-  #   geom_vline(xintercept = 0, linetype = "dashed") +
-  #   labs(x = "Coefficients",y = "Terms",
-  #        title = paste0("RT: ",net_stats[[net_idx]])
-  #   ) +
-  #   theme_classic() +
-  #   scale_color_brewer(palette = "Set1")
-  # print(mp)
-  # res_netstats2[[net_idx]] <- models_rt[[2]]
-  
-  # generate tables
-  # generate_table(models_choice, type = "exp_1_choice", net_stat = net_stats[[net_idx]], save = T)
-  # generate_table(models_correct, type = "exp_1_correct", net_stat = net_stats[[net_idx]], save = T)
-  # generate_table(models_rt, type = "exp_1_rt", net_stat = net_stats[[net_idx]], save = T)
-  
-  res_netstats[[net_idx]] <- list(models_choice,models_rt)
+  # res_netstats[[net_idx]] <- list(models_choice,models_rt)
   
 }
-# (plts[[1]] + plts[[2]])/(plts[[3]] + plts[[4]])
-
-# knitr::kable(bayestestR::sexit(exp_1_fit_choice03), digits = 2)
-# bayestestR::sexit(exp_1_fit_rt02, significant = 0.01)
-#  bayestestR::sexit(exp_2_fit_choice04)
-models_choice <- readRDS("~/Documents/SetFitNetworks/fits/exp_1_fit_choice02.rds")
-
-# bayestestR::sexit(pca1_exp_2_fit_choice03V2)
-# bayestestR::sexit(pca1_exp_2_fit_rt02)
-
-# #  
-# bayestestR::sexit(pca1_exp_1_fit_choice03)
-# bayestestR::sexit(pca1_exp_2_fit_choice03)
 # 
-# bayestestR::sexit(pca1_exp_1_fit_rt02)
-# bayestestR::sexit(pca1_exp_2_fit_rt02)
+first_elements <- sapply(res_netstats, function(x) x[1])
+sec_elements <- sapply(res_netstats, function(x) x[2])
+
+sec_elements <- sapply(res_netstats, function(x) x[2])
+# 
+map(sec_elements, bayestestR::sexit)
+# 
+# lapply(first_elements, function(x)  bayestestR::convert_pd_to_p(bayestestR::p_direction(x)$pd))
+

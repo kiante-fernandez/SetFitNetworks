@@ -852,7 +852,7 @@ E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
 
 net_degree <- calculate_net_stats(g)
 
-l <- layout_nicely(g)
+l <- layout_nicely(G)
 l <- layout_with_graphopt(G)
 l <- layout.mds(G)
 
@@ -868,6 +868,17 @@ net_degree <- net_degree%>%
              snack_type == 7 ~ "#A6761D"
            )
   )
+# net_degree <- net_degree%>% for coloring the consensuss 6 solution
+#   mutate(colors =
+#            case_when(
+#              snack_type == 1 ~ "#D95F02",
+#              snack_type == 2 ~ "#E6AB02",
+#              snack_type == 3 ~ "#1B9E77",
+#              snack_type == 4 ~ "#66A61E",
+#              snack_type == 5 ~ "#7570B3",
+#              snack_type == 6 ~ "#E7298A",
+#            )
+#   )
 # net_degree <- net_degree%>% 
 #   mutate(colors = 
 #            case_when(  
@@ -902,7 +913,8 @@ plot(g,
 
 legend(x=1.1, 
        y=1, 
-       c("Savory","Fruit","Dessert","Chocolate","Chip","Cracker","Bread"), 
+       # c("Savory","Fruit","Dessert","Chocolate","Chip","Cracker","Bread"), 
+       c("meat/cheese","fruits/vegetables","sweet pastries","chocolate","chips","crackers","bread"), 
        pch=21, 
        pt.bg=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02", 
                "#A6761D"),
@@ -930,7 +942,8 @@ plot(g,
 
 legend(x=1, 
        y=0, 
-       c("Savory","Fruit","Dessert","Chocolate","Chip","Cracker","Bread"), 
+       # c("Savory","Fruit","Dessert","Chocolate","Chip","Cracker","Bread"), 
+       c("meat/cheese","fruits/vegetables","sweet pastries","chocolate","chips","crackers","bread"), 
        pch=21, 
        pt.bg=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02", 
                "#A6761D"),
@@ -1043,6 +1056,11 @@ library(rstantools)
 pca1_exp_1_fit_choice03 <- readRDS("~/Documents/SetFitNetworks/fits/pca1_exp_1_fit_choice03.rds")
 pca1_exp_2_fit_choice03 <- readRDS("~/Documents/SetFitNetworks/fits/pca1_exp_2_fit_choice03.rds")
 pca1_exp_3_fit_choice03 <- readRDS("~/Documents/SetFitNetworks/fits/pca1_exp_3_fit_choice03.rds")
+#set facilitation models. var name is wrong here
+pca1_exp_1_fit_choice03 <- readRDS("~/Documents/SetFitNetworks/fits/strength_exp_1_fit_choice03.rds")
+pca1_exp_2_fit_choice03 <- readRDS("~/Documents/SetFitNetworks/fits/strength_exp_2_fit_choice03.rds")
+pca1_exp_3_fit_choice03 <- readRDS("~/Documents/SetFitNetworks/fits/strength_exp_3_fit_choice03.rds")
+
 
 plot_model(pca1_exp_1_fit_choice03, type = "pred", terms = c("zleft_net1[-1,1]","zleft_net2[-1,1]", "zleft_rating [0]", "zleft_rating [0]"))
 plot(ggeffects::ggpredict(pca1_exp_1_fit_choice03, terms = c("zleft_net2[all]", "zleft_rating [0]", "zright_rating [0]")))
@@ -1072,20 +1090,32 @@ test <- plot_models(pca1_exp_1_fit_choice03,
                     transform = NULL,
                     show.values = TRUE,
                     show.p = FALSE,
-                    m.labels = c("Experiment one", "Experiment two", "Experiment three"),
+                    m.labels = c("Experiment One", "Experiment Two", "Experiment Three"),
                     ci.lvl = 0.95)
-write.csv(test$data, here::here("data","internal_meta_analysis_choice.csv"), row.names=FALSE)
+# write.csv(test$data, here::here("data","internal_meta_analysis_choice.csv"), row.names=FALSE)
      
-pd <- position_dodge(1)
+pd <- position_dodge(.4)
 plt_data <- test$data
 plt_data <- plt_data[plt_data$term != "b_zleft_sim",]
 plt_data <- plt_data[plt_data$term != "b_zright_sim",]
 plt_data$term <- factor(plt_data$term)
 dput(levels(plt_data$term))
-levels(plt_data$term) <- c("right rating × PCA2", "right rating × PCA1", 
-                           "left rating × PCA2", "left rating × PCA1", "right PCA2", 
-                           "right PCA1", "right liking rating", "left PCA2", "left PCA1", 
-                           "left liking rating", "intercept")
+
+levels(plt_data$term) <- c("right rating × net","left rating × net", 
+                           "right net", "right liking rating", 
+                           "left net", "left liking rating", 
+                           "intercept")
+
+# levels(plt_data$term) <- c("right rating × PCA2", "right rating × PCA1", 
+#                            "left rating × PCA2", "left rating × PCA1", "right PCA2", 
+#                            "right PCA1", "right liking rating", "left PCA2", "left PCA1", 
+#                            "left liking rating", "intercept")
+
+# plt_data <- plt_data[stringr::str_detect(plt_data$term, "PCA1") == FALSE,]
+# plt_data <- plt_data[stringr::str_detect(plt_data$term, "net") == FALSE,]
+
+plt_data <- plt_data[stringr::str_detect(plt_data$term, "×") == FALSE,]
+
 plt_data %>% 
   dplyr::filter(term != "intercept") %>% 
   dplyr::mutate(estimate =  round(estimate, 2),
@@ -1093,9 +1123,9 @@ plt_data %>%
                 conf.high = round(conf.high, 2)) %>% 
   ggplot(aes(y = forcats::fct_reorder(term, estimate), color = group)) +
   theme_classic()+
-  geom_point(aes(x=estimate), shape=15, size=2,position = pd) +
-  geom_linerange(aes(xmin=conf.low, xmax=conf.high), position = pd, size=.7)+
-  geom_vline(xintercept = 0, linetype = "dashed", linewidth = .4)+
+  geom_point(aes(x=estimate), shape=15, size=3,position = pd) +
+  geom_linerange(aes(xmin=conf.low, xmax=conf.high), position = pd, size=.8)+
+  geom_vline(xintercept = 0, linetype = "dashed", linewidth = .2)+
   scale_color_brewer(palette = "Set1")+
   labs(
     y = "terms",
@@ -1103,18 +1133,24 @@ plt_data %>%
     color = ""
   )+
   theme(axis.text = element_text(face="bold"),
-        text = element_text(size = 15),
+        text = element_text(size = 20),
         axis.title = element_text(face="bold")
-  )+
-  geom_text(aes( label = paste0(estimate, " [", conf.low,",",conf.high, "]"), 
-                 x = estimate, y = term, group = group, color = group), 
-            position = pd, vjust = -0.7,size=3,
-            show.legend = FALSE, check_overlap = FALSE)
+  )
+  # geom_text(aes( label = paste0(estimate, " [", conf.low,",",conf.high, "]"), 
+  #                x = estimate, y = term, group = group, color = group), 
+  #           position = pd, vjust = -0.7,size=3,
+  #           show.legend = FALSE, check_overlap = FALSE)
 
 
 pca1_exp_1_fit_rt02 <- readRDS("~/Documents/SetFitNetworks/fits/pca1_exp_1_fit_rt02.rds")
 pca1_exp_2_fit_rt02 <- readRDS("~/Documents/SetFitNetworks/fits/pca1_exp_2_fit_rt02.rds")
 pca1_exp_3_fit_rt02 <- readRDS("~/Documents/SetFitNetworks/fits/pca1_exp_3_fit_rt02.rds")
+#note the wrong variable names
+pca1_exp_1_fit_rt02 <- readRDS("~/Documents/SetFitNetworks/fits/strength_exp_1_fit_rt02.rds")
+pca1_exp_2_fit_rt02 <- readRDS("~/Documents/SetFitNetworks/fits/strength_exp_2_fit_rt02.rds")
+pca1_exp_3_fit_rt02 <- readRDS("~/Documents/SetFitNetworks/fits/strength_exp_3_fit_rt02.rds")
+
+
 
 plot(ggeffects::ggpredict(pca1_exp_1_fit_rt02, terms = c("nd2[-2:2]", "vd [0]")))
 plot(ggeffects::ggpredict(pca1_exp_1_fit_rt02, terms = c("nd1[-2:2]", "vd [0]")))
@@ -1131,13 +1167,20 @@ test <- plot_models(pca1_exp_1_fit_rt02,
                     m.labels = c("Experiment one", "Experiment two","Experiment three"),
                     ci.lvl = 0.95)
 
-pd <- position_dodge(1)
+pd <- position_dodge(.4)
 plt_data <- test$data
 dput(levels(plt_data$term))
 plt_data <- plt_data[plt_data$term != "b_sd",]
 plt_data$term <- factor(plt_data$term)
+levels(plt_data$term) <- c("Set-Similarity Difference", 
+                           "Overall Value", "Value Difference", "intercept")
+
 levels(plt_data$term) <- c("PCA2 Difference", "PCA1 Difference", 
                            "Overall Value", "Value Difference", "intercept")
+
+plt_data <- plt_data[stringr::str_detect(plt_data$term, "PCA1") == FALSE,]
+plt_data <- plt_data[stringr::str_detect(plt_data$term, "Overall") == FALSE,]
+
 plt_data %>% 
   dplyr::filter(term != "intercept") %>% 
   dplyr::mutate(estimate =  round(estimate, 2),
@@ -1146,8 +1189,8 @@ plt_data %>%
   ggplot(aes(y = forcats::fct_reorder(term, estimate), color = group)) +
   theme_classic()+
   geom_point(aes(x=estimate), shape=15, size=2,position = pd) +
-  geom_linerange(aes(xmin=conf.low, xmax=conf.high), position = pd, size=.7)+
-  geom_vline(xintercept = 0, linetype = "dashed", linewidth = .4)+
+  geom_linerange(aes(xmin=conf.low, xmax=conf.high), position = pd, size=.8)+
+  geom_vline(xintercept = 0, linetype = "dashed", linewidth = .2)+
   scale_color_brewer(palette = "Set1")+
   labs(
     y = "terms",
@@ -1155,13 +1198,13 @@ plt_data %>%
     color = ""
   )+
   theme(axis.text = element_text(face="bold"),
-        text = element_text(size = 15),
+        text = element_text(size = 20),
         axis.title = element_text(face="bold")
-  )+
-  geom_text(aes( label = paste0(estimate, " [", conf.low,",",conf.high, "]"), 
-                 x = estimate, y = term, group = group, color = group), 
-            position = pd, vjust = -0.7,size=3,
-            show.legend = FALSE, check_overlap = FALSE)
+  )
+  # geom_text(aes( label = paste0(estimate, " [", conf.low,",",conf.high, "]"), 
+  #                x = estimate, y = term, group = group, color = group), 
+  #           position = pd, vjust = -0.7,size=3,
+  #           show.legend = FALSE, check_overlap = FALSE)
 
 
 #####ISDN poster plot
@@ -1448,6 +1491,36 @@ poster_plot_data %>%
 #     text = element_text(size = 15),
 #     axis.title = element_text(face="bold")
 #   )
+  
+
+#### stratedy plotting
+set_strategy_winner <- set_strategy_winner[set_strategy_winner != "0"]
+
+data_frame <- data.frame(set_strategy_winner) %>% 
+  group_by(set_strategy_winner) %>%
+  summarise(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+# Reorder set_strategy_winner by Proportion in descending order
+data_frame$set_strategy_winner <- factor(data_frame$set_strategy_winner,
+                                         levels = c("temp_res0", "temp_res1", "temp_res2", "temp_res3", "temp_res4"),
+                                         labels = c("Higher Average", "Maximum Value", "Excluding Minimum", "Range", "More Fruit"))
+data_frame$set_strategy_winner <- factor(data_frame$set_strategy_winner, levels = data_frame$set_strategy_winner[order(data_frame$Proportion)])
+
+# Now plotting
+ggplot(data_frame, aes(x = set_strategy_winner, y = Proportion, fill = set_strategy_winner)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = Count, y = Proportion), position = position_stack(vjust = 0.5), size = 6) + # Add counts as text
+  theme_classic() +
+  labs(x = "Strategy", y = "Proportion", title = "Best Fitting Set Strategy Identifed Per Subject") +
+  # scale_x_discrete(labels = c("Maximum Value", "Excluding Minimum", "Range", "More Fruit", "Higher Average")) +
+  scale_fill_discrete(name = "Category") +
+  coord_flip() +
+  scale_fill_brewer(palette = "Dark2")+
+  theme(legend.position = "none")+
+  theme(axis.text = element_text(face="bold"),
+        text = element_text(size = 20),
+        axis.title = element_text(face="bold")
+  )
   
   
   

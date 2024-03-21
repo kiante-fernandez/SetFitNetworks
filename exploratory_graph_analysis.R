@@ -27,6 +27,7 @@ library(here)
 suppressMessages(library(EGAnet)) # Exploratory Graph Analysis – a Framework for Estimating the Number of Dimensions in Multivariate Data using Network Psychometrics
 library(readxl)
 library(igraph)
+library(ggplot2)
 
 if (!file.exists(here("data", "rating_network_graph.RData"))) {
 
@@ -54,11 +55,11 @@ if (!file.exists(here("data", "rating_network_graph.RData"))) {
 
   # run community detection procedure
   ega_res <- EGAnet::bootEGA(lee_2021_rating1,
-    iter = 1000,
+    iter = 10000,
     n = n,
     model = "glasso",
     algorithm = "walktrap",
-    ncores = 8, typicalStructure = T
+    ncores = 10, typicalStructure = T
   )
 
   ega_res[["plot.typical.ega"]][["layers"]][[6]] <- NULL

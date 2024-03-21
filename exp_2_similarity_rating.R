@@ -29,10 +29,14 @@ G <- g
 E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
 mem <- membership(cluster_leading_eigen(G))
 
+#precision
+set_precision <- map(subgraphs, function (x){mean(net_degree[net_degree$Name %in% V(x)$name, ]$precision)})
+set_precision <- do.call(rbind, set_precision)
+
 # get mod scores
 # mod_res <- map(subgraphs, function(x) unique(V(x)$mod))
 mod_res <- map(subgraphs, function(x) {temp <- igraph::induced_subgraph(g, V(x)$name) 
-                                                                     as.numeric(modularity(temp, V(temp)$snack_type))})
+                                      as.numeric(igraph::modularity(temp, V(temp)$snack_type))})
 mod_res <- do.call(rbind, mod_res)
 
 
@@ -97,7 +101,6 @@ pca3 <- do.call(rbind, pca3)
 # source('fernandez_rating_network.R') #load the EGA from the new rating data
 #^^need file it s on other machine I think
 
-
 con_res <- map(subgraphs, function(x) {
   x <- igraph::induced_subgraph(g, V(x)$name)
   mem[names(mem)] = 1
@@ -150,6 +153,8 @@ similarity_ratings <- function(data) {
   subject_rating_temp$pca3 <- as.vector(pca3)
   
   subject_rating_temp$ratings <- set_values_temp
+  subject_rating_temp$set_precision <- as.vector(set_precision)
+  
 
   subject_rating_temp$subject_id <- unique(subject_temp$subject_id)
   
@@ -264,6 +269,30 @@ ggplot(res, aes(pca2)) +
     text = element_text(size = 15),
     axis.title = element_text(face = "bold")
   )
+
+ggplot(res, aes(set_precision)) +
+  geom_histogram(color = "black", fill = "dodgerblue1", alpha = .8, bins = 8) +
+  geom_vline(xintercept = mean(res$set_precision), linetype = "dashed", size = .7) +
+  theme_classic() +
+  labs(x = "precision", y = "Count") +
+  theme(
+    axis.text = element_text(face = "bold"),
+    text = element_text(size = 15),
+    axis.title = element_text(face = "bold")
+  )
+
+# ggplot(res, aes(set_precision, responsenormalized, group = stimulus, color = factor(stimulus))) +
+#   geom_point() +
+#   theme_classic() +
+#   # geom_pointrange(aes(ymin = responsenormalized - se, ymax = responsenormalized + se), size = .7, color = "red") +
+#   geom_smooth(method = "lm", se = F, size = 1) +
+#   labs(x = "", y = "Similarity") +
+#   theme(
+#     axis.text = element_text(face = "bold"),
+#     text = element_text(size = 15),
+#     axis.title = element_text(face = "bold")
+#   )
+
 library(lme4)
 library(lmerTest)
 m <- lmer(responsenormalized ~ strength_res  + (strength_res| stimulus), data = res)
@@ -289,6 +318,8 @@ compares$c <- unlist(con_res)
 compares$pca1 <- pca1[,1]
 compares$pca2 <- pca2[,1]
 compares$pca3 <- pca3[,1]
+compares$set_precision <- set_precision[,1]
+
 compares$experiment <- 2
 
 write_csv(compares, "data/ISDN_poster_sim_rating_exp2.csv")
@@ -408,6 +439,18 @@ report::report(cor.test(compares$subgraph_mean, compares$pca3, method = "spearma
 #     text = element_text(size = 15),
 #     axis.title = element_text(face = "bold")
 #   )
+
+ggplot(compares, aes(set_precision,subgraph_mean)) +
+  geom_point() +
+  theme_classic() +
+  geom_pointrange(aes(ymin = subgraph_mean - se, ymax = subgraph_mean + se), size = .7, color = "red") +
+  geom_smooth(method = "lm", se = T, size = 1.8, color = "black") +
+  labs(x = "set-precision", y = "Similarity") +
+  theme(
+    axis.text = element_text(face = "bold"),
+    text = element_text(size = 15),
+    axis.title = element_text(face = "bold")
+  )
 
 ggplot(compares, aes(ec, subgraph_mean)) +
   geom_point() +

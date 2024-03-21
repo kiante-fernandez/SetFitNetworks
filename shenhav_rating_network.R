@@ -45,11 +45,12 @@ allSubBidData <- read_csv("~/Downloads/allSubBidData.csv")
 ratings <- allSubBidData %>% 
   select(subject_ID, item_response, item_name) %>% 
   pivot_wider(names_from = item_name, values_from = item_response) %>% 
-  ungroup() %>% select(-subject_ID)
+  ungroup() %>% select(-subject_ID) %>% 
+  select(sample(ncol(.), 150))
 
 # Data Cleaning and Imputation
 ratings_cleaned <- ratings %>% select(where(~ !any(is.na(.))))
-ratings_imputed <- ratings %>% mutate(across(everything(), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+# ratings_imputed <- ratings %>% mutate(across(everything(), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
 
 # Column Name Cleaning
 col_names <- colnames(ratings_cleaned)
@@ -59,7 +60,6 @@ colnames(ratings_cleaned) <- cleaned_col_names
 # Remove Numeric-Only Columns
 # numeric_only_cols <- sapply(cleaned_col_names, function(name) grepl("^[0-9]+$", name))
 numeric_or_MJK_cols <- sapply(cleaned_col_names, function(name) grepl("^[0-9]+$", name) | grepl("^MJK", name))
-
 ratings_cleaned <- ratings_cleaned[, !numeric_or_MJK_cols]
 
 # Correlation and Network Analysis
@@ -68,7 +68,7 @@ m <- as.matrix(cor_product)
 mDim <- length(m[1, ])
 
 # Visualizing Correlations
-ggcorrplot::ggcorrplot(m[mDim:1, ], colors = c("red", "white", "green"), ggtheme = ggplot2::theme_classic, outline.color = "white", show.diag = TRUE, hc.order = TRUE) +
+ggcorrplot::ggcorrplot(m[mDim:1, ], colors = c("red", "white", "green"), ggtheme = ggplot2::theme_classic, outline.color = "white", show.diag = TRUE) +
   ggplot2::theme(axis.text.x = element_text(size = 4), axis.text.y = element_text(size = 4), axis.ticks = element_blank(), legend.position = "left")
 
 # Exploratory Graph Analysis (EGA)
@@ -78,15 +78,22 @@ if (!file.exists(here::here("data", "shenhav_rating_network_graph.RData"))) {
   shenhav_2019_rating <- ratings_cleaned
   
   # Correlation Matrix Computation and Adjustment
+  # (this is a check for now given how things are correlating)
   cor_x1 <- cor(na.omit(ratings_cleaned))
   cor_x1 <- matrix(Matrix::nearPD(cor_x1, corr = TRUE, maxit = 500)$mat,   ncol(ratings_cleaned))
   cor_x1 <- (cor_x1 + t(cor_x1)) / 2 # Make symmetric
   colnames(cor_x1) <- colnames(ratings_cleaned)
+  
   set.seed(2024)
   
   # Run EGA and Bootstrapped EGA
   test_net <- EGAnet::EGA.fit(cor_x1, n = 30, model = "TMFG", algorithm = "walktrap", corr = "pearson")
-  
+  # test_net <- EGAnet::EGA(cor_x1, n = 30, model = "TMFG", algorithm = "walktrap", corr = "pearson")
+  test_net <- EGAnet::EGA.fit(cor_x1, n = 30, model = "glasso", algorithm = "walktrap", corr = "pearson",
+                              model.args = list(lambda.min.ratio = 0.1,
+                                                nlambda = 100,
+                                                gamma = 0.01
+                              ))
   ega_res <- EGAnet::bootEGA(cor_x1,
                              iter = 4000, 
                              n = nrow(ratings_cleaned), 
@@ -99,7 +106,7 @@ if (!file.exists(here::here("data", "shenhav_rating_network_graph.RData"))) {
   #                   nlambda = 300))
   
   # Cleaning and Saving Results
-  ega_res[["plot.typical.ega"]][["layers"]][[6]] <- NULL
+  # ega_res[["plot.typical.ega"]][["layers"]][[6]] <- NULL
   print(ega_res$plot.typical.ega)
   
   # Network Graph Construction

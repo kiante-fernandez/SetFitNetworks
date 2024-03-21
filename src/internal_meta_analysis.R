@@ -7,23 +7,30 @@ internal_meta_df <- readr::read_csv("data/internal_meta_analysis_choice.csv")
 
 dat <- internal_meta_df %>% 
   select(term, estimate, std.error, group) %>%
+  mutate(estimate = abs(estimate)) %>% 
   filter(term == "b_zright_net2" | term == "b_zleft_net2")
 # filter(term == "b_zleft_net2")
 
 #term == "b_zright_net2"
+# 
+# dat <- internal_meta_df %>% 
+#   select(term, estimate, std.error, group) %>%
+#   mutate(estimate = abs(estimate)) %>% 
+#   filter(term == "b_zright_rating:zright_net2" | term == "b_zleft_rating:zleft_net2")
 
 brm_out1 <- brm(
   estimate | se(std.error) ~ 1 + (1 | group),
-  data = dat[dat$term == "b_zleft_net2",],
+  data = dat,
+  # data = dat[dat$term == "b_zleft_rating:zleft_net2",], #b_zleft_rating:zleft_net2
   cores = 4,
   iter = 200000
   # file = here::here("fits", "metaanalysismodel")
 )
 brm_out2 <- brm(
   estimate | se(std.error) ~ 1 + (1 | group),
-  data = dat[dat$term == "b_zright_net2",],
+  data = dat[dat$term == "b_zright_rating:zright_net2",], #b_zright_rating:zright_net2
   cores = 4,
-  iter = 200000
+  iter = 4000
   # file = here::here("fits", "metaanalysismodel")
 )
 #what the average effect size less than zero?

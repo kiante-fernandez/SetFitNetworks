@@ -1,5 +1,5 @@
 # weight = "betweenness"
-# experiment = 3
+# experiment = 2
 organize_group_data <- function(experiment, weight = "degree") {
   
   # which data set are we working with?
@@ -146,7 +146,7 @@ organize_group_data <- function(experiment, weight = "degree") {
       return(set_level)
     }
     set_level_scores <- get_subgraph_pc(subgraphs)
-    
+    # foo = 1
     for (foo in 1:100) {
       # select which stat to calculate
       

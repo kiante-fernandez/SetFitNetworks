@@ -24,8 +24,47 @@
 # Libraries
 library(modelsummary)
 library(purrr)
+library(gt)
 #load datasets 
 
+apa <- function(x, title = " ") {
+  gt(x) %>%
+    tab_options(
+      table.border.top.color = "white",
+      heading.title.font.size = px(16),
+      column_labels.border.top.width = 3,
+      column_labels.border.top.color = "black",
+      column_labels.border.bottom.width = 3,
+      column_labels.border.bottom.color = "black",
+      table_body.border.bottom.color = "black",
+      table.border.bottom.color = "white",
+      table.width = pct(100),
+      table.background.color = "white"
+    ) %>%
+    cols_align(align="center") %>%
+    tab_style(
+      style = list(
+        cell_borders(
+          sides = c("top", "bottom"),
+          color = "white",
+          weight = px(1)
+        ),
+        cell_text(
+          align="center"
+        ),
+        cell_fill(color = "white", alpha = NULL)
+      ),
+      locations = cells_body(
+        columns = everything(),
+        rows = everything()
+      )
+    ) %>%
+    #title setup
+    tab_header(
+      title = html("<i>", title, "</i>")
+    ) %>%
+    opt_align_table_header(align = "left")
+}
 ## choice
 
 exp_1_fit_choice01 <- readRDS("~/Documents/SetFitNetworks/fits/exp_1_fit_choice01.rds")
@@ -54,6 +93,14 @@ cm <- c('b_zleft_rating'    = 'left liking rating',
         'b_zright_rating:zright_net' = 'right rating × network estimate'
 )
 
+cm <- c('b_zleft_rating'    = 'left liking rating',
+        'b_zright_rating'    = 'right liking rating',
+        'b_zleft_net1' = 'left network estimate',
+        'b_zright_net1' = 'right network estimate',
+        'b_zleft_rating:zleft_net1' = 'left rating × network estimate',
+        'b_zright_rating:zright_net1' = 'right rating × network estimate'
+)
+
 
 cm <- c('zleft_rating'    = 'left liking rating',
         'zright_rating'    = 'right liking rating',
@@ -71,16 +118,56 @@ rm <- c('vd'    = 'abs value difference',
 #exp two
 names(res_netstats) <- c("strength","betweenness","closeness","transitivity","eigen", "edge density", "modularity","PC1", "PC2")
 # names(res_netstats) <- c("edge_density", "modularity", "PC1", "PC2")
+
 names(res_netstats2) <- c("strength","betweenness","closeness","transitivity","eigen", "edge density", "modularity","PC1", "PC2")
 
-modelsummary(res_netstats,
+names(first_elements) <- c("strength","betweenness","closeness","weighted_transitivity","eigen", "edge_density", "modularity","pca1", "pca2", "set_pca1", "set_pca2")
+names(sec_elements) <- c("strength","betweenness","closeness","weighted_transitivity","eigen", "edge_density", "modularity","pca1", "pca2", "set_pca1", "set_pca2")
+
+modelsummary(first_elements,
              # shape = term ~ model + statistic,
-             fmt = 2,
+             output = "gt",
+             fmt = 3,
              estimate = "{estimate}{stars} [{conf.low}, {conf.high}]",
              statistic = NULL,
              coef_omit = "Intercept|.*subject_id",
-             coef_map = cm,
-             gof_map = NA)
+             # coef_map = rm,
+             gof_map = NA) %>% 
+  tab_options(
+    table.border.top.color = "white",
+    heading.title.font.size = px(16),
+    column_labels.border.top.width = 3,
+    column_labels.border.top.color = "black",
+    column_labels.border.bottom.width = 3,
+    column_labels.border.bottom.color = "black",
+    table_body.border.bottom.color = "black",
+    table.border.bottom.color = "white",
+    table.width = pct(100),
+    table.background.color = "white"
+  ) %>%
+  # center column text
+  cols_align(align="center") %>%
+  # set table style
+  tab_style(
+    style = list(
+      # remove horizontal lines
+      cell_borders(
+        sides = c("top", "bottom"),
+        color = "white",
+        weight = px(1)
+      ),
+      #center text
+      cell_text(
+        align="center"
+      ),
+      # remove row striping in Markdown documents
+      cell_fill(color = "white", alpha = NULL)
+    ),
+    #do this for all columns and rows
+    locations = cells_body(
+      columns = everything(),
+      rows = everything()
+    ))
 
 # net_stat = "edge_density"
 # file_name <- here::here("tables", paste0("choice", "_", net_stat, ".html"))
@@ -157,3 +244,5 @@ modelsummary(panels,
 )
 
  
+
+modelsummary(sec_elements[[1]])

@@ -27,8 +27,8 @@
 library(here)
 library(tidyverse)
 library(purrr)
-library(lme4)
-library(lmerTest)
+# library(lme4)
+# library(lmerTest)
 library(patchwork)
 
 library(sjPlot)
@@ -44,10 +44,14 @@ library(cmdstanr)
 
 ##binary data
 Lee_Hare_2023_choice_data_exp2 <- read_csv("data/Lee_Hare_2023_OSF/Lee_Hare_2023_choice_data_exp2.csv")
-Lee_Holyoak_2021_choice_data_exp2_5 <- read_csv("data/lee_2021_exp2_5.csv")
+# Lee_Holyoak_2021_choice_data_exp2_5 <- read_csv("data/lee_2021_exp2_5.csv", col_names = c("subject_id","experiment", "item_name_left","item_name_right", "item_value_left","item_value_right","vd","response","rt"))
+Lee_Holyoak_2021_choice_data_exp2_5 <- read_csv("data/lee_2021_exp2_5_v2.csv")
 
 Lee_Hare_2023_choice_data_exp2$choice_type = "binary"
 Lee_Holyoak_2021_choice_data_exp2_5$choice_type = "binary"
+
+Lee_Hare_2023_choice_data_exp2$dataset = "Lee_Hare"
+Lee_Holyoak_2021_choice_data_exp2_5$dataset = "Lee_Holyoak"
 
 #set data 
 set_exp1 <- readr::read_csv("data/ISDN_poster_exp1.csv")
@@ -271,8 +275,8 @@ plot(ggeffects::ggpredict(models_choice1,
         legend.position = c(0.85, 0.85),
         axis.text = element_text(face="bold"),
         axis.title = element_text(face="bold"))
-  
-  
+
+
 ##%######################################################%##
 #                                                          #
 ####      Lee, D. G., & Holyoak, K. J. Coherence       ####
@@ -310,21 +314,21 @@ df2 <- Lee_Holyoak_2021_choice_data_exp2_5 %>%
   mutate(rt = rt * 1000) %>%
   rowwise() %>%
   mutate(
-    name_left = net_degree$Name[net_degree$Image == item_name_left],
-    name_right = net_degree$Name[net_degree$Image == item_name_right],
-    PCA1_left = net_degree$PCA1[net_degree$Image == item_name_left],
-    PCA1_right = net_degree$PCA1[net_degree$Image == item_name_right],
-    PCA2_left = net_degree$PCA2[net_degree$Image == item_name_left],
-    PCA2_right = net_degree$PCA2[net_degree$Image == item_name_right],
-    weighted_transitivity_left = net_degree$weighted_transitivity[net_degree$Image == item_name_left],
-    weighted_transitivity_right = net_degree$weighted_transitivity[net_degree$Image == item_name_right],
-    degree_left = net_degree$degree[net_degree$Image == item_name_left],
-    degree_right = net_degree$degree[net_degree$Image == item_name_right],
-    strength_left = net_degree$strength[net_degree$Image == item_name_left],
-    strength_right = net_degree$strength[net_degree$Image == item_name_right],
-    closeness_left = net_degree$closeness[net_degree$Image == item_name_left],
-    closeness_right = net_degree$closeness[net_degree$Image == item_name_right],
-    choice = if_else(response == 1, 0, 1) # Reverse choice coding
+    name_left = net_degree$Name[net_degree$Image == item_number_left],
+    name_right = net_degree$Name[net_degree$Image == item_number_right],
+    PCA1_left = net_degree$PCA1[net_degree$Image == item_number_left],
+    PCA1_right = net_degree$PCA1[net_degree$Image == item_number_right],
+    PCA2_left = net_degree$PCA2[net_degree$Image == item_number_left],
+    PCA2_right = net_degree$PCA2[net_degree$Image == item_number_right],
+    weighted_transitivity_left = net_degree$weighted_transitivity[net_degree$Image == item_number_left],
+    weighted_transitivity_right = net_degree$weighted_transitivity[net_degree$Image == item_number_right],
+    degree_left = net_degree$degree[net_degree$Image == item_number_left],
+    degree_right = net_degree$degree[net_degree$Image == item_number_right],
+    strength_left = net_degree$strength[net_degree$Image == item_number_left],
+    strength_right = net_degree$strength[net_degree$Image == item_number_right],
+    closeness_left = net_degree$closeness[net_degree$Image == item_number_left],
+    closeness_right = net_degree$closeness[net_degree$Image == item_number_right],
+    choice = if_else(choice == 1, 0, 1) # Reverse choice coding
   )
 
 for_model <- df2 %>%
@@ -467,3 +471,163 @@ bayestestR::sexit(pca_Lee_Holyoak_2021_fit_choice03)
 bayestestR::sexit(pca_Lee_Hare_2023_fit_rt02)
 bayestestR::sexit(pca_Lee_Holyoak_2021_fit_rt2)
 
+###############
+
+binary_df$dataset <- "Lee_Hare"
+df2$dataset <- "Lee_Holyoak"
+
+temp1 <- binary_df %>% 
+  select(c("subject_id", "rt", "choice", "dataset", "left_rating", 
+           "right_rating", "left_net_pca1", "right_net_pca1", "left_net_pca2", 
+           "right_net_pca2"))
+
+temp1$subject_id <- temp1$subject_id + 100
+temp2 <- df2 %>% 
+  select(c("subject_id", "rt", "choice", "dataset", "item_value_left", 
+           "item_value_right", "PCA1_left", "PCA1_right", "PCA2_left", "PCA2_right"
+           )) %>% 
+  rename(left_rating = item_value_left,
+         right_rating= item_value_right,
+         left_net_pca1=PCA1_left,
+         right_net_pca1=PCA1_right,
+         left_net_pca2=PCA2_left,
+         right_net_pca2=PCA2_right)
+
+temp2$subject_id <- temp2$subject_id + 200
+binary_paper_plot <- rbind(temp1,temp2)
+
+midRound <- function(x, base){
+  base*round(x/base)
+}
+binary_paper_plot$dataset <- factor(binary_paper_plot$dataset)
+binary_paper_plot <- as_tibble(binary_paper_plot)
+
+binary_paper_plot <- binary_paper_plot %>% exclusions() 
+
+binary_paper_plot %>%
+  group_by(subject_id) %>%
+  mutate(
+    vd = left_rating - right_rating
+  ) %>% 
+  mutate(
+    binned_net_diff = midRound(vd, 15)
+  ) %>%
+  group_by(binned_net_diff, dataset) %>%
+  mutate(
+    n = n(),
+    m_left = mean(choice),
+    se = sqrt(var(choice) / length(choice))
+  ) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = binned_net_diff, y = m_left, fill = dataset, group = dataset)) +
+  geom_hline(yintercept = .5, size = .25) +
+  geom_vline(xintercept = 0, size = .25) +
+  geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se, color = dataset), size = 1.3) +
+  theme_classic() +
+  geom_line(aes(color = dataset),size = .8) +
+  scale_color_brewer(palette = "Set2") +
+  scale_fill_brewer(palette = "Set2") +
+  # scale_y_continuous(limits = c(0, 1)) +
+  labs(
+    y = "P(Left Choosen)",
+    x = "Left Item-Liking - Right Item-Liking"
+  ) +
+  theme(text = element_text(size = 20),
+        legend.position = NULL,
+        axis.text = element_text(face="bold"),
+        axis.title = element_text(face="bold"))
+
+binary_paper_plot %>%
+  # filter(dataset == "Lee_Hare") %>% 
+  group_by(subject_id) %>%
+  mutate(
+    nd = left_net_pca2 - right_net_pca2
+  ) %>% 
+  mutate(
+    binned_net_diff = midRound(nd, .8)
+  ) %>%
+  group_by(binned_net_diff, dataset) %>%
+  mutate(
+    n = n(),
+    m_left = mean(choice),
+    se = sqrt(var(choice) / length(choice))
+  ) %>%
+  ungroup() %>% 
+  ggplot(aes(x = binned_net_diff, y = m_left, fill = dataset, group = dataset)) +
+  geom_hline(yintercept = .5, size = .25) +
+  geom_vline(xintercept = 0, size = .25) +
+  # geom_point(aes(fill = study, color = study, group = study, shape = study),size = 5)+
+  geom_pointrange(aes(ymin = m_left - se, ymax = m_left + se, color = dataset), size = 1.1) +
+  # geom_ribbon(aes(ymin = m_left - se, ymax = m_left + se), alpha = .6)+
+  theme_classic() +
+  geom_line(aes(color = dataset),size = 1) +
+  scale_color_brewer(palette = "Set2") +
+  scale_fill_brewer(palette = "Set2") +
+  scale_y_continuous(limits = c(0, 1)) +
+  labs(
+    y = "P(Left Choosen)",
+    x = "Left Item-Score - Right Item-Score"
+  ) +
+  theme(text = element_text(size = 20),
+        legend.position = NULL,
+        axis.text = element_text(face="bold"),
+        axis.title = element_text(face="bold"))
+
+binary_paper_plot %>%
+  group_by(subject_id) %>%
+  mutate(
+    vd = abs(left_rating - right_rating)
+  ) %>% 
+  mutate(vd = midRound(vd, 10)) %>%
+  # filter(vd < 350) %>%  #for clear plotting of effect
+  group_by(vd, dataset) %>%
+  mutate(
+    n = n(),
+    rt = rt/1000,
+    m_rt = mean(rt),
+    se = sqrt(var(rt) / length(rt))
+  ) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = vd, y = m_rt, color = dataset, group = dataset)) +
+  geom_pointrange(aes(ymin = m_rt - se, ymax = m_rt + se), size = 1.5) +
+  theme_classic() +
+  scale_color_brewer(palette = "Set2") +
+  labs(
+    y = "Response Time(s)",
+    x = "|Left Liking - Right Liking|",
+  )+
+  theme(axis.text = element_text(face="bold"),
+        text = element_text(size = 15),
+        axis.title = element_text(face="bold")
+  ) + geom_smooth(method = "lm", se = FALSE, linetype = "dashed", size = 1)+
+  scale_y_continuous(limits = c(1.3, 2.4))
+
+
+binary_paper_plot %>%
+  group_by(subject_id) %>%
+  mutate(
+    nd = abs(left_net_pca2 - right_net_pca2)
+  ) %>% 
+  mutate(nd = midRound(nd, .5)) %>%
+  # filter(nd <= 13) %>%  #for clear plotting of effect
+  group_by(nd, dataset) %>%
+  mutate(
+    n = n(),
+    rt = rt/1000,
+    m_rt = mean(rt),
+    se = sqrt(var(rt) / length(rt))
+  ) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = nd, y = m_rt, color = dataset, group = dataset)) +
+  geom_pointrange(aes(ymin = m_rt - se, ymax = m_rt + se), size = 1.5) +
+  theme_classic() +
+  scale_color_brewer(palette = "Set2") +
+  labs(
+    y = "Response Time(s)",
+    x = "|Left Item-Score - Right Item-Score|",
+  )+
+  theme(axis.text = element_text(face="bold"),
+        text = element_text(size = 15),
+        axis.title = element_text(face="bold")
+  ) + geom_smooth(method = "lm", se = FALSE, linetype = "dashed", size = 1)+
+  scale_y_continuous(limits = c(1.2, 2.25))
