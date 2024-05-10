@@ -202,6 +202,11 @@ for (subject_idx in 1:30) {
 
 as.numeric(na.omit(p_values))
 
+length(set_strategy_winner[is.na(as.numeric(p_values))])
+length(set_strategy_winner)
+set_strategy_winner <- set_strategy_winner[is.na(as.numeric(p_values))]
+
+
 exlusions <- function(df) {
   # function for data exclusions
   temp <- df %>%

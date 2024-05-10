@@ -238,6 +238,10 @@ length(as.numeric(na.omit(p_values)))
 
 dput(as.numeric(na.omit(p_values)))
 
+length(set_strategy_winner[is.na(as.numeric(p_values))])
+length(set_strategy_winner)
+set_strategy_winner <- set_strategy_winner[is.na(as.numeric(p_values))]
+
 
 exlusions <- function(df) {
   # function for data exclusions following the preregistration specs
@@ -304,8 +308,8 @@ for (net_idx in 1:length(net_stats)) {
                          (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1| subject_id), 
                        data = df_temp, family = "bernoulli", iter = 10000, 
                        chains = 4, cores = 4,
-                       file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_2_fit_choice03")),
-                       file_refit =   getOption("brms.file_refit", "always"))
+                       file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_2_fit_choice03")))
+                       # file_refit =   getOption("brms.file_refit", "always"))
   
   # models_choice1 <- brm(choice ~ zleft_rating + zright_rating +
   #                         (1 + zleft_rating + zright_rating| subject_id),
@@ -370,8 +374,8 @@ for (net_idx in 1:length(net_stats)) {
                      (vd + ov + nd1 + sd  | subject_id), 
                    data = df_temp, iter = 10000, 
                    chains = 4, cores = 4,
-                   file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_2_fit_rt02")),
-                   file_refit =   getOption("brms.file_refit", "always"))
+                   file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_2_fit_rt02")))
+                   # file_refit =   getOption("brms.file_refit", "always"))
   # bayestestR::sexit(models_rt)
   # print(performance::compare_performance(models_rt, rank = TRUE))
   # print(parameters::compare_models(models_rt,  style = "ci_p"))
@@ -440,11 +444,13 @@ for (net_idx in 1:length(net_stats)) {
   # knitr::kable(bayestestR::sexit(rt_res[[4]]), digits = 2)
   res_netstats[[net_idx]] <- list(models_choice,models_rt)
   
-  
 }
 # (res_netstats[[1]] + res_netstats[[2]])/(res_netstats[[3]] + res_netstats[[4]])
 # save(res_netstats, file = here("data", "res_mixed_model.RData"))
+first_elements <- sapply(res_netstats, function(x) x[1])
+sec_elements <- sapply(res_netstats, function(x) x[2])
 
+map(sec_elements, bayestestR::sexit)
 #
 # bayestestR::sexit(models_choice)
 # bayestestR::sexit(models_rt)

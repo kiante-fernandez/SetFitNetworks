@@ -32,7 +32,10 @@ mem <- membership(cluster_leading_eigen(G))
 #precision
 set_precision <- map(subgraphs, function (x){mean(net_degree[net_degree$Name %in% V(x)$name, ]$precision)})
 set_precision <- do.call(rbind, set_precision)
-
+#sd (same as abve)
+set_sd <- map(subgraphs, function (x){mean(net_degree[net_degree$Name %in% V(x)$name, ]$sd)})
+set_sd <- do.call(rbind, set_sd)
+round(set_sd *100)
 # get mod scores
 # mod_res <- map(subgraphs, function(x) unique(V(x)$mod))
 mod_res <- map(subgraphs, function(x) {temp <- igraph::induced_subgraph(g, V(x)$name) 
