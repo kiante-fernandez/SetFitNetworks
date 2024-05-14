@@ -2,6 +2,8 @@
 # Load data
 library(tidyverse)
 library(brms)
+library(RColorBrewer)  # For accessing color palettes
+
 
 internal_meta_df <- readr::read_csv("data/internal_meta_analysis_choice.csv")
 
@@ -12,8 +14,8 @@ internal_meta_df <- readr::read_csv("data/internal_meta_analysis_fullR.csv")
 
 dat <- internal_meta_df %>% 
   select(term, estimate, std.error, group) %>%
-  filter(contains("net"))
-  # filter(term == "b_zright_net2" | term == "b_zleft_net2")
+  filter(str_detect(term, "net2"))
+# filter(term == "b_zright_net2" | term == "b_zleft_net2")
 
 #term == "b_zright_net2"
 # 
@@ -25,16 +27,26 @@ dat <- internal_meta_df %>%
 brm_out1 <- brm(
   estimate | se(std.error) ~ 1 + (1 | group) + (1 | term),
   data = dat,
-  # prior = c(prior(normal(0, 1), class = Intercept),
-  #           prior(cauchy(0, 1), class = sd)),
+  prior = c(prior(normal(0, .5), class = Intercept),
+            prior(cauchy(0, .5), class = sd)),
   cores = 4,
-  iter = 300000,
+  iter = 600000,
   # file = here::here("fits", "metaanalysismodel")
 )
 
+hypothesis(dat, "b_Intercept > 0")
 
 #what the average effect size less than zero?
 hypothesis(brm_out1, "Intercept > 0.0")
+
+bayestestR::sexit(testing1)
+report::report(testing1)
+testing1 <- hypothesis(brm_out1, "Intercept > 0.0", scope = "coef", group  = "term")
+plot(testing1)
+testing2 <- hypothesis(brm_out1, "Intercept < 0.0",
+                       scope = "coef", group  = "term")
+plot(testing2) + theme_classic()
+
 
 library(tidybayes)
 library(ggdist)
@@ -45,38 +57,46 @@ out_r <- spread_draws(brm_out1, r_group[group,], r_term[term,], b_Intercept) %>%
 out_f <- spread_draws(brm_out1, b_Intercept, r_term[term,]) %>% 
   group_by(term) %>% 
   mutate(b_Intercept = r_term + b_Intercept) %>% 
-  mutate(term = paste0(names.,"average")) %>%
+  mutate(term = paste0("Average.", term),
+         group = "Average") %>%
   ungroup()
 
 # Combine average and study-specific effects' data frames
-out_all <- bind_rows(out_r, out_f)
+out_all <- bind_rows(out_r, out_f) %>% 
+  ungroup() %>%
+  mutate(group = fct_relevel(group, "Average"))
 
+# Data frame of summary numbers
 out_all_sum <- group_by(out_all, group, term) %>% 
-  mean_qi(b_Intercept)
+  mean_qi(b_Intercept) %>% 
+  mutate(interaction = interaction(group, term))
 
-# Draw plot
-out_all %>%   
-  ggplot(aes(x = b_Intercept, y = reorder(interaction(group, term), b_Intercept))) +
-  # Zero!
+brewer.pal(3, "Set1")
+
+out_all %>%
+  mutate(interaction = interaction(group, term),
+         color_group = case_when(
+           str_detect(group, "Experiment.One") ~ "Experiment One",
+           str_detect(group, "Experiment.Two") ~ "Experiment Two",
+           str_detect(group, "Experiment.Three") ~ "Experiment Three",
+           TRUE ~ "Average"
+         )) %>%
+  mutate(interaction = fct_reorder(interaction, str_detect(interaction, "Average"), .desc = TRUE)) %>%
+  ggplot(aes(x = b_Intercept, y = interaction)) +
   geom_vline(xintercept = 0, size = .25, lty = 2) +
-  stat_halfeye(, fill = "dodgerblue") +
-  # stat_halfeye(.width = c(.8, .95), fill = "dodgerblue") +
-  theme_classic()+
-  labs(x = "standardized regression (beta) coefficient",
-       y = "Experiment")
-
-
-
-# as_draws_df(brm_out1) %>% 
-#   select(starts_with("sd")) %>% 
-#   gather(key, tau) %>% 
-#   mutate(key = str_remove(key, "sd_") %>% str_remove(., "__Intercept")) %>% 
-#   ggplot(aes(x = tau, fill = key)) +
-#   geom_density(color = "transparent", alpha = 2/3) +
-#   scale_fill_viridis_d(NULL, end = .85) +
-#   scale_y_continuous(NULL, breaks = NULL) +
-#   xlab(expression(tau)) +
-#   theme(panel.grid = element_blank())
+  stat_halfeye(aes(fill = color_group),.width = c(.5, .95)) +
+  theme_classic() +
+  labs(x = "Standardized Regression (Beta) Coefficient",
+       y = "Experiment & Term") +
+  scale_fill_manual(values = c("Experiment One" = "#4DAF4A", 
+                               "Experiment Two" = "#E41A1C", 
+                               "Experiment Three" = "#377EB8",
+                               "Average" = "orange"))+
+  geom_text(
+    data = mutate_if(out_all_sum, is.numeric, round, 3),
+    aes(label = str_glue("{b_Intercept} [{.lower}, {.upper}]"), x = 0.60),
+    hjust = "inward"
+  )
 
 
 exclusions <- function(df) {
