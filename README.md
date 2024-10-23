@@ -17,7 +17,10 @@ This repository hosts the code and supplementary materials for the paper "Prefer
 ## Abstract
 Before selecting individual items, how do people choose between menus of items? Comparing sets is complex and may depend on their internal cohesion. Indeed, leading theories predict that people prefer sets with similar items. We test this with a computational approach that leverages network science to measure a novel form of similarity specific to economic choice. This "preference similarity" is defined as the strength of associations between items derived from correlations in their liking ratings. We find little evidence that people prefer sets with items that are similar to others in the set. Instead, we find that people prefer sets containing individual items that are highly central, i.e., items which generally have stronger associations with other items. Overall, we validate a quantitative tool for measuring similarity and show that while people prefer sets with items that are similar to many other items, they don't prefer more similar sets.
 
-## Source Code Structure
+## Repository Contents
+- `data/` - Datasets used in the study
+- `src/` - Source code for analysis
+
 The `src` directory contains the following analysis scripts:
 
 ### Network Analysis
@@ -40,6 +43,17 @@ The `src` directory contains the following analysis scripts:
 - `internal_meta_analysis.R` - Meta-analysis across experiments
 - `utils.R` - General utility functions
 
+The `data` directory contains the following data files:
+
+- Rating Study 1 (Lee & Holyoak 2021) - https://osf.io/x8bpa/
+- Rating Study 2 (Leng & Shenhav, in prep) - please contact original authors
+- Rating Study 3 (Li et al. 2023) - https://github.com/christineli0330/mem_dm_share
+- Set-Choice Study 1 - in `data` folder  
+- Set-Choice Study 2 - in `data` folder
+- Set-Choice Study 3 - in `data` folder
+- Single-Choice 1 (Lee & Hare 2023) -  https://osf.io/nepx5/
+- Single-Choice 2 (Lee & Holyoak 2021) - https://osf.io/x8bpa/
+
 ## Requirements
 - R (>= 4.0.2)
 - Key R packages:
@@ -49,9 +63,4 @@ The `src` directory contains the following analysis scripts:
   - brms
   - NetworkToolbox
 
-## Data
-The repository includes data from:
-- Three Rating Studies (existing datasets)
-- Three Set-Choice Studies (new experiments)
-- Two Single-Choice Studies (existing datasets)
 
