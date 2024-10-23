@@ -159,7 +159,7 @@ for (subject_idx in 1:75) {
   # 4.	Selecting the set more fruit
   temp_res4 <- glm(choice ~ left_fruit + right_fruit, family = binomial, data = temp_df)
   
-  xx <-performance::compare_performance(temp_res0, temp_res1,temp_res2,temp_res3,temp_res4, rank = TRUE, metrics = c("AIC","AICc","BIC","RMSE","R2"))
+  xx <-performance::compare_performance(temp_res0,temp_res1,temp_res2,temp_res3, rank = TRUE, metrics = c("AIC","AICc","BIC","RMSE","R2"))
   print(paste0("############### Subject data:",subject_idx,"  ###############"))
   print(xx[,c(1,8)])
   set_strategy_winner[[subject_idx]] <- xx[1,1]
@@ -275,7 +275,7 @@ res_netstats <- vector(mode = "list", length = length(net_stats))
 res_netstats2 <- vector(mode = "list", length = length(net_stats))
 
 # res_model_comparisons <- vector(mode = "list", length = length(net_stats))
-net_idx  = 1
+net_idx  = 8
 for (net_idx in 1:length(net_stats)) {
   # for each network statistic...
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
@@ -362,9 +362,13 @@ for (net_idx in 1:length(net_stats)) {
   # models_rt <- estimate_mlms(df[df$correct == 1,], outcome = "rt") #only ocrrect
   
   # models_rt <- estimate_brms(df, outcome = "rt") #bayes versions
-  # df_temp = create_dataset(df[df$correct == 1,], type = "correct/rt")
-  df_temp = create_dataset(df, type = "correct/rt")
+  df_temp = create_dataset(df[df$correct == 1,], type = "correct/rt")
   
+  models_rt <- brm(log(rt) ~ vd + ov + nd1 + nd2 +
+                     (vd + ov + nd1 + nd2  | subject_id),
+                   data = df_temp, iter = 10000,
+                   chains = 4, cores = 4,
+                   file = here::here("fits", paste0(net_stats[[net_idx]], "_exp_2_fit_rt02_correct_only")))
   # models_rt <- brm(log(rt) ~ vd + ov + nd1 + nd2 + sd +
   #                    (vd + ov + nd1 + nd2 + sd | subject_id), 
   #                  data = df_temp, iter = 10000, 
@@ -437,7 +441,8 @@ for (net_idx in 1:length(net_stats)) {
   #
   # map(correct_res, bayestestR::sexit)
   # map(choice_res, bayestestR::sexit)
-
+  # bayestestR::sexit(models_rt)
+  
   #
   # knitr::kable(bayestestR::sexit(correct_res[[4]]), digits = 2)
   # knitr::kable(bayestestR::sexit(choice_res[[4]]), digits = 2)
@@ -447,11 +452,16 @@ for (net_idx in 1:length(net_stats)) {
 }
 # (res_netstats[[1]] + res_netstats[[2]])/(res_netstats[[3]] + res_netstats[[4]])
 # save(res_netstats, file = here("data", "res_mixed_model.RData"))
-first_elements <- sapply(res_netstats, function(x) x[1])
-sec_elements <- sapply(res_netstats, function(x) x[2])
 
+# first_elements <- sapply(res_netstats, function(x) x[1])
+# sec_elements <- sapply(res_netstats, function(x) x[2])
+
+first_elements <- sapply(res_netstats[1:7], function(x) x[1])
+sec_elements <- sapply(res_netstats[1:7], function(x) x[2])
+# 
+map(first_elements, bayestestR::sexit)
 map(sec_elements, bayestestR::sexit)
-#
+
 # bayestestR::sexit(models_choice)
 # bayestestR::sexit(models_rt)
 #

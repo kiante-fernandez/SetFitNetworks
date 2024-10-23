@@ -1495,32 +1495,40 @@ poster_plot_data %>%
 
 #### stratedy plotting
 set_strategy_winner <- set_strategy_winner[set_strategy_winner != "0"]
-
 data_frame <- data.frame(set_strategy_winner) %>% 
   group_by(set_strategy_winner) %>%
   summarise(Count = n()) %>%
   mutate(Proportion = Count / sum(Count))
-# Reorder set_strategy_winner by Proportion in descending order
-data_frame$set_strategy_winner <- factor(data_frame$set_strategy_winner,
-                                         levels = c("temp_res0", "temp_res1", "temp_res2", "temp_res3", "temp_res4"),
-                                         labels = c("Higher Average", "Maximum Value", "Excluding Minimum", "Range", "More Fruit"))
-data_frame$set_strategy_winner <- factor(data_frame$set_strategy_winner, levels = data_frame$set_strategy_winner[order(data_frame$Proportion)])
+
+# Create a complete set of strategies
+all_strategies <- c("temp_res0", "temp_res1", "temp_res2", "temp_res3")
+all_labels <- c("Higher Average", "Maximum Value", "Excluding Minimum", "Range")
+
+# Ensure all strategies are present, adding zero counts if missing
+data_frame_complete <- data.frame(set_strategy_winner = all_strategies) %>%
+  left_join(data_frame, by = "set_strategy_winner") %>%
+  mutate(Count = ifelse(is.na(Count), 0, Count),
+         Proportion = ifelse(is.na(Proportion), 0, Proportion))
+
+# Apply labels and order
+data_frame_complete$set_strategy_winner <- factor(data_frame_complete$set_strategy_winner,
+                                                  levels = all_strategies,
+                                                  labels = all_labels)
+data_frame_complete$set_strategy_winner <- factor(data_frame_complete$set_strategy_winner, 
+                                                  levels = data_frame_complete$set_strategy_winner[order(data_frame_complete$Proportion)])
 
 # Now plotting
-ggplot(data_frame, aes(x = set_strategy_winner, y = Proportion, fill = set_strategy_winner)) +
+ggplot(data_frame_complete, aes(x = set_strategy_winner, y = Proportion, fill = set_strategy_winner)) +
   geom_bar(stat = "identity") +
-  geom_text(aes(label = Count, y = Proportion), position = position_stack(vjust = 0.5), size = 6) + # Add counts as text
+  geom_text(aes(label = Count, y = Proportion), position = position_stack(vjust = 0.5), size = 6) +
   theme_classic() +
-  labs(x = "Strategy", y = "Proportion", title = "Best Fitting Set Strategy Identifed Per Subject") +
-  # scale_x_discrete(labels = c("Maximum Value", "Excluding Minimum", "Range", "More Fruit", "Higher Average")) +
+  labs(x = "Strategy", y = "Proportion", title = "Best Fitting Set Strategy Identified Per Subject") +
   scale_fill_discrete(name = "Category") +
   coord_flip() +
-  scale_fill_brewer(palette = "Dark2")+
-  theme(legend.position = "none")+
-  theme(axis.text = element_text(face="bold"),
+  scale_fill_brewer(palette = "Dark2") +
+  theme(legend.position = "none",
+        axis.text = element_text(face="bold"),
         text = element_text(size = 20),
-        axis.title = element_text(face="bold")
-  )
-  
+        axis.title = element_text(face="bold"))
   
   

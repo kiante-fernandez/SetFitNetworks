@@ -27,8 +27,8 @@
 library(here)
 library(tidyverse)
 library(purrr)
-# library(lme4)
-# library(lmerTest)
+library(lme4)
+library(lmerTest)
 library(patchwork)
 
 library(sjPlot)
@@ -66,12 +66,17 @@ set_exp1$study <- 1
 set_exp2$study <- 2
 set_exp3$study <- 3
 
-cols_select <- c("study","left", "right", "subject_id", "rt", "choice",
+set_exp1$dataset <- "SetChoice1"
+set_exp2$dataset <- "SetChoice2"
+set_exp3$dataset <- "SetChoice3"
+
+cols_select <- c("dataset","study","left", "right", "subject_id", "rt", "choice",
                  "left_rating", "right_rating","left_net_pca1", "right_net_pca1", "left_net_pca2", "right_net_pca2" )
 
 set_df <- rbind(set_exp1[,cols_select], set_exp2[,cols_select], set_exp3[,cols_select])
 set_df$choice_type = "set"
 
+#note I rm dataset from the select here for join below temp
 set_df <- set_df %>% select(subject_id, rt, choice, choice_type, left_rating, right_rating,
                             left_net_pca1, right_net_pca1, 
                             left_net_pca2, right_net_pca2)
@@ -81,6 +86,7 @@ source(here::here("src", "utils.R"))
 
 # Calculate network statistics
 net_degree <- calculate_net_stats(g)
+# write.csv(net_degree, here::here("data","network_measures_food_items.csv"), row.names=FALSE)
 
 ##%######################################################%##
 #                                                          #
@@ -163,7 +169,7 @@ standardized <- TRUE
 full_df$choice_type <- factor(full_df$choice_type)
 for_model <- full_df %>%
   exclusions() %>%
-  group_by(subject_id) %>%
+  group_by(choice_type, subject_id) %>%
   mutate(
     zleft_rating = scale(left_rating, center = standardized, scale = standardized),
     zright_rating = scale(right_rating, center = standardized, scale = standardized),
@@ -182,26 +188,34 @@ for_model <- full_df %>%
 # Model for choice
 # models_choice <- glmer(
 #   choice ~ zleft_rating * (zleft_net1 + zleft_net2) + zright_rating * (zright_net1 + zright_net2) +
-#     (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 + zleft_net2 + zright_net2 | subject_id),
+#     (1 | subject_id),
 #   data = for_model,
 #   family = binomial(link = "logit"),
 #   control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7))
 # )
-# # Model for response time
+# # # Model for response time
 # models_rt <- lmer(
 #   log(rt) ~ vd + ov + nd1 + nd2 + (vd + ov + nd1 + nd2 | subject_id),
 #   data = for_model,
 #   control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
 # )
-
+# summary(models_rt)
 models_choice1 <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) +
-                                  choice_type*zleft_rating + choice_type*zright_rating + 
-                                  choice_type*zleft_net1 + choice_type*zleft_net2+
-                                  choice_type*zright_net1 + choice_type*zright_net2+
-                       (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), 
-                     data = for_model, family = "bernoulli", iter = 10000, 
-                     chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
-                     file = here::here("fits", paste0("PCA", "_Lee_Hare_2023_choice_data_exp2_fit_choice04")))
+                        choice_type*zleft_rating + choice_type*zright_rating + 
+                        choice_type*zleft_net1 + choice_type*zleft_net2+
+                        choice_type*zright_net1 + choice_type*zright_net2+
+                        (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), 
+                      data = for_model, family = "bernoulli", iter = 10000, 
+                      chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
+                      file = here::here("fits", paste0("PCA", "_Lee_Hare_2023_choice_data_exp2_fit_choice04")))
+
+# models_choice1 <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) +
+#                                   choice_type*zleft_rating + choice_type*zright_rating + 
+#                                   choice_type*zleft_net1 + choice_type*zleft_net2+
+#                                   choice_type*zright_net1 + choice_type*zright_net2+
+#                        (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), 
+#                      data = for_model, family = "bernoulli", iter = 10000, 
+#                      chains = 4, cores = 4)
 
 models_rt1 <- brm(log(rt) ~ choice_type*(vd + ov + nd1 + nd2) +
                    (vd + ov + nd1 + nd2 | subject_id), 
@@ -481,7 +495,7 @@ temp1 <- binary_df %>%
            "right_rating", "left_net_pca1", "right_net_pca1", "left_net_pca2", 
            "right_net_pca2"))
 
-temp1$subject_id <- temp1$subject_id + 100
+temp1$subject_id <- temp1$subject_id + 500
 temp2 <- df2 %>% 
   select(c("subject_id", "rt", "choice", "dataset", "item_value_left", 
            "item_value_right", "PCA1_left", "PCA1_right", "PCA2_left", "PCA2_right"
@@ -493,8 +507,10 @@ temp2 <- df2 %>%
          left_net_pca2=PCA2_left,
          right_net_pca2=PCA2_right)
 
-temp2$subject_id <- temp2$subject_id + 200
+temp2$subject_id <- temp2$subject_id + 600
 binary_paper_plot <- rbind(temp1,temp2)
+
+binary_paper_plot$choice_type <- "single"
 
 midRound <- function(x, base){
   base*round(x/base)
@@ -631,3 +647,12 @@ binary_paper_plot %>%
         axis.title = element_text(face="bold")
   ) + geom_smooth(method = "lm", se = FALSE, linetype = "dashed", size = 1)+
   scale_y_continuous(limits = c(1.2, 2.25))
+
+
+
+######
+all_df <- rbind(binary_paper_plot,set_df)
+# write_csv(all_df,here::here("data", "internal_meta_analysis_fullR.csv"))
+
+
+

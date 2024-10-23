@@ -36,7 +36,7 @@ dat <- internal_meta_single_RT_df %>%
 brm_out1 <- brm(
   estimate | se(std.error) ~ 1 + (1 | group) + (1 | term),
   data = dat,
-  prior = c(prior(normal(0, .25), class = Intercept), #change to tighter priors?
+  prior = c(prior(normal(0, .25), class = Intercept),
             prior(cauchy(0, .25), class = sd)),
   cores = 4,
   iter = 10000,

@@ -1,5 +1,5 @@
-# exploratory_graph_analysis.R - conducts a bootstrap Exploratory Graph Analysis and validates and assesses
-# the reliablity and stability of the graph
+# Fernandez_rating_network - conducts a bootstrap Exploratory Graph Analysis function for 
+# the study one, study two, and data combined.
 #
 # Copyright (C) 2022 Kianté Fernandez, <kiantefernan@gmail.com>
 #
@@ -20,50 +20,44 @@
 #
 # Date            Programmers                         Descriptions of Change
 # ====         ================                       ======================
-# 16/08/22      Kianté  Fernandez                       wrote code
+# 2022/12/27      Kianté  Fernandez                       wrote code
 
 # Libraries
 library(here)
 suppressMessages(library(EGAnet)) # Exploratory Graph Analysis – a Framework for Estimating the Number of Dimensions in Multivariate Data using Network Psychometrics
 library(readxl)
 library(igraph)
-library(ggplot2)
 
-if (!file.exists(here("data", "rating_network_graph.RData"))) {
-
+if (!file.exists(here("data", "fernandez_rating_network_graph.RData"))) {
+  
   # load the names of the foods
   FoodNames <- readxl::read_excel(here("data", "snackitemnames_nicholas", "item_image_numbers_exp2_5_nicholas.xlsx"))
   
-  # filname_temp <- list.files(here("data"), pattern = "lee_2021_rating")[-c(1,2,3)]
-
-  # for (ratings_idx in 1:3){
-
   # load the data
-  # lee_2021_rating1 <- readr::read_csv(here("data", filname_temp[[ratings_idx]]), col_names = FALSE, show_col_types = F)
-  lee_2021_rating1 <- readr::read_csv(here("data","lee_2021_rating1.csv"), col_names = FALSE, show_col_types = F)
-  # lee_2021_rating2 <- readr::read_csv(here("data","lee_2021_rating2.csv"), col_names = FALSE, show_col_types = F)
-  # lee_2021_rating3 <- readr::read_csv(here("data","lee_2021_rating3.csv"), col_names = FALSE, show_col_types = F)
-  # lee_2021_rating1 <- rbind(lee_2021_rating1,lee_2021_rating2,lee_2021_rating3)
-  # create cleaned names
-  names(lee_2021_rating1) <- FoodNames$Name
+  fernandez_2022_rating1 <- readr::read_csv(here("data","fernandez_2022_rating_exp1.csv"), col_names = T, show_col_types = F)
+  fernandez_2022_rating2 <- readr::read_csv(here("data","fernandez_2022_rating_exp2.csv"), col_names = T, show_col_types = F)
+  fernandez_2022_rating3 <- readr::read_csv(here("data","fernandez_2023_rating_exp3.csv"), col_names = T, show_col_types = F)
+  
+  #take both sets of rating data from study one and two and combine them
+  fernandez_2022_rating_combineded <- rbind(fernandez_2022_rating1,fernandez_2022_rating2,fernandez_2022_rating3)
   
   # number of observations
-  n <- nrow(lee_2021_rating1)
+  n <- nrow(fernandez_2022_rating_combineded)
   
   # Set random seed
   set.seed(2022)
-
+  
   # run community detection procedure
-  ega_res <- EGAnet::bootEGA(lee_2021_rating1,
-    iter = 10000,
-    n = n,
-    model = "glasso",
-    algorithm = "walktrap",
-    ncores = 10, typicalStructure = T
+  ega_res <- EGAnet::bootEGA(fernandez_2022_rating_combineded,
+                             iter = 3000,
+                             n = n,
+                             model = "glasso",
+                             algorithm = "walktrap",
+                             ncores = 10, typicalStructure = T
   )
-
+  
   ega_res[["plot.typical.ega"]][["layers"]][[6]] <- NULL
-
+  
   print(ega_res$plot.typical.ega)
   # get adjacency matrix
   A <- ega_res[["typicalGraph"]][["graph"]]
@@ -73,10 +67,9 @@ if (!file.exists(here("data", "rating_network_graph.RData"))) {
   g <- graph_from_adjacency_matrix(A, "undirected", weighted = TRUE)
   # add decorate attributes
   V(g)$snack_type <- dimattributes
-
-  save(ega_res, g, file = here("data", "rating_network_graph.RData"))
+  
+  save(ega_res, g, file = here("data", "fernandez_rating_network_graph.RData"))
   
 }else {
-  load(here::here("data", "rating_network_graph.RData"))
+  load(here::here("data", "fernandez_rating_network_graph.RData"))
 }
-
