@@ -56,11 +56,9 @@ The `data` directory contains the following data files:
 
 ## Requirements
 - R (>= 4.0.2)
-- Key R packages:
   - qgraph
   - igraph 
   - EGAnet
   - brms
   - NetworkToolbox
-
 
