@@ -3,7 +3,7 @@
 Fernandez, K. A., Karmarkar, U. R., & Krajbich, I. (2024).
 [Preference centrality, but not set similarity, predicts choices between sets]
 
-[Preprint]()
+[Preprint](https://osf.io/preprints/psyarxiv/3fahj)
 
 # Preference similarity, Set Choice
 
