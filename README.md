@@ -1,64 +1,72 @@
-### Citation
+# Preference centrality predicts choices between sets
 
-Fernandez, K. A., Karmarkar, U. R., & Krajbich, I. (2024).
-[Preference centrality, but not set similarity, predicts choices between sets]
+Code and data for Fernandez, K. A., Karmarkar, U. R., & Krajbich, I. (2026). *Preference centrality predicts choices between sets* (submitted). Preprint: https://osf.io/preprints/psyarxiv/3fahj
 
-[Preprint](https://osf.io/preprints/psyarxiv/3fahj)
+## Layout
 
-# Preference similarity, Set Choice
+| Folder | Contents |
+|---|---|
+| `src/` | R analysis scripts |
+| `data/` | Data for every dataset in the paper (de-identified) |
+| `fits/`, `output/`, `results/` | Model fits, figures and tables; empty in the repository, filled by the scripts |
 
-This repository hosts the code and supplementary materials for the paper "Preference centrality, but not set similarity, predicts choices between sets".
+## Data
 
-> Kianté A. Fernandez<sup>1</sup>, Uma R. Karmarkar<sup>2,3</sup>, & Ian Krajbich<sup>1</sup>  
-> <sup>1</sup>Department of Psychology, University of California, Los Angeles  
-> <sup>2</sup>School of Global Policy and Strategy, University of California, San Diego  
-> <sup>3</sup>Rady School of Management, University of California, San Diego
+| Dataset | Source | In `data/` |
+|---|---|---|
+| Rating Study 1 | Lee & Holyoak (2021), https://osf.io/x8bpa/ | `lee_2021_rating1.csv` |
+| Rating Study 2 | Leng et al. (2025) | `shengav_rating.csv`, `leng_2025/Study4_2.csv`, `Study5a_2.csv`, `Study5b_2.csv`, `Study6_2.csv` |
+| Rating Study 3 | The Liking Initiative (Fernandez, Goyal, & Krajbich, 2026), https://doi.org/10.5281/zenodo.22216442 | `liking_initiative/` |
+| Set-Choice Studies 1–3 | This paper (Studies 2–3 preregistered: https://osf.io/74qhv, https://osf.io/7wces) | `pilot_30/`, `exp_2/`, `exp_3/` (task files); `fernandez_202*_rating_exp*.csv` (ratings); `LowHighWithinBetween.RData`, `modularity_100_6.RData`, `average_strength_100_6.RData` (sets shown) |
+| Binary-Choice Study 1 | Lee & Hare (2023), https://osf.io/nepx5/ | `Lee_Hare_2023_OSF/` |
+| Binary-Choice Study 2 | Lee & Holyoak (2021), https://osf.io/x8bpa/ | `lee_2021_exp2_5_v2.csv` |
+| Binary-Choice Study 3 | Smith & Krajbich (2018) | `smith_krajbich_2018/` |
+| Multi-alternative Study 1 | Leng et al. (2025) | `leng_2025/Study3a_1.csv`, `Study3a_2.csv` |
+| Multi-alternative Studies 2–3 | Fernandez et al. (in prep) | *to be added* |
+| Multi-alternative Study 4 | Thomas et al. (2021) | `thomas2021/` |
 
-## Abstract
-Before selecting individual items, how do people choose between menus of items? Comparing sets is complex and may depend on their internal cohesion. Indeed, leading theories predict that people prefer sets with similar items. We test this with a computational approach that leverages network science to measure a novel form of similarity specific to economic choice. This "preference similarity" is defined as the strength of associations between items derived from correlations in their liking ratings. We find little evidence that people prefer sets with items that are similar to others in the set. Instead, we find that people prefer sets containing individual items that are highly central, i.e., items which generally have stronger associations with other items. Overall, we validate a quantitative tool for measuring similarity and show that while people prefer sets with items that are similar to many other items, they don't prefer more similar sets.
+Food item names and images are in `snackitemnames_nicholas/`. Set-Choice participants are numbered `S<study>_<nnn>` in their original order, and Leng et al. participant IDs are recoded as `P<nnnn>`. Names, emails, payment handles, nationality and Prolific IDs were removed; no analysis uses them.
 
-## Repository Contents
-- `data/` - Datasets used in the study
-- `src/` - Source code for analysis
+## Running
 
-The `src` directory contains the following analysis scripts:
+Requires R (≥ 4.0.2) and CmdStan (via [cmdstanr](https://mc-stan.org/cmdstanr/)):
 
-### Network Analysis
-- `exploratory_graph_analysis.R` - Network analysis for Lee et al. Ratings
-- `fernandez_rating_network.R` -  Network analysis for Set-Choice Ratings
-- `bakkour_rating_network.R` - Network analysis for Bakkour et al. Ratings
-- `shenhav_rating_network.R` - Network analysis for Shenhav et al. Ratings
+```r
+install.packages(c("tidyverse", "here", "igraph", "EGAnet", "qgraph", "NetworkToolbox", "SemNeT", "brms",
+  "bayestestR", "BayesFactor", "tidybayes", "ggdist", "patchwork", "see", "ggcorrplot", "ggeffects",
+  "performance", "report", "sjPlot", "broom", "broom.mixed", "lme4", "lmerTest", "simr", "readxl", "jsonlite",
+  "clustAnalytics", "LaplacesDemon", "assortnet", "factoextra", "clue", "e1071", "gridExtra", "RColorBrewer",
+  "jpeg", "progress", "rstantools", "knitr"))
+install.packages("cmdstanr", repos = c("https://stan-dev.r-universe.dev", getOption("repos")))
+```
 
-### Experimental Analysis
-- `exp_1_network_difference_regression.R` - Regression analysis for Set-Choice Study 1
-- `exp_2_network_difference_regression.R` - Regression analysis for Set-Choice Study 2
-- `exp_3_network_difference_regression.R` - Regression analysis for Set-Choice Study 3
-- `exp_2_similarity_rating.R` - Similarity rating analysis for Study 2
-- `exp_3_similarity_rating.R` - Similarity rating analysis for Study 3
-- `binary_choice_analysis.R` - Analysis of Single-Choice Study 1 & 2
+Run scripts from the repository root (e.g. open `SetFitNetworks.Rproj`):
 
-### Utility Scripts
-- `generate_image_group.R` - Script for generating stimulus sets for set choice experiments
-- `subgraph_selection.R` - Functions for analyzing network subgraphs for generating experimental stimuli
-- `internal_meta_analysis.R` - Meta-analysis across experiments
-- `utils.R` - General utility functions
+1. Networks: `exploratory_graph_analysis.R`, `fernandez_rating_network.R`, `shenhav_rating_network.R`, `rangel_rating_network_binary_choice_analysis.R`, then `thomas2021_item_mapping.R` and `thomas2021_network.R`.
+2. `create_canonical_loadings.R` (PCA loadings applied to every network).
+3. The analyses below.
 
-The `data` directory contains the following data files:
+Estimated networks (`data/*.RData`) and model fits (`fits/`) are loaded if present and re-estimated if deleted; this takes several hours. `subgraph_selection.R` draws new random sets and overwrites the ones in `data/`, so it is not needed to reproduce the paper.
 
-- Rating Study 1 (Lee & Holyoak 2021) - https://osf.io/x8bpa/
-- Rating Study 2 (Leng & Shenhav, in prep) - please contact original authors
-- Rating Study 3 (Li et al. 2023) - https://github.com/christineli0330/mem_dm_share
-- Set-Choice Study 1 - in `data` folder  
-- Set-Choice Study 2 - in `data` folder
-- Set-Choice Study 3 - in `data` folder
-- Single-Choice 1 (Lee & Hare 2023) -  https://osf.io/nepx5/
-- Single-Choice 2 (Lee & Holyoak 2021) - https://osf.io/x8bpa/
+## Scripts by result
 
-## Requirements
-- R (>= 4.0.2)
-  - qgraph
-  - igraph 
-  - EGAnet
-  - brms
-  - NetworkToolbox
+| Result | Script |
+|---|---|
+| Fig. 1; SI §1–3 (networks and their stability) | `exploratory_graph_analysis.R`, `shenhav_rating_network.R`, `rangel_rating_network_binary_choice_analysis.R` |
+| Fig. 2; SI §4 (similarity judgments) | `exp_2_similarity_rating.R`, `exp_3_similarity_rating.R` |
+| Set-choice regressions; SI §7–9 | `exp_1_network_difference_regression.R`, `exp_2_…`, `exp_3_…` |
+| Fig. 4 | `centrality_interaction_plots.R` |
+| Meta-analyses | `internal_meta_analysis.R` |
+| Figs. 5–8 | `figure5_forest_plot.R` |
+| Centrality vs. liking | `centrality_vs_liking_all_studies.R` |
+| Binary-Choice Studies 1–2 (SI §11) | `binary_choice_analysis.R` |
+| Binary-Choice Study 3 (SI §11) | `rangel_rating_network_binary_choice_analysis.R` |
+| Multi-alternative Studies 1–4 (SI §12) | `item_level_multi_alternative_analysis.R`, `item_level_rt_analysis.R` |
+| SI §10 (set selection) | `subgraph_selection.R`, `generate_image_group.R` |
+| SI §13 (cross-network centrality) | `centrality_validation_analysis.R` |
+| SI §14 (within-set variance) | `set_variance_regression.R` |
+| SI §15 (power analysis) | `exp_2_power_analysis.R`, `exp_3_power_analysis.R` |
+| SI §16 (sensitivity) | `power_analysis_single_choice.R` |
+| SI §18 (value parametrization) | `choice_value_parametrization.R`, `rt_individual_values_regression.R` |
 
+`utils.R` and `apply_pca_weights.R` hold shared functions. Code is licensed under GPL-3.0.
