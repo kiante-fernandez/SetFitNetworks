@@ -22,7 +22,7 @@ save_if_not_exists <- function(data, filename) {
 }
 
 # Load Model Files -------------------------------------------------------
-model_path <- "~/Documents/SetFitNetworks/fits"
+model_path <- here::here("fits")
 
 # Set-Level Models (Choice) ---------------------------------------------
 strength_exp_1_fit_choice03 <- readRDS(file.path(model_path, "strength_exp_1_fit_choice03.rds"))
@@ -156,7 +156,7 @@ set_choice_data <- meta_data$set_choice %>%
   filter(str_detect(term, "net1"))
 
 set_choice_model <- brm(
-  estimate | se(std.error) ~ 1 + (1 | group) + (1 | term),
+  estimate | se(std.error) ~ 1 + (1 | group) + (1 | term), seed = 2025,
   data = set_choice_data,
   prior = model_settings$prior,
   cores = model_settings$cores,
@@ -170,7 +170,7 @@ set_rt_data <- meta_data$set_rt %>%
   filter(str_detect(term, "nd1"))
 
 set_rt_model <- brm(
-  estimate | se(std.error) ~ 1 + (1 | group) + (1 | term),
+  estimate | se(std.error) ~ 1 + (1 | group) + (1 | term), seed = 2025,
   data = set_rt_data,
   prior = model_settings$prior,
   cores = model_settings$cores,
@@ -185,7 +185,7 @@ item_choice_data <- meta_data$item_choice %>%
   filter(str_detect(term, "net2"))
 
 item_choice_model <- brm(
-  estimate | se(std.error) ~ 1 + (1 | group) + (1 | term),
+  estimate | se(std.error) ~ 1 + (1 | group) + (1 | term), seed = 2025,
   data = item_choice_data,
   prior = model_settings$prior,
   cores = model_settings$cores,
@@ -199,7 +199,7 @@ item_rt_data <- meta_data$item_rt %>%
   filter(str_detect(term, "nd2"))
 
 item_rt_model <- brm(
-  estimate | se(std.error) ~ 1 + (1 | group) + (1 | term),
+  estimate | se(std.error) ~ 1 + (1 | group) + (1 | term), seed = 2025,
   data = item_rt_data,
   prior = model_settings$prior,
   cores = model_settings$cores,
@@ -214,7 +214,7 @@ single_choice_data <- meta_data$single_choice %>%
   filter(str_detect(term, "net2"))
 
 single_choice_model <- brm(
-  estimate | se(std.error) ~ 1 + (1 | group) + (1 | term),
+  estimate | se(std.error) ~ 1 + (1 | group) + (1 | term), seed = 2025,
   data = single_choice_data,
   prior = model_settings$prior,
   cores = model_settings$cores,
@@ -228,7 +228,7 @@ single_rt_data <- meta_data$single_rt %>%
   filter(str_detect(term, "nd2"))
 
 single_rt_model <- brm(
-  estimate | se(std.error) ~ 1 + (1 | group) + (1 | term),
+  estimate | se(std.error) ~ 1 + (1 | group) + (1 | term), seed = 2025,
   data = single_rt_data,
   prior = model_settings$prior,
   cores = model_settings$cores,
@@ -250,7 +250,7 @@ meta_models <- list(
 )
 
 # Save Results -------------------------------------------------------
-if (!file.exists(here("fits", "meta_analysis_models.rds"))) {
+if (!file.exists(here("fits", "internal_meta_analysis_models.rds"))) {
   saveRDS(meta_models, here("fits", "internal_meta_analysis_models.rds"))
 }
 
