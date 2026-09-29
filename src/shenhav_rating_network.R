@@ -17,6 +17,7 @@
 # Date            Programmers                         Descriptions of Change
 # ====         ================                       ======================
 # 2024/01/17    Kianté Fernandez                       wrote code
+# 2025/03/23    Kianté Fernandez                       added leng 2024 datasets
 
 # Load required libraries ----
 library(tidyverse)
@@ -53,6 +54,33 @@ calculate_net_stats <- function(g) {
 # Load new data provided by Jason
 shengav_rating <- read_csv("data/shengav_rating.csv")
 shenhav_item_list <- read_csv("data/shenhav_item_list.csv")
+# new data from Leng 2024!
+shengav_rating2 <- read_csv(here::here("data", "leng_2025", "Study4_2.csv"),
+                            col_types = cols(...1 = col_skip()))
+shengav_rating3 <- read_csv(here::here("data", "leng_2025", "Study5a_2.csv"),
+                            col_types = cols(...1 = col_skip()))
+shengav_rating4 <- read_csv(here::here("data", "leng_2025", "Study5b_2.csv"),
+                            col_types = cols(...1 = col_skip()))
+shengav_rating4 <- shengav_rating4[,-3]
+shengav_rating4 <- shengav_rating4[substr(shengav_rating4$pic_path, 1, 2) == "EC", ]
+
+shengav_rating5 <- read_csv(here::here("data", "leng_2025", "Study6_2.csv"),
+                            col_types = cols(...1 = col_skip()))
+#are they all new subjects? Yes.
+unique(shengav_rating$participant)
+unique(shengav_rating2$participant)
+unique(shengav_rating3$participant)
+unique(shengav_rating4$participant)
+unique(shengav_rating5$participant)
+
+sum(unique(shengav_rating$participant) %in% unique(shengav_rating2$participant))
+sum(unique(shengav_rating$participant) %in% unique(shengav_rating3$participant))
+sum(unique(shengav_rating$participant) %in% unique(shengav_rating4$participant))
+sum(unique(shengav_rating$participant) %in% unique(shengav_rating5$participant))
+
+# sum(unique(shengav_rating2$participant) %in% unique(shengav_rating3$participant))
+
+shengav_rating <- rbind(shengav_rating, shengav_rating2, shengav_rating3, shengav_rating4, shengav_rating5)
 
 # Process ratings data
 ratings <- shengav_rating %>%
@@ -68,12 +96,20 @@ ratings <- shengav_rating %>%
 
 colnames(ratings) <- tolower(gsub(" ", "_", colnames(ratings)))
 
+# testega <- EGAnet::EGA(ratings, n = nrow(ratings))
+# A <- testega[["network"]]
+# memres <- EGAnet::community.consensus(
+#   A,
+#   consensus.method = "iterative",
+#   consensus.iter = 10000
+# )
+
 # Stage 1: Initial EGA Analysis ----
 # Check if the file exists and run first stage EGA if needed
 if (!file.exists(here::here("data", "shenhav_rating_network_graphFULL.RData"))) {
   ega_res <- EGAnet::bootEGA(
     ratings,
-    iter = 10000,
+    iter = 5000,
     n = nrow(ratings),
     model = "glasso",
     algorithm = "walktrap",
@@ -87,7 +123,7 @@ if (!file.exists(here::here("data", "shenhav_rating_network_graphFULL.RData"))) 
   g <- igraph::graph_from_adjacency_matrix(A, "undirected", weighted = TRUE)
   igraph::V(g)$snack_type <- dimattributes
   
-  save(ega_res, g, file = here::here("data", "shenhav_rating_network_graphFULL.RData"))
+  save(ega_res, g, file = here::here("data", "shenhav_rating_network_graphFULLV3.RData"))
 } else {
   load(file = here::here("data", "shenhav_rating_network_graphFULL.RData"))
 }
@@ -102,15 +138,23 @@ bapq.dimstab$item.stability$plot +
 # Get stable items
 test <- bapq.dimstab$item.stability
 stable_items <- names(test$item.stability$empirical.dimensions[
-  test[["item.stability"]][["empirical.dimensions"]] > .50
+  test[["item.stability"]][["empirical.dimensions"]] > .5
 ])
+
+# testega <- EGAnet::EGA(    ratings[, stable_items], n = nrow(ratings))
+# A <- testega[["network"]]
+# memres <- EGAnet::community.consensus(
+#   A,
+#   consensus.method = "iterative",
+#   consensus.iter = 10000
+# )
 
 # Stage 2: Analysis with Stable Items ----
 if (!file.exists(here::here("data", "shenhav_rating_network_graphV2.RData"))) {
   # Run second stage EGA
   ega_res2 <- EGAnet::bootEGA(
     ratings[, stable_items],
-    iter = 1000,
+    iter = 10000,
     n = nrow(ratings),
     model = "glasso",
     algorithm = "walktrap",
@@ -119,7 +163,7 @@ if (!file.exists(here::here("data", "shenhav_rating_network_graphV2.RData"))) {
     typicalStructure = TRUE
   )
   
-  save(ega_res2, g, file = here::here("data", "shenhav_rating_network_graphV2.RData"))
+  save(ega_res2, g, file = here::here("data", "shenhav_rating_network_graphV3.RData"))
 } else {
   load(file = here::here("data", "shenhav_rating_network_graphV2.RData"))
 }
@@ -162,14 +206,19 @@ memres <- EGAnet::community.consensus(
 )
 
 # Get clusters and create graph
-dimattributes <- ega_res2[["typicalGraph"]][["wc"]]
+dimattributes <- ega_res[["typicalGraph"]][["wc"]]
 g <- graph_from_adjacency_matrix(A, "undirected", weighted = TRUE)
 V(g)$product_type <- dimattributes
+# V(g)$product_type <- memres
+
 
 # Calculate network statistics
 G <- g
 E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
 net_degree <- calculate_net_stats(g)
+net_degree
+
+#save(net_degree, file = "~/Documents/choose_k/data/leng_2024_networkmetrics.RData")
 l <- layout_with_graphopt(g)
 
 # Add colors to network

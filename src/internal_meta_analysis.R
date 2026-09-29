@@ -1,5 +1,5 @@
 # Model extraction for internal meta
-# Copyright (C) 2023-2024 Kianté Fernandez, <kiantefernan@gmail.com>
+# Copyright (C) 2023-2025 Kianté Fernandez, <kiantefernan@gmail.com>
 
 # Libraries ----------------------------------------------------------------
 library(sjPlot)
@@ -97,28 +97,33 @@ pca_Lee_Hare_2023_fit_choice03 <- readRDS(file.path(model_path, "PCA_Lee_Hare_20
 pca_Lee_Holyoak_2021_fit_choice03 <- readRDS(file.path(model_path, "PCA_Lee_Holyoak_2021_choice_data_exp2_5_fit_choice03.rds"))
 pca_Lee_Hare_2023_fit_rt02 <- readRDS(file.path(model_path, "PCA_Lee_Hare_2023_choice_data_exp2_fit_rt02.rds"))
 pca_Lee_Holyoak_2021_fit_rt2 <- readRDS(file.path(model_path, "PCA_Lee_Holyoak_2021_choice_data_exp2_5_fit_rt02.rds"))
+#add the Smith & Krajbich files
+pca_Smith_Krajbich_2018_fit_choice <- readRDS(file.path(model_path, "PCA_Smith_Krajbich_2018_choice_data_fit_choice.rds"))
+pca_Smith_Krajbich_2018_fit_rt <- readRDS(file.path(model_path, "PCA_Smith_Krajbich_2018_choice_data_fit_rt.rds"))
 
 single_choice_plot <- plot_models(
   pca_Lee_Hare_2023_fit_choice03,
   pca_Lee_Holyoak_2021_fit_choice03,
+  pca_Smith_Krajbich_2018_fit_choice,
   transform = NULL,
   show.values = TRUE,
   show.p = FALSE,
-  m.labels = c("Experiment One", "Experiment Two"),
+  m.labels = c("Experiment One", "Experiment Two","Experiment Three"),
   ci.lvl = 0.95
 )
-save_if_not_exists(single_choice_plot$data, "internal_meta_analysis_choice_single.csv")
+save_if_not_exists(single_choice_plot$data, "internal_meta_analysis_choice_single_UPDATED.csv")
 
 single_rt_plot <- plot_models(
   pca_Lee_Hare_2023_fit_rt02,
   pca_Lee_Holyoak_2021_fit_rt2,
+  pca_Smith_Krajbich_2018_fit_rt,
   transform = NULL,
   show.values = TRUE,
   show.p = FALSE,
-  m.labels = c("Experiment One", "Experiment Two"),
+  m.labels = c("Experiment One", "Experiment Two","Experiment Three"),
   ci.lvl = 0.95
 )
-save_if_not_exists(single_rt_plot$data, "internal_meta_analysis_RT_single.csv")
+save_if_not_exists(single_rt_plot$data, "internal_meta_analysis_RT_single_UPDATED.csv")
 
 # Load Data ---------------------------------------------------------------
 meta_data <- list(
@@ -129,8 +134,8 @@ meta_data <- list(
   item_choice = readr::read_csv("data/internal_meta_analysis_choice.csv"),
   item_rt = readr::read_csv("data/internal_meta_analysis_rt.csv"),
   # Single trial
-  single_choice = readr::read_csv("data/internal_meta_analysis_choice_single.csv"),
-  single_rt = readr::read_csv("data/internal_meta_analysis_RT_single.csv")
+  single_choice = readr::read_csv("data/internal_meta_analysis_choice_single_UPDATED.csv"),
+  single_rt = readr::read_csv("data/internal_meta_analysis_RT_single_UPDATED.csv")
 )
 
 # Model Settings --------------------------------------------------------
@@ -292,6 +297,7 @@ create_forest_plot <- function(results, data, is_single = FALSE, x_limits = NULL
   single_exp_colors <- c(
     "Experiment One" = "#66C2A5",
     "Experiment Two" = "#8DA0CB",
+    "Experiment Three" = "#A6D854",
     "Average" = "orange"
   )
   
@@ -319,6 +325,25 @@ create_forest_plot <- function(results, data, is_single = FALSE, x_limits = NULL
     ) %>%
     merge(data, by.x = c("term", "color_group"), by.y = c("term", "group"), all.x = TRUE)
   
+  # Set explicit order for color_group
+  out_all$color_group <- factor(
+    out_all$color_group,
+    levels = c("Experiment One", "Experiment Two", "Experiment Three", "Average")
+  )
+  out_all_sum$color_group <- factor(
+    out_all_sum$color_group,
+    levels = c("Experiment One", "Experiment Two", "Experiment Three", "Average")
+  )
+  
+  # Reorder by term first, then by experiment
+  out_all <- out_all %>%
+    arrange(term, color_group) %>%
+    mutate(interaction = factor(interaction, levels = unique(interaction)))
+  
+  out_all_sum <- out_all_sum %>%
+    arrange(term, color_group) %>%
+    mutate(interaction = factor(interaction, levels = unique(interaction)))
+  
   # Create base plot
   p <- out_all %>%
     ggplot(aes(x = b_Intercept, y = interaction)) +
@@ -342,27 +367,27 @@ create_forest_plot <- function(results, data, is_single = FALSE, x_limits = NULL
   }
   
   # Add text annotations
-  p <- p + 
-    geom_text(
-      data = mutate_if(out_all_sum, is.numeric, round, 3),
-      aes(label = str_glue("{b_Intercept} [{.lower}, {.upper}]"), 
-          x = if(is.null(x_limits)) 0.60 else x_limits[2]),
-      hjust = "inward",
-      color = "grey"
-    ) +
-    geom_text(
-      data = mutate_if(out_all_sum, is.numeric, round, 2),
-      aes(label = str_glue("{estimate} [{estimate - std.error}, {estimate + std.error}]")),
-      hjust = "inward",
-      position = position_nudge(y = -.5),
-      color = "black"
-    ) +
-    geom_point(
-      data = out_all_sum,
-      aes(x = estimate),
-      position = position_nudge(y = -.2),
-      shape = 1
-    )
+  p <- p +
+    # geom_text(
+    #   data = mutate_if(out_all_sum, is.numeric, round, 3),
+    #   aes(label = str_glue("{b_Intercept} [{.lower}, {.upper}]"),
+    #       x = if(is.null(x_limits)) 0.60 else x_limits[2]),
+    #   hjust = "inward",
+    #   color = "black"
+    # )
+    # geom_text(
+    #   data = mutate_if(out_all_sum, is.numeric, round, 2),
+    #   aes(label = str_glue("{estimate} [{estimate - std.error}, {estimate + std.error}]")),
+    #   hjust = "inward",
+    #   position = position_nudge(y = -.5),
+    #   color = "black"
+    # ) 
+    # geom_point(
+    #   data = out_all_sum,
+    #   aes(x = estimate),
+    #   position = position_nudge(y = -.2),
+    #   shape = 1
+    # )
   
   return(p)
 }
@@ -413,7 +438,7 @@ single_choice_plot <- create_forest_plot(
   single_choice_results, 
   single_choice_data,
   is_single = TRUE,
-  x_limits = c(-0.03, 0.90),
+  x_limits = c(-0.8, 1),
   title = "Single-Trial Choice Meta-Analysis"
 )
 
@@ -422,7 +447,7 @@ single_rt_plot <- create_forest_plot(
   single_rt_results, 
   single_rt_data,
   is_single = TRUE,
-  x_limits = c(-0.07, 0.09),
+  # x_limits = c(-0.03, 0.2),
   title = "Single-Trial RT Meta-Analysis"
 )
 

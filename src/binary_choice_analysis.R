@@ -21,7 +21,8 @@
 # Date            Programmers                         Descriptions of Change
 # ====         ================                       ======================
 # 08/10/23      Kianté  Fernandez                       wrote code
-# 08/12/06      Kianté  Fernandez                       added interaction
+# 08/12/23      Kianté  Fernandez                       added interaction
+# 30/11/24      Kianté  Fernandez                       tested cluster congruence 
 
 # Load necessary libraries
 library(here)
@@ -81,7 +82,7 @@ set_df <- set_df %>% select(subject_id, rt, choice, choice_type, left_rating, ri
                             left_net_pca1, right_net_pca1, 
                             left_net_pca2, right_net_pca2)
 # Source functions for network analysis
-source("exploratory_graph_analysis.R")
+source("src/exploratory_graph_analysis.R")
 source(here::here("src", "utils.R"))
 
 # Calculate network statistics
@@ -114,11 +115,14 @@ binary_df <- Lee_Hare_2023_choice_data_exp2 %>%
     right_net_pca2 = net_degree$PCA2[net_degree$Image == item_number_right],
     choice = if_else(choice == 1, 0, 1), # Reverse choice coding
     left_rating = item_value_left,
-    right_rating= item_value_right
+    right_rating= item_value_right,
+    left_cluster = net_degree$snack_type[net_degree$Image == item_number_left],
+    right_cluster = net_degree$snack_type[net_degree$Image == item_number_right],
+    cluster_congruence = if_else(left_cluster == right_cluster, 1, 0)
   ) %>% 
   select(subject_id, rt, choice, choice_type, left_rating, right_rating,
          left_net_pca1, right_net_pca1, 
-         left_net_pca2, right_net_pca2)
+         left_net_pca2, right_net_pca2, cluster_congruence)
 
 full_df <- rbind(binary_df, set_df)
 # Response time exclusions
@@ -167,7 +171,8 @@ exclusions <- function(df) {
 standardized <- TRUE
 
 full_df$choice_type <- factor(full_df$choice_type)
-for_model <- full_df %>%
+# for_model <- full_df %>%
+for_model <- binary_df %>%
   exclusions() %>%
   group_by(choice_type, subject_id) %>%
   mutate(
@@ -183,16 +188,28 @@ for_model <- full_df %>%
     ov = scale(left_rating + right_rating, center = standardized, scale = standardized)
   ) %>%
   ungroup() %>%
-  select(choice_type, subject_id, choice, rt, zleft_rating, zright_rating, zleft_net1, zright_net1, zleft_net2, zright_net2, vd, nd1, nd2, ov)
+  # select(choice_type, subject_id, choice, rt, zleft_rating, zright_rating, zleft_net1, zright_net1, zleft_net2, zright_net2, vd, nd1, nd2, ov)
+  select(subject_id, choice, rt, zleft_rating, zright_rating, zleft_net1, zright_net1, zleft_net2, zright_net2, vd, nd1, nd2, ov, cluster_congruence)
+
+# Model for choice
+models_choice <- glmer(
+  choice ~ (zleft_rating * (zleft_net1 + zleft_net2) + zright_rating * (zright_net1 + zright_net2)) * cluster_congruence +
+    (1 | subject_id),
+  data = for_model,
+  family = binomial(link = "logit"),
+  control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7))
+)
 
 # Model for choice
 # models_choice <- glmer(
-#   choice ~ zleft_rating * (zleft_net1 + zleft_net2) + zright_rating * (zright_net1 + zright_net2) +
-#     (1 | subject_id),
+#   # choice ~ (zleft_rating * (zleft_net1 + zleft_net2) + zright_rating * (zright_net1 + zright_net2)) * factor(cluster_congruence) +
+#   choice ~ (zleft_rating + zright_rating) * factor(cluster_congruence) +
+#     (zleft_rating+zright_rating| subject_id),
 #   data = for_model,
 #   family = binomial(link = "logit"),
 #   control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7))
 # )
+# summary(models_choice)
 # # # Model for response time
 # models_rt <- lmer(
 #   log(rt) ~ vd + ov + nd1 + nd2 + (vd + ov + nd1 + nd2 | subject_id),
@@ -209,13 +226,13 @@ models_choice1 <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_r
                       chains = 4, cores = 4, backend = "cmdstanr", threads = threading(2),
                       file = here::here("fits", paste0("PCA", "_Lee_Hare_2023_choice_data_exp2_fit_choice04")))
 
-# models_choice1 <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) +
-#                                   choice_type*zleft_rating + choice_type*zright_rating + 
-#                                   choice_type*zleft_net1 + choice_type*zleft_net2+
-#                                   choice_type*zright_net1 + choice_type*zright_net2+
-#                        (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), 
-#                      data = for_model, family = "bernoulli", iter = 10000, 
-#                      chains = 4, cores = 4)
+models_choice1 <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) +
+                                  choice_type*zleft_rating + choice_type*zright_rating +
+                                  choice_type*zleft_net1 + choice_type*zleft_net2+
+                                  choice_type*zright_net1 + choice_type*zright_net2+
+                       (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id),
+                     data = for_model, family = "bernoulli", iter = 10000,
+                     chains = 4, cores = 4)
 
 models_rt1 <- brm(log(rt) ~ choice_type*(vd + ov + nd1 + nd2) +
                    (vd + ov + nd1 + nd2 | subject_id), 
@@ -308,7 +325,7 @@ rownames(dat_pca1) <- net_degree$Name
 pca_res <- prcomp(dat_pca1, center = TRUE, scale. = TRUE)
 
 # Source functions for network new association network
-source("fernandez_rating_network.R") #load the other network
+source("src/fernandez_rating_network.R") #load the other network
 
 net_degree <- calculate_net_stats(g)
 dat_pca2 <- net_degree[,c("degree","strength","eigen","weighted_transitivity","closeness","betweenness")]
@@ -342,7 +359,10 @@ df2 <- Lee_Holyoak_2021_choice_data_exp2_5 %>%
     strength_right = net_degree$strength[net_degree$Image == item_number_right],
     closeness_left = net_degree$closeness[net_degree$Image == item_number_left],
     closeness_right = net_degree$closeness[net_degree$Image == item_number_right],
-    choice = if_else(choice == 1, 0, 1) # Reverse choice coding
+    choice = if_else(choice == 1, 0, 1), # Reverse choice coding
+    left_cluster = net_degree$snack_type[net_degree$Image == item_number_left],
+    right_cluster = net_degree$snack_type[net_degree$Image == item_number_right],
+    cluster_congruence = if_else(left_cluster == right_cluster, 1, 0)
   )
 
 for_model <- df2 %>%
@@ -361,16 +381,19 @@ for_model <- df2 %>%
     ov = scale(item_value_left + item_value_right, center = standardized, scale = standardized)
   ) %>%
   ungroup() %>%
-  select(experiment, subject_id, choice, rt, zleft_rating, zright_rating, zleft_net1, zright_net1, zleft_net2, zright_net2, vd, nd1, nd2, ov, )
+  select(experiment, subject_id, choice, rt, zleft_rating, zright_rating, zleft_net1, zright_net1, zleft_net2, zright_net2, vd, nd1, nd2, ov, cluster_congruence)
 
 # Model for choice
-# models_choice <- glmer(
-#   choice ~ zleft_rating * (zleft_net1 + zleft_net2) + zright_rating * (zright_net1 + zright_net2) +
-#     (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 + zleft_net2 + zright_net2 | subject_id),
-#   data = for_model,
-#   family = binomial(link = "logit"),
-#   control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7))
-# )
+models_choice <- glmer(
+  choice ~ zleft_rating * (zleft_net1 + zleft_net2) + zright_rating * (zright_net1 + zright_net2) +
+      # choice ~ (zleft_rating + zright_rating) * factor(cluster_congruence) +
+        # (1 + zleft_rating + zright_rating | subject_id),
+    (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 + zleft_net2 + zright_net2 | subject_id),
+  data = for_model,
+  family = binomial(link = "logit"),
+  control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e7))
+)
+# summary(models_choice)
 models_choice2 <- brm(choice ~ zleft_rating*(zleft_net1 + zleft_net2) + zright_rating*(zright_net1 + zright_net2) +
                        (1 + zleft_rating + zright_rating + zleft_net1 + zright_net1 +  zleft_net2 + zright_net2 | subject_id), 
                      data = for_model, family = "bernoulli", iter = 10000, 

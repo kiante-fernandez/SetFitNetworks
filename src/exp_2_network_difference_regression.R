@@ -194,11 +194,10 @@ for_save <- df %>% exlusions()
 
 # Regression  Analysis on Network stats ----------------------------------------
 net_stats <- c("strength", "betweenness", "closeness", "weighted_transitivity",
-               "eigen", "edge_density", "modularity", "pca1", "pca2",
-               "set_pca1", "set_pca2")
+               "eigen", "edge_density", "modularity", "pca1", "pca2")
 
 res_netstats <- vector(mode = "list", length = length(net_stats))
-
+net_idx = 9
 for (net_idx in 1:length(net_stats)) {
   print(paste0("############### ", net_stats[[net_idx]], " ###############"))
   

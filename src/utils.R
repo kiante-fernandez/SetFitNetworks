@@ -208,10 +208,17 @@ create_dataset <- function(df, type, standardized = TRUE) {
         zleft_sim = scale(left_sim, center = standardized, scale = standardized),
         zright_sim = scale(right_sim, center = standardized, scale = standardized),
         zleft_sd = scale(left_sd, center = standardized, scale = standardized),
-        zright_sd = scale(right_sd, center = standardized, scale = standardized)
+        zright_sd = scale(right_sd, center = standardized, scale = standardized),
+        zleft_num_community = scale(left_num_community, center = standardized, scale = standardized),
+        zright_num_community = scale(right_num_community, center = standardized, scale = standardized),
+        zleft_var = scale(left_VAR, center = standardized, scale = standardized),
+        zright_var = scale(right_VAR, center = standardized, scale = standardized),
+        zleft_mlik = scale(left_mlik, center = standardized, scale = standardized),
+        zright_mlik = scale(right_mlik, center = standardized, scale = standardized)
       ) %>%
       ungroup() %>%
-      select(subject_id, choice, rt, nd, vd, sd, ov, on, os, zleft_rating, zright_rating, zleft_net1, zright_net1, zleft_net2, zright_net2, zleft_sim, zright_sim, zleft_sd, zright_sd)
+      select(subject_id, choice, rt, nd, vd, sd, ov, on, os, zleft_rating, zright_rating, zleft_net1, zright_net1, zleft_net2, zright_net2, zleft_sim, zright_sim, zleft_sd, zright_sd,
+             zleft_num_community, zright_num_community, zleft_var, zright_var, zleft_mlik, zright_mlik)
   } else if (type == "correct/rt") {
     c = 0
     model_dat <- df %>%
@@ -225,11 +232,21 @@ create_dataset <- function(df, type, standardized = TRUE) {
         nd2 = scale(abs(left_net2 - right_net2), center = standardized, scale = standardized),
         vd = scale(abs(left_rating - right_rating), center = standardized, scale = standardized),
         sd = scale(abs(left_sim - right_sim), center = standardized, scale = standardized),
+        ncd = scale(abs(left_num_community - right_num_community), center = standardized, scale = standardized),
         ov = scale(left_rating + right_rating, center = standardized, scale = standardized),
         on = scale(left_net1 + left_net1, center = standardized, scale = standardized),
-        os = scale(left_sim + right_sim, center = standardized, scale = standardized)
+        os = scale(left_sim + right_sim, center = standardized, scale = standardized),
+        vard = scale(abs(left_VAR - right_VAR), center = standardized, scale = standardized),
+        ovar = scale(left_VAR + right_VAR, center = standardized, scale = standardized),
+        zleft_rating = scale(left_rating, center = standardized, scale = standardized),
+        zright_rating = scale(right_rating, center = standardized, scale = standardized),
+        zleft_net1 = scale(left_net1, center = standardized, scale = standardized),
+        zright_net1 = scale(right_net1, center = standardized, scale = standardized),
+        zleft_sim = scale(left_sim, center = standardized, scale = standardized),
+        zright_sim = scale(right_sim, center = standardized, scale = standardized)
       ) %>%
-      select(subject_id, choice,correct, rt, vd, nd1, nd2, sd, ov, on, os)
+      select(subject_id, choice,correct, rt, vd, nd1, nd2, ncd, sd, ov, on, os, vard, ovar, zleft_rating, zright_rating,
+             zleft_net1, zright_net1, zleft_sim, zright_sim)
   }
   return(model_dat)
 }
@@ -496,6 +513,7 @@ organize_group_data <- function(experiment, weight = "degree") {
     set_weighted_values_temp <- vector(mode = "numeric", length = 100)
     
     set_fruit_temp <- vector(mode = "numeric", length = 100)
+    set_num_community_temp <- vector(mode = "numeric", length = 100)
     
     # similarity ratings
     subject_similarity_temp <- subject_temp %>%
@@ -634,6 +652,9 @@ organize_group_data <- function(experiment, weight = "degree") {
       set_correlations_temp[[foo]] <- sum(apply(cor_snack_food[colnames(cor_snack_food) %in% res[[foo]], ], 2, mean, na.rm = T)[res[[foo]]])
       set_sd_temp[[foo]] <- sum(net_degree[net_degree$Name %in% res[[foo]], ]$precision)
       
+      # Count number of unique communities in the set
+      set_num_community_temp[[foo]] <- length(unique(graph_stats[graph_stats$Name %in% res[[foo]], ]$snack_type))
+      
       if (experiment == 1) {
         next
       }
@@ -703,6 +724,9 @@ organize_group_data <- function(experiment, weight = "degree") {
     xxxx$left_fruit <- NULL
     xxxx$right_fruit <- NULL
     
+    xxxx$left_num_community <- NULL
+    xxxx$right_num_community <- NULL
+    
     for (foo in seq_len(nrow(xxxx))) {
       xxxx$left_rating[[foo]] <- as.numeric(set_values_temp[xxxx$left[[foo]]])
       xxxx$right_rating[[foo]] <- as.numeric(set_values_temp[xxxx$right[[foo]]])
@@ -753,6 +777,9 @@ organize_group_data <- function(experiment, weight = "degree") {
       
       xxxx$left_fruit[[foo]] <-  as.numeric(set_fruit_temp[xxxx$left[[foo]]])
       xxxx$right_fruit[[foo]] <-  as.numeric(set_fruit_temp[xxxx$right[[foo]]])
+      
+      xxxx$left_num_community[[foo]] <- as.numeric(set_num_community_temp[xxxx$left[[foo]]])
+      xxxx$right_num_community[[foo]] <- as.numeric(set_num_community_temp[xxxx$right[[foo]]])
     }
     # xxxx$value_network_corr <- cor(set_values_temp, set_network_temp)
     # xxxx$value_network_corr_p <- cor.test(set_values_temp, set_network_temp)$p.value
@@ -779,8 +806,11 @@ organize_group_data <- function(experiment, weight = "degree") {
       left_sim, right_sim,
       left_correlation, right_correlation, left_sd, right_sd,
       left_MAX, right_MAX, left_MIN, right_MIN, left_VAR, right_VAR,
-      left_fruit, right_fruit
+      left_fruit, right_fruit,
+      left_num_community, right_num_community
     ))
+  # population mean liking of the set (filled by set_mean_liking_control_regression.R); NA otherwise
+  df$left_mlik <- NA_real_; df$right_mlik <- NA_real_
   # add the correct response col and choose max and not choose min col
   df$correct <- as.numeric((df$left_rating > df$right_rating & df$choice == 1) | (df$left_rating < df$right_rating & df$choice == 0))
   
