@@ -46,7 +46,7 @@ Run scripts from the repository root (e.g. open `SetFitNetworks.Rproj`):
 2. `create_canonical_loadings.R` (PCA loadings applied to every network).
 3. The analyses below.
 
-Estimated networks and model fits are not in the repository; the scripts estimate them on the first run (several hours) and reuse them afterwards. `subgraph_selection.R` draws new random sets and overwrites the ones in `data/`, so it is not needed to reproduce the paper.
+Estimated networks and model fits are not in the repository; the scripts estimate them on the first run (several hours) and reuse them afterwards. `subgraph_selection.R` draws new random sets and overwrites the ones in `data/`, so it is not needed to reproduce the paper. Fig. 8 loads about 13 GB of model fits (peak ~9 GB RAM); with 16 GB or less, run it on its own: `Rscript src/figures_4_to_8.R 8`.
 
 ## Scripts by result
 
