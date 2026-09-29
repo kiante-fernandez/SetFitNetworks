@@ -1,0 +1,117 @@
+# figure5_forest_plot.R - Forest plots of regression coefficients, one layout for Figures 5-8.
+# Figure 5 (set choice): panel a = set-level similarity (average strength within set), panel b = item-level
+# centrality (PC2). Figure 6 (set-choice RT): absolute similarity difference / absolute centrality difference.
+# Figure 7 (single-choice Studies 1-3): panel a = PC2 terms on choice, panel b = absolute PC2 difference on RT.
+# Figure 8 (multi-alternative Studies 1-4, nine item-level datasets): PC2 and value x PC2 on choice (a) and RT (b).
+# Per-study rows are the posterior draws of the published fits. "Average" rows are per-term
+# random-effects meta-analyses (estimate | se ~ 1 + (1 | study), same priors as the internal
+# meta-analysis), fit separately per term so left and right terms are not pooled together.
+suppressMessages({library(tidyverse); library(brms); library(cmdstanr); library(ggdist); library(patchwork); library(here)})
+set.seed(2025)
+run <- if (length(commandArgs(TRUE))) as.integer(commandArgs(TRUE)) else 5:8  # e.g. Rscript src/figure5_forest_plot.R 7 8
+prior <- c(prior(normal(0, .25), class = Intercept), prior(cauchy(0, .25), class = sd))
+study_colors <- c("Study 1" = "#4DAF4A", "Study 2" = "#E41A1C", "Study 3" = "#377EB8", "Average" = "#FF8C00")
+
+# panels: named list of list(fits, label, terms?, xlim?, breaks?); a panel's own terms/xlim/breaks override the defaults.
+# fits: character vector of fit file stems; names, if given, are the row labels (else "Study 1", "Study 2", ...).
+build_forest <- function(panels, terms = NULL, xlim = NULL, breaks = NULL, file, width = 13, height = 7,
+                         colors = study_colors, legend = "Experiment",
+                         compose = function(a, b) a + b + plot_layout(guides = "collect")) {
+  opt <- function(p, what, default) if (is.null(p[[what]])) default else p[[what]]
+  draws <- imap_dfr(panels, function(p, pname) {
+    tm <- opt(p, "terms", terms)
+    study <- imap_dfr(p$fits, function(f, e) as_draws_df(readRDS(here("fits", paste0(f, ".rds"))), variable = names(tm)) %>%
+      select(all_of(names(tm))) %>% slice_sample(n = 4000) %>% pivot_longer(everything(), names_to = "term", values_to = "beta") %>%
+      mutate(study = if (is.character(e)) e else paste("Study", e)))
+    avg <- map_dfr(names(tm), function(t) {
+      d <- study %>% filter(term == t) %>% group_by(study) %>% summarise(estimate = mean(beta), se = sd(beta), .groups = "drop")
+      m <- brm(estimate | se(se) ~ 1 + (1 | study), data = d, prior = prior, iter = 10000, cores = 4, backend = "cmdstanr",
+               control = list(adapt_delta = 0.999, max_treedepth = 20), refresh = 0, silent = 2)
+      tibble(term = t, beta = sample(as_draws_df(m)$b_Intercept, 4000), study = "Average") })
+    bind_rows(study, avg) %>% mutate(panel = pname, term_label = sprintf(tm[term], p$label), term_order = match(term, rev(names(tm)))) })
+
+  plot_df <- draws %>%
+    mutate(block = ifelse(study == "Average", "Average", term_label),
+           row = ifelse(study == "Average", term_label, study)) %>%
+    mutate(study = factor(study, levels = names(colors)))
+  labels <- plot_df %>% group_by(panel, block, row, study, term_order) %>% mean_qi(beta) %>% ungroup() %>%
+    mutate(lab = sprintf("%.3f [%.3f, %.3f]", beta, .lower, .upper))
+
+  forest <- function(pname) {
+    p <- panels[[pname]]; tm <- opt(p, "terms", terms); xl <- opt(p, "xlim", xlim); br <- opt(p, "breaks", breaks)
+    d <- plot_df %>% filter(panel == pname); l <- labels %>% filter(panel == pname)
+    lv <- c(setdiff(unique(d$block[order(d$term_order)]), "Average"), "Average")
+    rows <- c(rev(setdiff(names(colors), "Average")), unique(d$row[d$study == "Average"][order(d$term_order[d$study == "Average"])]))
+    d <- d %>% mutate(block = factor(block, levels = lv), row = factor(row, levels = rows))
+    l <- l %>% mutate(block = factor(block, levels = lv), row = factor(row, levels = rows))
+    divider <- tibble(block = factor("Average", levels = lv), y = length(tm) + 0.7)
+    ggplot(d, aes(x = beta, y = row, fill = study)) +
+      geom_vline(xintercept = 0, linetype = 2, linewidth = .25) +
+      geom_hline(data = divider, aes(yintercept = y), linewidth = .5, color = "gray30") +
+      stat_halfeye(.width = c(.5, .95), slab_alpha = .9, point_size = 1.2) +
+      geom_text(data = l, aes(x = xl[2], y = row, label = lab), hjust = 1, size = 2.6, nudge_y = .25, inherit.aes = FALSE) +
+      facet_grid(rows = vars(block), scales = "free_y", space = "free_y", switch = "y") +
+      scale_fill_manual(values = colors, name = legend) +
+      scale_x_continuous(breaks = br) + coord_cartesian(xlim = xl) +
+      labs(x = "Standardized β Weights", y = NULL) +
+      theme_classic(base_size = 10) +
+      theme(strip.placement = "outside", strip.background = element_blank(), strip.text.y.left = element_text(face = "italic", angle = 0, hjust = 1),
+            axis.text.y = element_text(size = 7), panel.spacing.y = unit(2, "pt"), legend.position = "right")
+  }
+  fig <- compose(forest(names(panels)[1]), forest(names(panels)[2])) + plot_annotation(tag_levels = "a") &
+    theme(plot.tag = element_text(face = "bold"))
+  ggsave(here("output", paste0(file, ".pdf")), fig, width = width, height = height, device = cairo_pdf)
+  ggsave(here("output", paste0(file, ".png")), fig, width = width, height = height, dpi = 200)
+  write_csv(labels %>% select(panel, block, row, study, beta, .lower, .upper), here("results", paste0(file, "_values.csv")))
+  cat("saved output/", file, ".{pdf,png}\n", sep = "")
+  print(as.data.frame(labels %>% select(panel, row, study, lab)), row.names = FALSE)
+}
+
+choice_terms <- c("Left %s", "Right %s", "Left rating × %s", "Right rating × %s")
+
+# Figure 5: set choice
+if (5 %in% run) build_forest(
+  panels = list(similarity = list(fits = paste0("strength_exp_", 1:3, "_fit_choice03"), label = "similarity"),
+                centrality = list(fits = paste0("pca2_exp_", 1:3, "_fit_choice03"), label = "centrality")),
+  terms = setNames(choice_terms, c("b_zleft_net1", "b_zright_net1", "b_zleft_rating:zleft_net1", "b_zright_rating:zright_net1")),
+  xlim = c(-0.45, 0.5), breaks = seq(-0.2, 0.4, 0.2), file = "figure5_forest_choice")
+
+# Figure 6: set-choice RT (absolute network difference term; value difference and overall value are in the models but not shown)
+if (6 %in% run) build_forest(
+  panels = list(similarity = list(fits = paste0("strength_exp_", 1:3, "_fit_rt02"), label = "similarity"),
+                centrality = list(fits = paste0("pca2_exp_", 1:3, "_fit_rt02"), label = "centrality")),
+  terms = c("b_nd1" = "Absolute %s difference"),
+  xlim = c(-0.07, 0.07), breaks = seq(-0.05, 0.05, 0.05), file = "figure6_forest_rt", height = 4)
+
+# Figure 7: single-choice Studies 1-3 (Lee & Hare 2023, Lee & Holyoak 2021, Smith & Krajbich 2018).
+# These fits hold PC1 as net1/nd1 and PC2 as net2/nd2; only PC2 is shown. Same axes as Figures 5 and 6.
+sc <- c("Study 1 (Lee & Hare)" = "PCA_Lee_Hare_2023_choice_data_exp2", "Study 2 (Lee & Holyoak)" = "PCA_Lee_Holyoak_2021_choice_data_exp2_5",
+        "Study 3 (Smith & Krajbich)" = "PCA_Smith_Krajbich_2018_choice_data")
+sc_colors <- setNames(c("#66C2A5", "#8DA0CB", "#A6D854", "#FF8C00"), c(names(sc), "Average"))
+if (7 %in% run) build_forest(
+  panels = list(
+    choice = list(fits = setNames(paste0(sc, c("_fit_choice03", "_fit_choice03", "_fit_choice")), names(sc)), label = "centrality",
+                  terms = setNames(choice_terms, c("b_zleft_net2", "b_zright_net2", "b_zleft_rating:zleft_net2", "b_zright_rating:zright_net2")),
+                  xlim = c(-0.45, 0.5), breaks = seq(-0.2, 0.4, 0.2)),
+    rt = list(fits = setNames(paste0(sc, c("_fit_rt02", "_fit_rt02", "_fit_rt")), names(sc)), label = "centrality",
+              terms = c("b_nd2" = "Absolute %s difference"), xlim = c(-0.07, 0.07), breaks = seq(-0.05, 0.05, 0.05))),
+  colors = sc_colors, legend = "Dataset", file = "figure7_forest_single_choice",
+  compose = function(a, b) a + b + plot_layout(design = "A#\nAB\nA#", heights = c(2.3, 2.4, 2.3), guides = "collect"))
+
+# Figure 8: multi-alternative Studies 1-4, item-level fits (chosen ~ value + PC1 + PC2 + interactions; PC1 not shown).
+# Each set size of Studies 3 and 4 is its own dataset, as in the item-level analysis. Average = meta over the nine datasets.
+ma <- c("Leng et al." = "leng", "Fernandez et al. Exp. 1" = "fernandez_exp1",
+        "Fernandez et al. Exp. 2 (Set 4)" = "fernandez_exp2_ss4", "Fernandez et al. Exp. 2 (Set 8)" = "fernandez_exp2_ss8",
+        "Fernandez et al. Exp. 2 (Set 12)" = "fernandez_exp2_ss12", "Thomas et al. (Set 9)" = "thomas_ss9",
+        "Thomas et al. (Set 16)" = "thomas_ss16", "Thomas et al. (Set 25)" = "thomas_ss25", "Thomas et al. (Set 36)" = "thomas_ss36")
+ma_colors <- setNames(c("#4DBBD5", "#00A087", "#3C5488", "#F39B7F", "#8491B4", "#91D1C2", "#DC0000", "#7E6148", "#B09C85", "#FF8C00"),
+                      c(names(ma), "Average"))
+if (8 %in% run) build_forest(
+  panels = list(
+    choice = list(fits = setNames(paste0("item_level_", ma, "_accuracy"), names(ma)), label = "centrality",
+                  terms = c("b_PC2_z" = "Item %s", "b_item_value_z:PC2_z" = "Value × %s"),
+                  xlim = c(-0.5, 0.95), breaks = seq(-0.4, 0.8, 0.4)),
+    rt = list(fits = setNames(paste0("item_level_", ma, "_rt"), names(ma)), label = "centrality",
+              terms = c("b_chosen_PC2_z" = "Item %s", "b_chosen_value_z:chosen_PC2_z" = "Value × %s"),
+              xlim = c(-0.07, 0.1), breaks = seq(-0.05, 0.05, 0.05))),
+  colors = ma_colors, legend = "Dataset", file = "figure8_forest_multi_alternative", width = 15, height = 9)
