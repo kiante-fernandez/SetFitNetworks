@@ -452,21 +452,6 @@ net_degree$PCA4 <-  pca_res$x[,4]
 net_degree$PCA5 <- pca_res$x[,5]
 net_degree$PCA6 <- pca_res$x[,6]
 
-cor_p <- net_degree %>% 
-  dplyr::select(degree,strength,eigen,weighted_transitivity,closeness,betweenness,PCA1, PCA2, PCA3, PCA4, PCA5, PCA6) %>% 
-  cor() %>% 
-  ggcorrplot::ggcorrplot(type = "upper",
-                         lab = TRUE)+
-  theme_classic()+
-  labs(x = "", y = "") +
-  theme(
-    axis.text = element_text(face = "bold"),
-    text = element_text(size = 15),
-    axis.title = element_text(face = "bold"),
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
-
-print(cor_p)
 
 
 net_degree$PCA1 <- pca_res$x[,1]
