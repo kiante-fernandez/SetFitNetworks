@@ -5,7 +5,7 @@
 # Outputs: results/centrality_vs_liking_all_studies.csv, results/centrality_vs_liking_items.csv,
 #          output/centrality_vs_liking_all_studies.{pdf,png}, output/centrality_vs_liking_all_studies_pc1.{pdf,png}
 suppressMessages({library(tidyverse); library(igraph); library(patchwork); library(here)})
-source(here("src", "apply_pca_weights.R"))
+source(here("src", "utils.R"))
 L <- readRDS(here("output", "canonical_pca_loadings.rds"))
 
 six <- function(g) { G <- g; E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))

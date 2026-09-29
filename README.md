@@ -68,4 +68,4 @@ Estimated networks and model fits are not in the repository; the scripts estimat
 | SI §16 (sensitivity) | `power_analysis_single_choice.R` |
 | SI §18 (value parametrization) | `choice_value_parametrization.R`, `rt_individual_values_regression.R` |
 
-`utils.R` and `apply_pca_weights.R` hold shared functions. Code is licensed under GPL-3.0.
+`utils.R` holds shared functions. Code is licensed under GPL-3.0.

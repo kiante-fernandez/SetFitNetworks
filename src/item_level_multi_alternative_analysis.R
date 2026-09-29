@@ -208,7 +208,7 @@ save_item_level_results <- function(model, output_file) {
 
 cat("Loading network data with canonical PCA weights...\n")
 
-source(here::here("src", "apply_pca_weights.R"))
+source(here::here("src", "utils.R"))
 canonical_loadings <- readRDS(here::here("output", "canonical_pca_loadings.rds"))
 
 # Lee network (Fernandez data)

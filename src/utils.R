@@ -807,4 +807,50 @@ organize_group_data <- function(experiment, weight = "degree") {
   return(df)
 }
 
+#' Apply Canonical PCA Weights to New Data
+#'
+#' This function takes a dataframe of centrality scores and applies a pre-defined
+#' set of PCA loadings to calculate consistent PC scores. This ensures that PC1, PC2, etc.,
+#' have the same meaning and direction across different datasets.
+#'
+#' @param new_data A dataframe with columns for centrality measures (e.g., 'degree', 'strength').
+#'                 The column names must match the row names of `reference_loadings`.
+#' @param reference_loadings A matrix of PCA loadings (p measures x k components) to apply.
+#'
+#' @return The original `new_data` dataframe with new columns for PC scores (e.g., PC1, PC2).
 
+apply_pca_weights <- function(new_data, reference_loadings) {
+  # Get the names of the measures from the loading matrix
+  pca_cols <- rownames(reference_loadings)
+  
+  # Ensure all required columns exist in the new data
+  if (!all(pca_cols %in% names(new_data))) {
+    missing_cols <- pca_cols[!pca_cols %in% names(new_data)]
+    stop("The following required columns are missing from 'new_data': ", 
+         paste(missing_cols, collapse = ", "))
+  }
+  
+  # 1. Select the relevant columns in the correct order
+  data_to_transform <- new_data[, pca_cols]
+  
+  # 2. Standardize the data (scale to mean=0, sd=1)
+  scaled_data <- scale(data_to_transform)
+  
+  # Handle cases where a column has zero variance after filtering, which results in NaNs
+  if (any(is.nan(scaled_data))) {
+      scaled_data[is.nan(scaled_data)] <- 0
+      warning("NaNs produced during scaling (likely due to zero variance in a column). Replaced with 0.", call. = FALSE)
+  }
+  
+  # 3. Apply loadings via matrix multiplication
+  # Result is a matrix of n_samples x k_components
+  pc_scores <- scaled_data %*% reference_loadings
+  
+  # 4. Combine with original data and return
+  pc_scores_df <- as_tibble(pc_scores)
+  
+  # Add an informative prefix to the new columns
+  names(pc_scores_df) <- paste0("PC", 1:ncol(pc_scores_df))
+  
+  bind_cols(new_data, pc_scores_df)
+}
