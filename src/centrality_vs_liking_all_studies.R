@@ -21,7 +21,7 @@ lee_net <- pcs(six(lee_g)) %>% left_join(FoodNames %>% select(Name, Image), by =
 
 load(here("data", "rangel_rating_network_graph.RData")); rangel_net <- pcs(six(upgrade_graph(g)))
 
-e <- new.env(); load("~/Documents/choose_k/data/leng_2024_networkmetrics.RData", envir = e)
+e <- new.env(); load(here::here("data", "leng_2024_networkmetrics.RData"), envir = e)
 leng_net <- pcs(e$net_degree %>% rename(transitivity = weighted_transitivity)) %>% mutate(key = tolower(gsub("_", " ", Name)))
 
 thomas_net <- read_csv(here("data", "thomas2021_network_stats.csv"), show_col_types = FALSE) %>%
@@ -57,10 +57,10 @@ leng_means <- s2 %>% distinct(participant, pic_path, .keep_all = TRUE) %>% group
   left_join(pic, by = "pic_path") %>% mutate(key = tolower(pic_name)) %>% inner_join(leng_net, by = "key")
 cat(sprintf("Leng: %d rated pictures, %d matched to Leng network\n", n_distinct(s2$pic_path), nrow(leng_means)))
 ds[["Single/Multi-Alternative\n(Leng et al. 2025)"]] <- leng_means
-ck <- read_csv("/Users/kiante/Documents/choose_k/data/choosek_R.csv", show_col_types = FALSE)
+ck <- read_csv(here::here("data", "choose_k", "choosek_R.csv"), show_col_types = FALSE)
 ck_long <- map_dfr(0:3, ~tibble(s = ck$subject_id, item = ck[[paste0("item_name_", .x)]], v = ck[[paste0("item_value_", .x)]]))
 ck1 <- ck_long %>% distinct(s, item, .keep_all = TRUE) %>% group_by(item) %>% summarise(mean_rating = mean(v), .groups = "drop") %>% mutate(n_raters = n_distinct(ck_long$s)) %>% inner_join(lee_net, by = c("item" = "Image"))
-e2 <- read_csv("/Users/kiante/Documents/choose_k/data/exp_2_processed_V2.csv", show_col_types = FALSE)
+e2 <- read_csv(here::here("data", "choose_k", "exp_2_processed_V2.csv"), show_col_types = FALSE)
 e2_long <- map_dfr(1:12, ~tibble(s = e2$subject_id, item = e2[[paste0("item_name_", .x)]], v = e2[[paste0("item_value_", .x)]])) %>% filter(!is.na(item), !is.na(v))
 ck2 <- e2_long %>% distinct(s, item, .keep_all = TRUE) %>% group_by(item) %>% summarise(mean_rating = mean(v), .groups = "drop") %>% mutate(n_raters = n_distinct(e2_long$s)) %>% inner_join(lee_net, by = c("item" = "Image"))
 chk2 <- inner_join(ck1, ck2, by = "Name"); cat(sprintf("Fernandez choose-k Exp 1 vs Exp 2 item means: r = %.3f\n", cor(chk2$mean_rating.x, chk2$mean_rating.y)))

@@ -415,8 +415,8 @@ models_rt2 <- brm(log(rt) ~ vd + ov + nd1 + nd2 +
 # summary(models_choice2)
 # summary(models_rt2)
 
-pca_Lee_Hare_2023_fit_choice03 <- readRDS("~/Documents/SetFitNetworks/fits/PCA_Lee_Hare_2023_choice_data_exp2_fit_choice03.rds")
-pca_Lee_Holyoak_2021_fit_choice03 <- readRDS("~/Documents/SetFitNetworks/fits/PCA_Lee_Holyoak_2021_choice_data_exp2_5_fit_choice03.rds")
+pca_Lee_Hare_2023_fit_choice03 <- readRDS(here::here("fits", "PCA_Lee_Hare_2023_choice_data_exp2_fit_choice03.rds"))
+pca_Lee_Holyoak_2021_fit_choice03 <- readRDS(here::here("fits", "PCA_Lee_Holyoak_2021_choice_data_exp2_5_fit_choice03.rds"))
 
 test <- plot_models(pca_Lee_Hare_2023_fit_choice03,
                     pca_Lee_Holyoak_2021_fit_choice03,
@@ -460,8 +460,8 @@ plt_data %>%
             position = pd, vjust = -0.7,size=3,
             show.legend = FALSE, check_overlap = FALSE)
 
-pca_Lee_Hare_2023_fit_rt02 <- readRDS("~/Documents/SetFitNetworks/fits/PCA_Lee_Hare_2023_choice_data_exp2_fit_rt02.rds")
-pca_Lee_Holyoak_2021_fit_rt2 <- readRDS("~/Documents/SetFitNetworks/fits/PCA_Lee_Holyoak_2021_choice_data_exp2_5_fit_rt02.rds")
+pca_Lee_Hare_2023_fit_rt02 <- readRDS(here::here("fits", "PCA_Lee_Hare_2023_choice_data_exp2_fit_rt02.rds"))
+pca_Lee_Holyoak_2021_fit_rt2 <- readRDS(here::here("fits", "PCA_Lee_Holyoak_2021_choice_data_exp2_5_fit_rt02.rds"))
 
 test <- plot_models(pca_Lee_Hare_2023_fit_rt02,
                     pca_Lee_Holyoak_2021_fit_rt2,

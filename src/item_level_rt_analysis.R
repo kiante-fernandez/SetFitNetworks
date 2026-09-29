@@ -114,7 +114,7 @@ source(here::here("src", "apply_pca_weights.R"))
 canonical_loadings <- readRDS(here::here("output", "canonical_pca_loadings.rds"))
 
 # Lee network (Fernandez data)
-load("/Users/kiante/Documents/choose_k/data/lee_networkmetrics.RData")
+load(here::here("data", "lee_networkmetrics.RData"))
 lee_net <- net_degree1
 if ("weighted_transitivity" %in% names(lee_net)) {
   names(lee_net)[names(lee_net) == "weighted_transitivity"] <- "transitivity"
@@ -129,7 +129,7 @@ lee_centrality <- lee_net %>%
 cat("Lee network items:", nrow(lee_centrality), "\n")
 
 # Leng network
-load("~/Documents/choose_k/data/leng_2024_networkmetrics.RData")
+load(here::here("data", "leng_2024_networkmetrics.RData"))
 leng_net <- net_degree
 if ("weighted_transitivity" %in% names(leng_net)) {
   names(leng_net)[names(leng_net) == "weighted_transitivity"] <- "transitivity"
@@ -195,7 +195,7 @@ cat("LENG RT ANALYSIS\n")
 cat("===========================================================\n")
 
 # Load Leng data
-shenhav_item_list <- read_csv("~/Documents/SetFitNetworks/data/shenhav_item_list.csv",
+shenhav_item_list <- read_csv(here::here("data", "shenhav_item_list.csv"),
                                show_col_types = FALSE)
 Study3a_1 <- read_csv(here::here("data", "leng_2025", "Study3a_1.csv"),
                       col_types = cols(...1 = col_skip()))
@@ -371,7 +371,7 @@ cat("FERNANDEZ EXP 1 RT ANALYSIS\n")
 cat("===========================================================\n")
 
 # Load Fernandez Exp 1 data
-choosek <- read_csv("/Users/kiante/Documents/choose_k/data/choosek_R.csv",
+choosek <- read_csv(here::here("data", "choose_k", "choosek_R.csv"),
                     show_col_types = FALSE)
 
 # Filter for k=1 trials
@@ -448,7 +448,7 @@ cat("FERNANDEZ EXP 2 RT ANALYSIS (by set size)\n")
 cat("===========================================================\n")
 
 # Load Fernandez Exp 2 data
-exp2_data <- read_csv("/Users/kiante/Documents/choose_k/data/exp_2_processed_V2.csv",
+exp2_data <- read_csv(here::here("data", "choose_k", "exp_2_processed_V2.csv"),
                       show_col_types = FALSE)
 
 # Filter for k=1 trials

@@ -218,7 +218,7 @@ E(G)$weight <- 2**((E(G)$weight - min(E(G)$weight)) / diff(range(E(G)$weight)))
 net_degree <- calculate_net_stats(g)
 net_degree
 
-#save(net_degree, file = "~/Documents/choose_k/data/leng_2024_networkmetrics.RData")
+#save(net_degree, file = here::here("data", "leng_2024_networkmetrics.RData"))
 l <- layout_with_graphopt(g)
 
 # Add colors to network
