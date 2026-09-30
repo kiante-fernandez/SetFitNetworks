@@ -167,6 +167,9 @@ length(as.numeric(na.omit(p_values)))
 dput(as.numeric(na.omit(p_values)))
 length(set_strategy_winner[is.na(as.numeric(p_values))])
 length(set_strategy_winner)
+# best-fitting strategy per participant ("0" = not fit, most trials removed by RT exclusions); Supp. Fig. 5
+write_csv(tibble(subject_id = seq_along(set_strategy_winner), strategy = as.character(set_strategy_winner),
+                 accuracy_excluded = !is.na(as.numeric(p_values))), here::here("results", "strategy_exp2.csv"))
 set_strategy_winner <- set_strategy_winner[is.na(as.numeric(p_values))]
 
 # Data Exclusion Function ------------------------------------------------
