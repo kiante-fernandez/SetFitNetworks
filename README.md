@@ -44,9 +44,9 @@ Run scripts from the repository root (e.g. open `SetFitNetworks.Rproj`):
 
 1. Networks: `exploratory_graph_analysis.R`, `fernandez_rating_network.R`, `shenhav_rating_network.R`, `rangel_rating_network_binary_choice_analysis.R`, then `thomas2021_item_mapping.R` and `thomas2021_network.R`.
 2. `create_canonical_loadings.R` (PCA loadings applied to every network).
-3. The analyses below.
+3. The analyses below, then `figures.R` and `si_figures_tables.R`. The figures read the saved fits and the results written by the analysis scripts.
 
-Estimated networks and model fits are not in the repository; the scripts estimate them on the first run (several hours) and reuse them afterwards. `subgraph_selection.R` draws new random sets and overwrites the ones in `data/`, so it is not needed to reproduce the paper. Fig. 8 loads about 13 GB of model fits (peak ~9 GB RAM); with 16 GB or less, run it on its own: `Rscript src/figures_4_to_8.R 8`.
+Estimated networks and model fits are not in the repository; the scripts estimate them on the first run (several hours) and reuse them afterwards. `subgraph_selection.R` draws new random sets and overwrites the ones in `data/`, so it is not needed to reproduce the paper. Fig. 8 loads about 13 GB of model fits (peak ~9 GB RAM); with 16 GB or less, run it on its own: `Rscript src/figures.R 8`.
 
 ## Scripts by result
 
@@ -56,7 +56,8 @@ Estimated networks and model fits are not in the repository; the scripts estimat
 | Fig. 2; SI §4 (similarity judgments) | `exp_2_similarity_rating.R`, `exp_3_similarity_rating.R` |
 | Set-choice regressions; SI §7–9 | `exp_1_network_difference_regression.R`, `exp_2_…`, `exp_3_…` |
 | Meta-analysis estimates in the text | `internal_meta_analysis.R` |
-| Figs. 4–8 | `figures_4_to_8.R` (e.g. `Rscript src/figures_4_to_8.R 7 8` for Figs. 7–8 only) |
+| Figs. 1–2, 4–8 (Fig. 3 and Fig. 1b–c are illustrations) | `figures.R` (e.g. `Rscript src/figures.R 7 8` for Figs. 7–8 only) |
+| Supp. Figs. 1–6; Supp. Tables 1–3, 6–7, 10–15 | `si_figures_tables.R` (e.g. `Rscript src/si_figures_tables.R fig3 table6`) |
 | Centrality vs. liking | `centrality_vs_liking_all_studies.R` |
 | Binary-Choice Studies 1–2 (SI §11) | `binary_choice_analysis.R` |
 | Binary-Choice Study 3 (SI §11) | `rangel_rating_network_binary_choice_analysis.R` |
@@ -65,7 +66,7 @@ Estimated networks and model fits are not in the repository; the scripts estimat
 | SI §13 (cross-network centrality) | `centrality_validation_analysis.R` |
 | SI §14 (within-set variance) | `set_variance_regression.R` |
 | SI §15 (power analysis) | `exp_2_power_analysis.R`, `exp_3_power_analysis.R` |
-| SI §16 (sensitivity) | `power_analysis_single_choice.R` |
+| SI §16 (sensitivity; simulation for Binary-Choice Study 1) | `power_analysis_single_choice.R` |
 | SI §18 (value parametrization) | `choice_value_parametrization.R`, `rt_individual_values_regression.R` |
 
 `utils.R` holds shared functions. Code is licensed under GPL-3.0.
