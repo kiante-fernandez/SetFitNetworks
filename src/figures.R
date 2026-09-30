@@ -1,4 +1,7 @@
-# figures_4_to_8.R - Figures 4-8. Usage: Rscript src/figures_4_to_8.R [figure numbers], e.g. 7 8 (default: all).
+# figures.R - main-text figures. Usage: Rscript src/figures.R [figure numbers], e.g. 7 8 (default: all).
+# Figure 1: (a) association networks of Rating Studies 1-3 colored by community, (d) Rating Study 1 items by community;
+# panels b-c are schematics drawn outside R. Figure 2: similarity judgments vs. average subgraph strength.
+# Figure 3 is a design illustration (no code).
 # Figure 4: value-adjusted P(choose left) by left-set centrality tercile in each set-choice study.
 # Figures 5-8 are forest plots of regression coefficients with one shared layout.
 # Figure 5 (set choice): panel a = set-level similarity (average strength within set), panel b = item-level
@@ -9,7 +12,7 @@
 # random-effects meta-analyses (estimate | se ~ 1 + (1 | study), same priors as the internal
 # meta-analysis), fit separately per term so left and right terms are not pooled together.
 suppressMessages({library(tidyverse); library(brms); library(cmdstanr); library(ggdist); library(patchwork); library(here)})
-run <- if (length(commandArgs(TRUE))) as.integer(commandArgs(TRUE)) else 4:8
+run <- if (length(commandArgs(TRUE))) as.integer(commandArgs(TRUE)) else c(1, 2, 4:8)
 prior <- c(prior(normal(0, .25), class = Intercept), prior(cauchy(0, .25), class = sd))
 study_colors <- c("Study 1" = "#4DAF4A", "Study 2" = "#E41A1C", "Study 3" = "#377EB8", "Average" = "#FF8C00")
 
@@ -68,6 +71,60 @@ build_forest <- function(panels, terms = NULL, xlim = NULL, breaks = NULL, file,
   write_csv(labels %>% select(panel, block, row, study, beta, .lower, .upper, pd), here("results", paste0(file, "_values.csv")))
   cat("saved output/", file, ".{pdf,png}\n", sep = "")
   print(as.data.frame(labels %>% select(panel, row, study, lab)), row.names = FALSE)
+}
+
+# Figure 1. Communities are named by a marker item, so the labels follow the items if a regenerated network numbers its
+# communities differently. Networks: typical (median) structure of each bootstrap EGA.
+rating_networks <- list(
+  list(file = "rating_network_graph.RData", obj = "ega_res",
+       markers = c("meat/cheese" = "deli turkey", "fruits/vegetables" = "orange", "sweet pastries" = "churro",
+                   "chocolate" = "dark chocolate", "chips" = "potato chips", "crackers" = "ritz cracker", "bread" = "baguette"),
+       colors = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02", "#A6761D")),
+  list(file = "shenhav_rating_network_graphV2.RData", obj = "ega_res2",
+       markers = c(convenience = "chair", kitchen = "air_fryer", household = "duct_tape", alcoholic = "wine_glasses",
+                   recreational = "basketball", personal = "hair_dryer", snack = "chocolates", COVID = "surgical_masks",
+                   baby = "diapers", exercise = "kettlebell"),
+       colors = c("#A6CEE3", "#1F78B4", "#B2DF8A", "#FF7F00", "#6A3D9A", "#E31A1C", "#FDBF6F", "#33A02C", "#FB9A99", "#CAB2D6")),
+  list(file = "rangel_rating_network_graph.RData", obj = "boot_ega_results",
+       markers = c(chocolate = "3musketeers", savory = "fritos", "fruity/sour" = "skittles", "mixed sweet" = "snoball",
+                   "licorice & hard" = "twizzlers"),
+       colors = c("#E64B35", "#4DBBD5", "#00A087", "#3C5488", "#F39B7F")))
+typical <- function(net) {  # adjacency matrix and community label of each item
+  e <- new.env(); load(here("data", net$file), envir = e); tg <- e[[net$obj]]$typicalGraph
+  list(A = tg$graph, label = community_labels(setNames(tg$wc, colnames(tg$graph)), net$markers))
+}
+if (1 %in% run) {
+  source(here("src", "utils.R"))  # community_labels(), plot_network(), community_table()
+  pdf(here("output", "figure1a_networks.pdf"), width = 15, height = 6.5, bg = "white")
+  layout(matrix(1:6, 2, byrow = TRUE), heights = c(5, 1.3)); par(mar = c(0, 0, 0, 0))
+  for (net in rating_networks) { tn <- typical(net); plot_network(tn$A, tn$label, setNames(net$colors, names(net$markers))) }
+  for (net in rating_networks) {
+    plot.new(); legend("center", names(net$markers), pch = 21, pt.bg = net$colors, pt.cex = 2.5, cex = 1.3, bty = "n", ncol = 4)
+  }
+  invisible(dev.off())
+  tn <- typical(rating_networks[[1]])
+  p1d <- community_table(colnames(tn$A), tn$label, setNames(rating_networks[[1]]$colors, names(rating_networks[[1]]$markers)))
+  ggsave(here("output", "figure1d_communities.pdf"), p1d, width = 12, height = 0.3 * max(p1d$data$row) + 1)
+  write_csv(p1d$data %>% select(community, item), here("results", "figure1d_communities.csv"))
+  cat("saved output/figure1a_networks.pdf, output/figure1d_communities.pdf\n")
+}
+
+# Figure 2: per-set mean similarity judgment (error bars: standard error) against average subgraph strength, with linear
+# fits per study. Per-set data from exp_2_similarity_rating.R and exp_3_similarity_rating.R (results/similarity_sets_exp*.csv).
+if (2 %in% run) {
+  d <- map_dfr(2:3, ~ read_csv(here("results", sprintf("similarity_sets_exp%d.csv", .x)), show_col_types = FALSE)) %>%
+    mutate(study = factor(paste("Set-Choice Study", experiment)))
+  p2 <- ggplot(d, aes(st, subgraph_mean, color = study, fill = study, shape = study)) +
+    geom_pointrange(aes(ymin = subgraph_mean - se, ymax = subgraph_mean + se), size = .5) +
+    geom_smooth(aes(linetype = study), method = "lm", formula = y ~ x, linewidth = 1.5, alpha = .35) +
+    scale_color_manual(values = c("#E41A1C", "#377EB8")) + scale_fill_manual(values = c("#E41A1C", "#377EB8")) +
+    scale_shape_manual(values = c(16, 17)) + scale_linetype_manual(values = c("solid", "dashed")) +
+    labs(x = "Average Subgraph Strength", y = "Similarity") +
+    theme_classic(base_size = 18) +
+    theme(axis.text = element_text(face = "bold"), axis.title = element_text(face = "bold"), legend.position = "none")
+  ggsave(here("output", "figure2_similarity.pdf"), p2, width = 8, height = 6.5)
+  ggsave(here("output", "figure2_similarity.png"), p2, width = 8, height = 6.5, dpi = 200)
+  cat("saved output/figure2_similarity.{pdf,png}\n")
 }
 
 # Figure 4: P(choose left) from a logistic model with both sets' within-participant z-scored values and centralities

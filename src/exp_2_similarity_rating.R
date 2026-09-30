@@ -25,7 +25,7 @@ for(pkg in required_packages) {
 
 # Load required data and utilities
 source(here::here("src", "utils.R"))
-source("exploratory_graph_analysis.R")
+source(here::here("src", "exploratory_graph_analysis.R"))
 load(file = here::here("data", "modularity_100_6.RData"))
 temp_files <- list.files(path = here::here("data", "exp_2"), pattern = ".json", full.names = T)
 
@@ -262,7 +262,7 @@ compares <- res %>%
   )
 
 # Save results
-# write_csv(compares, "data/ISDN_poster_sim_rating_exp2.csv")
+write_csv(compares, here::here("results", "similarity_sets_exp2.csv"))  # per-set data for Fig. 2
 
 #------------------------------------------------------------------------------
 # Correlation Analysis Functions

@@ -25,7 +25,7 @@ for(pkg in required_packages) {
 
 # Load source files and data
 source(here::here("src", "utils.R"))
-source("exploratory_graph_analysis.R")
+source(here::here("src", "exploratory_graph_analysis.R"))
 load(file = here::here("data", "average_strength_100_6.RData"))
 
 # Set up file paths
@@ -158,9 +158,9 @@ res <- map_df(temp_files, ~similarity_ratings(., metrics))
 compares <- res %>%
   group_by(stimulus) %>%
   summarise(
-    subgraph_mean = mean(response),
-    se = sqrt(var(response) / length(response)),
-    subgraph_sd = sd(response)
+    subgraph_mean = mean(responsenormalized),  # ratings normalized within participant, as in Set-Choice Study 2
+    se = sqrt(var(responsenormalized) / length(responsenormalized)),
+    subgraph_sd = sd(responsenormalized)
   ) %>%
   mutate(
     mod = metrics$modularity[,1],
@@ -175,7 +175,7 @@ compares <- res %>%
     experiment = 3
   )
 
-# write_csv(compares, "data/ISDN_poster_sim_rating_exp3.csv")
+write_csv(compares, here::here("results", "similarity_sets_exp3.csv"))  # per-set data for Fig. 2
 
 #------------------------------------------------------------------------------
 # Statistical Analysis Functions

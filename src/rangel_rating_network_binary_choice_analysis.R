@@ -2,7 +2,7 @@
 # Ratings: the items rated in Smith & Krajbich (2018; smikrab2018 in the Liking Initiative), pooled across the Liking
 # Initiative datasets, Yoo et al. (2024) and Smith et al. (2025); min-max normalized within dataset, items missing for
 # >= 99% of raters dropped, remaining missing ratings mean-imputed.
-# Rating Study 3 network (SI, Fig. 1a): bootstrap EGA, saved to data/rangel_rating_network_graph.RData.
+# Rating Study 3 network (SI; plotted in Fig. 1a by figures.R): bootstrap EGA, saved to data/rangel_rating_network_graph.RData.
 # Binary-Choice Study 3: item centralities from an EGA network on the same ratings, PC1/PC2 from a PCA of those
 # centralities (net1/nd1 = PC1, net2/nd2 = PC2); choice and RT models as in the other binary-choice studies.
 
@@ -78,23 +78,6 @@ if (!file.exists(here("data", "rangel_rating_network_graph.RData"))) {
 } else {
   load(here("data", "rangel_rating_network_graph.RData"))
 }
-
-# Fig. 1a (right): network colored by community, without and with item labels
-net_degree <- calculate_net_stats(g)
-colors <- c("#E64B35FF", "#4DBBD5FF", "#00A087FF", "#3C5488FF", "#F39B7FFF")
-communities <- c("Chocolate", "Savory", "Fruity", "Variety Sweet", "Hard Candies")
-V(g)$color <- colors[net_degree$product_type]
-E(g)$color <- if_else(E(g)$weight > 0, "forestgreen", "red2")
-set.seed(2025)
-l <- layout_with_graphopt(g)
-pdf(here("output", "figure1_rating_study3_network.pdf"), width = 12, height = 9)
-plot(g, layout = l, margin = 0, vertex.label = NA, vertex.frame.color = adjustcolor(V(g)$color, alpha.f = .1),
-     vertex.size = 9, edge.width = E(g)$weight * 4.7)
-legend(x = 1.3, y = .6, communities, pch = 21, pt.bg = colors, pt.cex = 4, cex = 2, bty = "n")
-plot(g, layout = l, vertex.shape = "none", vertex.label.cex = .9, vertex.label.font = 2, vertex.label.color = V(g)$color,
-     vertex.label.family = "Times", edge.width = E(g)$weight)
-legend(x = 1.3, y = .6, communities, pch = 21, pt.bg = colors, pt.cex = 2, cex = .8, bty = "n")
-invisible(dev.off())
 
 # Binary-Choice Study 3 ------------------------------------------------------------------------------------------------
 ega <- EGA(rangel_for_network_final, model = "glasso", algorithm = "walktrap", plot.EGA = FALSE)

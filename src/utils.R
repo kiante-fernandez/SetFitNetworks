@@ -854,3 +854,29 @@ apply_pca_weights <- function(new_data, reference_loadings) {
   
   bind_cols(new_data, pc_scores_df)
 }
+
+# Figures of community structure (Fig. 1a/d, Supp. Figs. 1-2) ----------------------------------------------------------
+# Community label of each item: the community containing a marker item gets that marker's label (markers = c(label = item)),
+# so labels follow the items even if a re-estimated network numbers its communities differently.
+community_labels <- function(membership, markers) names(markers)[match(membership, membership[markers])]
+
+# Network with nodes colored by community label (colors named by label); edges green (positive) / red (negative)
+plot_network <- function(A, labels, colors, seed = 2025) {
+  g <- igraph::graph_from_adjacency_matrix(A, "undirected", weighted = TRUE)
+  w <- igraph::E(g)$weight
+  col <- colors[labels]; col[is.na(col)] <- "gray70"
+  set.seed(seed)
+  plot(g, layout = igraph::layout_with_graphopt(g), margin = 0, vertex.label = NA, vertex.color = col, vertex.frame.color = NA,
+       vertex.size = 9, edge.width = abs(w) * 4, edge.color = adjustcolor(ifelse(w > 0, "forestgreen", "red2"), .6))
+}
+
+# Items listed under colored community headers
+community_table <- function(items, labels, colors) {
+  d <- tibble::tibble(item = items, community = factor(labels, levels = names(colors))) %>%
+    dplyr::filter(!is.na(community)) %>% dplyr::group_by(community) %>% dplyr::mutate(row = dplyr::row_number()) %>% dplyr::ungroup()
+  ggplot2::ggplot(d, ggplot2::aes(community, row)) +
+    ggplot2::geom_tile(ggplot2::aes(fill = community), alpha = .08, width = .98, height = 1) +
+    ggplot2::geom_tile(data = dplyr::distinct(d, community), ggplot2::aes(y = 0, fill = community), width = .98, height = .8) +
+    ggplot2::geom_text(ggplot2::aes(label = item), size = 3, fontface = "bold") +
+    ggplot2::scale_y_reverse() + ggplot2::scale_fill_manual(values = colors, guide = "none") + ggplot2::theme_void()
+}
